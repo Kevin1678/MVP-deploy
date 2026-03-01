@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  email        String       @unique
+  passwordHash String
+  role         Role         @default(STUDENT)
+  createdAt    DateTime     @default(now())
+  results      GameResult[]
+}
+
+model GameResult {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  game       String
+  score      Int
+  moves      Int
+  durationMs Int
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
