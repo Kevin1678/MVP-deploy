@@ -1,20 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const LS_THEME = "pref_theme";     // "soft" | "high"
+const LS_TEXT = "pref_text_size";  // "normal" | "large"
+
 export default function Login() {
+  const nav = useNavigate();
+
+  // Cargar preferencias (defaults: soft + normal)
+  const initialTheme = useMemo(() => localStorage.getItem(LS_THEME) || "soft", []);
+  const initialText = useMemo(() => localStorage.getItem(LS_TEXT) || "normal", []);
+
+  const [theme, setTheme] = useState(initialTheme); // "soft" | "high"
+  const [textSize, setTextSize] = useState(initialText); // "normal" | "large"
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-  const [softTheme, setSoftTheme] = useState(false);
 
-  const nav = useNavigate();
-
-  // Aplica tema al body (alto contraste por defecto)
+  // Aplicar clases al body + persistir
   useEffect(() => {
-    document.body.classList.toggle("theme-soft", softTheme);
-  }, [softTheme]);
+    document.body.classList.toggle("theme-high", theme === "high");
+    localStorage.setItem(LS_THEME, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    document.body.classList.toggle("text-large", textSize === "large");
+    localStorage.setItem(LS_TEXT, textSize);
+  }, [textSize]);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -56,15 +71,27 @@ export default function Login() {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="chip"
-            onClick={() => setSoftTheme(v => !v)}
-            aria-pressed={softTheme}
-            title="Cambiar contraste"
-          >
-            {softTheme ? "Alto contraste" : "Contraste suave"}
-          </button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              className="chip"
+              onClick={() => setTextSize(v => (v === "large" ? "normal" : "large"))}
+              aria-pressed={textSize === "large"}
+              title="Cambiar tamaño de texto"
+            >
+              {textSize === "large" ? "Texto normal" : "Texto grande"}
+            </button>
+
+            <button
+              type="button"
+              className="chip"
+              onClick={() => setTheme(v => (v === "high" ? "soft" : "high"))}
+              aria-pressed={theme === "high"}
+              title="Cambiar contraste"
+            >
+              {theme === "high" ? "Contraste suave" : "Alto contraste"}
+            </button>
+          </div>
         </div>
 
         <form onSubmit={onSubmit}>
