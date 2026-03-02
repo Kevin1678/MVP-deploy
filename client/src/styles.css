@@ -38,11 +38,6 @@ body.theme-high {
   --focus: #00e5ff;
 }
 
-/* Tamaño de texto */
-body.text-large {
-  font-size: 18px;
-}
-
 body {
   margin: 0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -53,6 +48,10 @@ body {
   line-height: 1.4;
 }
 
+/* Tamaño de texto */
+body.text-large {
+  font-size: 18px;
+}
 
 .container {
   min-height: 100vh;
