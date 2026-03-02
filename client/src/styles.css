@@ -1,23 +1,53 @@
 :root {
+  /* Modo por defecto: alto contraste */
+  --bg: #070a12;
+  --card: #0e1426;
+  --border: #2a3558;
+  --text: #ffffff;
+  --muted: #cbd5ff;
+
+  --danger-bg: #3a0012;
+  --danger-border: #ff4d7d;
+  --danger-text: #ffd1dc;
+
+  --btn: #ffd400;       /* amarillo fuerte */
+  --btn-text: #0a0a0a;  /* texto negro */
+  --btn-hover: #ffea66;
+
+  --input: #0b1020;
+  --focus: #00e5ff;     /* cian brillante para foco */
+}
+
+/* Modo alternativo: contraste “suave” (por si les molesta tanto brillo) */
+body.theme-soft {
   --bg: #0b1220;
   --card: rgba(255, 255, 255, 0.08);
-  --border: rgba(255, 255, 255, 0.12);
+  --border: rgba(255, 255, 255, 0.18);
   --text: rgba(255, 255, 255, 0.92);
-  --muted: rgba(255, 255, 255, 0.65);
-  --danger: #ff5a7a;
+  --muted: rgba(255, 255, 255, 0.75);
+
+  --danger-bg: rgba(255, 90, 122, 0.12);
+  --danger-border: rgba(255, 90, 122, 0.35);
+  --danger-text: #ffd0da;
+
   --btn: #5b8cff;
+  --btn-text: #ffffff;
   --btn-hover: #4a7dff;
+
+  --input: rgba(0,0,0,0.25);
+  --focus: rgba(91,140,255,0.85);
 }
 
 * { box-sizing: border-box; }
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   color: var(--text);
-  background: radial-gradient(1200px 600px at 20% 10%, rgba(91,140,255,0.25), transparent 60%),
-              radial-gradient(1000px 600px at 80% 80%, rgba(255,90,122,0.18), transparent 55%),
-              var(--bg);
+  background: var(--bg);
   min-height: 100vh;
+  font-size: 16px; /* más grande */
+  line-height: 1.4;
 }
 
 .container {
@@ -29,12 +59,11 @@ body {
 
 .card {
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 18px;
   padding: 22px;
-  backdrop-filter: blur(10px);
   box-shadow: 0 18px 50px rgba(0,0,0,0.35);
 }
 
@@ -42,74 +71,103 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .logo {
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(91,140,255,1), rgba(255,90,122,1));
+  background: linear-gradient(135deg, var(--btn), var(--focus));
 }
 
-h1 {
-  font-size: 18px;
-  margin: 0;
-}
-p.sub {
-  margin: 6px 0 18px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.35;
+h1 { font-size: 20px; margin: 0; }
+p.sub { margin: 8px 0 16px; color: var(--muted); font-size: 14px; }
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.field {
-  display: grid;
-  gap: 6px;
-  margin-bottom: 12px;
+.chip {
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
-label {
-  font-size: 12px;
-  color: var(--muted);
+
+.field { display: grid; gap: 6px; margin-bottom: 12px; }
+label { font-size: 13px; color: var(--muted); font-weight: 700; }
+
+.inputRow {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
 }
+
 input {
   width: 100%;
   padding: 12px 12px;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: rgba(0,0,0,0.25);
+  border: 2px solid var(--border);
+  background: var(--input);
   color: var(--text);
   outline: none;
-}
-input:focus {
-  border-color: rgba(91,140,255,0.65);
-  box-shadow: 0 0 0 4px rgba(91,140,255,0.15);
+  font-size: 16px;
 }
 
-.actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
+input:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 25%, transparent);
 }
-button {
+
+.iconBtn {
+  min-width: 52px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+}
+.iconBtn:focus {
+  outline: 4px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.actions { display: flex; gap: 10px; margin-top: 10px; }
+
+button.primary {
   width: 100%;
   padding: 12px;
   border-radius: 12px;
   border: 0;
   background: var(--btn);
-  color: white;
-  font-weight: 600;
+  color: var(--btn-text);
+  font-weight: 900;
   cursor: pointer;
+  font-size: 16px;
 }
-button:hover { background: var(--btn-hover); }
-button:disabled { opacity: 0.6; cursor: not-allowed; }
+button.primary:hover { background: var(--btn-hover); }
+button.primary:focus {
+  outline: 4px solid var(--focus);
+  outline-offset: 2px;
+}
+button.primary:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .error {
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(255, 90, 122, 0.12);
-  border: 1px solid rgba(255, 90, 122, 0.25);
-  color: #ffd0da;
-  font-size: 13px;
+  background: var(--danger-bg);
+  border: 2px solid var(--danger-border);
+  color: var(--danger-text);
+  font-size: 14px;
+  font-weight: 700;
 }
