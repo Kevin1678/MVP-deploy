@@ -1,25 +1,5 @@
+/* Default: contraste suave */
 :root {
-  /* Modo por defecto: alto contraste */
-  --bg: #070a12;
-  --card: #0e1426;
-  --border: #2a3558;
-  --text: #ffffff;
-  --muted: #cbd5ff;
-
-  --danger-bg: #3a0012;
-  --danger-border: #ff4d7d;
-  --danger-text: #ffd1dc;
-
-  --btn: #ffd400;       /* amarillo fuerte */
-  --btn-text: #0a0a0a;  /* texto negro */
-  --btn-hover: #ffea66;
-
-  --input: #0b1020;
-  --focus: #00e5ff;     /* cian brillante para foco */
-}
-
-/* Modo alternativo: contraste “suave” (por si les molesta tanto brillo) */
-body.theme-soft {
   --bg: #0b1220;
   --card: rgba(255, 255, 255, 0.08);
   --border: rgba(255, 255, 255, 0.18);
@@ -38,7 +18,30 @@ body.theme-soft {
   --focus: rgba(91,140,255,0.85);
 }
 
-* { box-sizing: border-box; }
+/* Alto contraste (opcional) */
+body.theme-high {
+  --bg: #070a12;
+  --card: #0e1426;
+  --border: #2a3558;
+  --text: #ffffff;
+  --muted: #cbd5ff;
+
+  --danger-bg: #3a0012;
+  --danger-border: #ff4d7d;
+  --danger-text: #ffd1dc;
+
+  --btn: #ffd400;
+  --btn-text: #0a0a0a;
+  --btn-hover: #ffea66;
+
+  --input: #0b1020;
+  --focus: #00e5ff;
+}
+
+/* Tamaño de texto */
+body.text-large {
+  font-size: 18px;
+}
 
 body {
   margin: 0;
