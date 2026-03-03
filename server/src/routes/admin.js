@@ -3,9 +3,11 @@ const bcrypt = require("bcrypt");
 const { z } = require("zod");
 const { PrismaClient, Role } = require("@prisma/client");
 const { requireAuth, requireRole } = require("../middleware/auth");
+const { firstName, lastNameP, lastNameM, email, password, role } = parsed.data;
 
 const prisma = new PrismaClient();
 const router = express.Router();
+const passwordHash = await bcrypt.hash(password, 10);
 
 const createUserSchema = z.object({
   firstName: z.string().min(2),
@@ -14,6 +16,17 @@ const createUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   role: z.enum(["TEACHER", "PARENT", "STUDENT"]) // ADMIN no se crea aquí
+});
+
+const user = await prisma.user.create({
+  data: {
+    firstName,
+    lastNameP,
+    lastNameM: lastNameM || null,
+    email,
+    passwordHash,
+    role
+  }
 });
 
 router.post("/users", requireAuth, requireRole("ADMIN"), async (req, res) => {
