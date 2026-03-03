@@ -8,8 +8,12 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 const createUserSchema = z.object({
+  firstName: z.string().min(2),
+  lastNameP: z.string().min(2),
+  lastNameM: z.string().optional().or(z.literal("")),
   email: z.string().email(),
-  password: z.string().min(6)
+  password: z.string().min(6),
+  role: z.enum(["TEACHER", "PARENT", "STUDENT"]) // ADMIN no se crea aquí
 });
 
 router.post("/users", requireAuth, requireRole("ADMIN"), async (req, res) => {
