@@ -26,8 +26,6 @@ model User {
   lastNameM    String
 
   results      GameResult[]
-
-  @@map("users")
 }
 
 model GameResult {
