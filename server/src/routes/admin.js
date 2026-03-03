@@ -47,12 +47,13 @@ router.post("/users", requireAuth, requireRole("ADMIN"), async (req, res) => {
   res.status(201).json({ id: user.id, email: user.email, role: user.role });
 });
 
-router.get("/results", requireAuth, requireRole("ADMIN"), async (req, res) => {
-  const results = await prisma.gameResult.findMany({
+router.get("/users", requireAuth, requireRole("ADMIN"), async (req, res) => {
+  const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
-    take: 200,
-    include: { user: { select: { email: true } } }
+    select: { id: true, firstName: true, lastNameP: true, lastNameM: true, email: true, role: true, createdAt: true }
   });
+  res.json(users);
+});
 
   res.json(results.map(r => ({
     id: r.id,
