@@ -33,7 +33,7 @@ export default function GamesMenu() {
       {
         id: "memorama",
         title: "Juntar pares",
-        route: "/phaser/memorama",
+        route: "/games/memorama",
         icon: "🧠",
         mode: "Memorama",
         estimated: "3–5 min",
@@ -119,3 +119,4 @@ export default function GamesMenu() {
   );
 
 }
+
