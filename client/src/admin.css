@@ -1,0 +1,141 @@
+/* client/src/admin.css */
+
+.adminWrap {
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 12px;
+  font-family: system-ui;
+  color: var(--text);
+}
+
+.adminTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.adminGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.adminCard {
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.btn {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:focus { outline: 4px solid var(--focus); outline-offset: 2px; }
+
+.btnPrimary {
+  background: var(--btn);
+  color: var(--btn-text);
+  border-color: transparent;
+}
+.btnPrimary:hover { background: var(--btn-hover); }
+
+.adminForm {
+  display: grid;
+  gap: 10px;
+}
+
+.adminField {
+  display: grid;
+  gap: 6px;
+}
+
+.adminField label {
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.adminField input,
+.adminField select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--input);
+  color: var(--text);
+  outline: none;
+  font-size: 1rem;
+}
+
+.adminField input:focus,
+.adminField select:focus {
+  border-color: var(--focus);
+  outline: 4px solid color-mix(in srgb, var(--focus) 25%, transparent);
+  outline-offset: 2px;
+}
+
+.notice {
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: color-mix(in srgb, var(--card) 70%, black 30%);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.tableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  margin-top: 8px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 650px;
+}
+
+.table thead th {
+  text-align: left;
+  padding: 12px;
+  font-weight: 900;
+  color: var(--text);
+  background: color-mix(in srgb, var(--card) 75%, black 25%);
+  border-bottom: 2px solid var(--border);
+}
+
+.table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  color: var(--text);
+}
+
+.table tbody tr:hover {
+  background: color-mix(in srgb, var(--card) 60%, white 5%);
+}
+
+.emptyRow {
+  padding: 12px;
+  color: var(--muted);
+}
