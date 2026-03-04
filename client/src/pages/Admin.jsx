@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "../admin.css";
 
 function splitByRole(users) {
   return {
@@ -18,7 +19,7 @@ export default function Admin() {
     lastNameM: "",
     email: "",
     password: "",
-    role: "TEACHER", // por defecto maestros
+    role: "TEACHER",
   });
 
   const [msg, setMsg] = useState("");
@@ -53,8 +54,8 @@ export default function Admin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form)
       });
-      const data = await res.json().catch(() => null);
 
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
         setMsg(data?.message || "Error creando usuario");
         return;
@@ -78,76 +79,87 @@ export default function Admin() {
   const grouped = useMemo(() => splitByRole(users), [users]);
 
   return (
-    <div style={{ maxWidth: 1100, margin: "24px auto", fontFamily: "system-ui", padding: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+    <div className="adminWrap">
+      <div className="adminTop">
         <h2 style={{ margin: 0 }}>Panel Admin</h2>
-        <button onClick={logout} style={{ padding: "10px 14px", borderRadius: 10, cursor: "pointer" }}>
-          Cerrar sesión
-        </button>
+        <button className="btn" onClick={logout}>Cerrar sesión</button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 18, marginTop: 16 }}>
+      <div className="adminGrid">
         {/* FORM */}
-        <div style={{ border: "1px solid #ddd", borderRadius: 14, padding: 14 }}>
+        <div className="adminCard">
           <h3>Registrar usuario</h3>
-          <p style={{ marginTop: -8, color: "#555" }}>
+          <p className="muted" style={{ marginTop: 0 }}>
             Puedes registrar <b>maestros</b>, <b>padres</b> y (si quieres) <b>alumnos</b>.
           </p>
 
-          <form onSubmit={createUser} style={{ display: "grid", gap: 10 }}>
-            <label>
-              Nombre(s)
-              <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })}
-                     style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #ccc" }} />
-            </label>
+          <form onSubmit={createUser} className="adminForm">
+            <div className="adminField">
+              <label>Nombre(s)</label>
+              <input
+                value={form.firstName}
+                onChange={e => setForm({ ...form, firstName: e.target.value })}
+              />
+            </div>
 
-            <label>
-              Apellido paterno
-              <input value={form.lastNameP} onChange={e => setForm({ ...form, lastNameP: e.target.value })}
-                     style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #ccc" }} />
-            </label>
+            <div className="adminField">
+              <label>Apellido paterno</label>
+              <input
+                value={form.lastNameP}
+                onChange={e => setForm({ ...form, lastNameP: e.target.value })}
+              />
+            </div>
 
-            <label>
-              Apellido materno (opcional)
-              <input value={form.lastNameM} onChange={e => setForm({ ...form, lastNameM: e.target.value })}
-                     style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #ccc" }} />
-            </label>
+            <div className="adminField">
+              <label>Apellido materno (opcional)</label>
+              <input
+                value={form.lastNameM}
+                onChange={e => setForm({ ...form, lastNameM: e.target.value })}
+              />
+            </div>
 
-            <label>
-              Correo
-              <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-                     style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #ccc" }} />
-            </label>
+            <div className="adminField">
+              <label>Correo</label>
+              <input
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
 
-            <label>
-              Contraseña
-              <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
-                     style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #ccc" }} />
-            </label>
+            <div className="adminField">
+              <label>Contraseña</label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+              />
+            </div>
 
-            <label>
-              Rol
-              <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}
-                      style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #ccc" }}>
+            <div className="adminField">
+              <label>Rol</label>
+              <select
+                value={form.role}
+                onChange={e => setForm({ ...form, role: e.target.value })}
+              >
                 <option value="TEACHER">MAESTRO</option>
                 <option value="PARENT">PADRE</option>
                 <option value="STUDENT">ALUMNO</option>
               </select>
-            </label>
+            </div>
 
-            <button disabled={creating} style={{ padding: 12, borderRadius: 12, cursor: "pointer" }}>
+            <button className="btn btnPrimary" disabled={creating}>
               {creating ? "Creando..." : "Crear"}
             </button>
 
-            {msg && <div style={{ padding: 10, borderRadius: 10, background: "#f5f5f5" }}>{msg}</div>}
+            {msg && <div className="notice">{msg}</div>}
           </form>
         </div>
 
         {/* TABLES */}
-        <div style={{ border: "1px solid #ddd", borderRadius: 14, padding: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <div className="adminCard">
+          <div className="tableHeader">
             <h3 style={{ margin: 0 }}>Usuarios registrados</h3>
-            <button onClick={loadUsers} disabled={loadingUsers} style={{ padding: "8px 12px", borderRadius: 10, cursor: "pointer" }}>
+            <button className="btn" onClick={loadUsers} disabled={loadingUsers}>
               {loadingUsers ? "Cargando..." : "Refrescar"}
             </button>
           </div>
@@ -165,27 +177,30 @@ function UserSection({ title, users }) {
   return (
     <div style={{ marginTop: 14 }}>
       <h4 style={{ marginBottom: 8 }}>{title} ({users.length})</h4>
-      <div style={{ overflowX: "auto", border: "1px solid #eee", borderRadius: 10 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 650 }}>
+
+      <div className="tableWrap">
+        <table className="table">
           <thead>
-            <tr style={{ background: "#fafcfc" }}>
-              <th style={th}>ID</th>
-              <th style={th}>Nombre</th>
-              <th style={th}>Email</th>
-              <th style={th}>Rol</th>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
             </tr>
           </thead>
           <tbody>
             {users.map(u => (
               <tr key={u.id}>
-                <td style={td}>{u.id}</td>
-                <td style={td}>{u.firstName} {u.lastNameP} {u.lastNameM || ""}</td>
-                <td style={td}>{u.email}</td>
-                <td style={td}>{u.role}</td>
+                <td>{u.id}</td>
+                <td>{u.firstName} {u.lastNameP} {u.lastNameM || ""}</td>
+                <td>{u.email}</td>
+                <td>{u.role}</td>
               </tr>
             ))}
             {users.length === 0 && (
-              <tr><td style={td} colSpan={4}>Sin registros</td></tr>
+              <tr>
+                <td colSpan={4} className="emptyRow">Sin registros</td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -193,6 +208,3 @@ function UserSection({ title, users }) {
     </div>
   );
 }
-
-const th = { textAlign: "left", padding: 10, borderBottom: "1px solid #eee", fontWeight: 700 };
-const td = { padding: 10, borderBottom: "1px solid #f0f0f0" };
