@@ -9,7 +9,7 @@ function shuffle(arr) {
   return a;
 }
 
-export function createMemoramaGame(parentId, onFinish) {
+export function createMemoramaGame(parentId, onFinish, onExit) {
   const symbols = ["A","B","C","D","E","F","G","H"]; // 8 pares = 16 cartas
   const deck = shuffle([...symbols, ...symbols]);
 
@@ -106,6 +106,22 @@ export function createMemoramaGame(parentId, onFinish) {
         });
 
         this.add.text(20, 20, "Memorama: encuentra todos los pares", { fontSize: "22px", color: "#111" });
+
+                // ✅ Botón de salida
+        const exitBtn = this.add
+          .text(700, 20, "Salir", {
+            fontSize: "18px",
+            color: "#111",
+            backgroundColor: "#ffffff",
+            padding: { left: 12, right: 12, top: 8, bottom: 8 },
+          })
+          .setOrigin(0, 0)
+          .setInteractive({ useHandCursor: true });
+
+        exitBtn.on("pointerdown", () => {
+          if (typeof onExit === "function") onExit();
+        });
+        
       }
     }
   };
