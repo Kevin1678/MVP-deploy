@@ -80,11 +80,22 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
           color: "#cbd5e1",
         });
 
-        // Botón SALIR (llama a onExit del React)
-        this.exitBtn = this.makeButton(this.scale.width - 120, 40, 160, 44, "Salir", () => {
+        // ✅ Botón SALIR simple (Opción A)
+        this.exitBtn = this.add
+          .text(this.scale.width - 110, 18, "Salir", {
+            fontFamily: "Arial",
+            fontSize: "18px",
+            color: "#ffffff",
+            backgroundColor: "#111827",
+            padding: { left: 12, right: 12, top: 8, bottom: 8 },
+          })
+          .setOrigin(0, 0)
+          .setDepth(50)
+          .setInteractive({ useHandCursor: true });
+
+        this.exitBtn.on("pointerdown", () => {
           if (typeof onExit === "function") onExit();
         });
-        this.exitBtn.container.setDepth(50);
 
         // Timer
         this.timerEvent = this.time.addEvent({
@@ -108,7 +119,10 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
         this.scale.on("resize", (gameSize) => {
           const { width, height } = gameSize;
           this.bg.setSize(width, height);
-          this.exitBtn.container.setPosition(width - 120, 40);
+
+          // ✅ mover botón sin .container
+          this.exitBtn.setPosition(width - 110, 18);
+
           this.layoutCards();
           this.applyFocus(this.a11y.focusIndex, true);
         });
@@ -130,10 +144,13 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
         this.attemptsText.setColor(on ? "#ffffff" : "#cbd5e1");
         this.timeText.setColor(on ? "#ffffff" : "#cbd5e1");
 
-        // Botón
-        this.exitBtn.bg.setFillStyle(on ? 0xffffff : 0x111827);
-        this.exitBtn.bg.setStrokeStyle(2, on ? 0xffffff : 0xffffff, on ? 0.9 : 0.12);
-        this.exitBtn.txt.setColor(on ? "#000000" : "#ffffff");
+        // ✅ Botón simple: cambia estilo con setStyle
+        if (this.exitBtn) {
+          this.exitBtn.setStyle({
+            color: on ? "#000000" : "#ffffff",
+            backgroundColor: on ? "#ffffff" : "#111827",
+          });
+        }
 
         this.cards.forEach((card) => {
           card.faceDown.setFillStyle(on ? 0x000000 : 0x111827, 1);
@@ -336,7 +353,6 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
         const durationMs = Date.now() - this.state.startTime;
         this.say(`Ganaste. Tiempo ${Math.floor(durationMs / 1000)} segundos. Intentos ${this.state.attempts}`);
 
-        // Llama callback para guardar en BD y navegar
         if (typeof onFinish === "function") {
           onFinish({
             score: this.state.matchedPairs,
@@ -386,31 +402,6 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
           card.container.setScale(s);
           card.container.setDepth(10);
         });
-      },
-
-      makeButton(x, y, w, h, label, onClick) {
-        const container = this.add.container(x, y);
-
-        const hit = this.add.zone(0, 0, w, h).setOrigin(0.5);
-        hit.setInteractive({ useHandCursor: true });
-
-        const bg = this.add
-          .rectangle(0, 0, w, h, 0x111827)
-          .setStrokeStyle(2, 0xffffff, 0.12);
-
-        const txt = this.add.text(0, 0, label, {
-          fontFamily: "Arial",
-          fontSize: "18px",
-          color: "#ffffff",
-        }).setOrigin(0.5);
-
-        container.add([hit, bg, txt]);
-
-        hit.on("pointerdown", onClick);
-        hit.on("pointerover", () => bg.setFillStyle(0x1f2937));
-        hit.on("pointerout", () => bg.setFillStyle(0x111827));
-
-        return { container, bg, txt, hit };
       },
     },
   };
