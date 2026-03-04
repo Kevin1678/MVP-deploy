@@ -168,7 +168,7 @@ function UserSection({ title, users }) {
       <div style={{ overflowX: "auto", border: "1px solid #eee", borderRadius: 10 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 650 }}>
           <thead>
-            <tr style={{ background: "#fafafa" }}>
+            <tr style={{ background: "#fafcfc" }}>
               <th style={th}>ID</th>
               <th style={th}>Nombre</th>
               <th style={th}>Email</th>
