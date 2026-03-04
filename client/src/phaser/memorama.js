@@ -247,7 +247,7 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
       },
 
       // ---------- GAME ----------
-      buildCards() {
+      sceneBuildCards() {
         const symbols = shuffle(SYMBOLS).slice(0, this.pairs);
         const values = shuffle([...symbols, ...symbols]);
 
