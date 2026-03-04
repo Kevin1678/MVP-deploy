@@ -1,3 +1,8 @@
+import "./styles.css";
+import "./styles/gamesMenu.css"; // está bien si tu carpeta styles está fuera de src
+
+import React from "react";
+import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
