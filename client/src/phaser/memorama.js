@@ -109,7 +109,7 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
 
         // Construir cartas
         this.cards = [];
-        this.buildCards();
+        this.sceneBuildCards();
 
         // Teclado + foco
         this.initKeyboard();
