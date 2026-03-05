@@ -436,4 +436,7 @@ create() {
     layoutCards();
     applyFocus(a11y.focusIndex, true);
   });
+    },
+  },
+};
 }
