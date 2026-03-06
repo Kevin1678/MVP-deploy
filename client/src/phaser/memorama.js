@@ -281,6 +281,42 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
       const cards = [];
       const a11y = { focusIndex: 0, cols: 4 };
 
+      let lastSpoken = "";
+      let lastSpokenAt = 0;
+
+      const speakOnce = (msg, cooldownMs = 700) => {
+        if (!prefs.ttsEnabled) return;
+
+      const now = Date.now();
+        if (msg === lastSpoken && now - lastSpokenAt < cooldownMs) return;
+
+      lastSpoken = msg;
+      lastSpokenAt = now;
+      say(msg);
+  };
+
+const symbolName = (sym) => {
+  const map = {
+    "★": "estrella",
+    "●": "círculo",
+    "▲": "triángulo",
+    "■": "cuadrado",
+    "◆": "rombo",
+    "❤": "corazón",
+    "☀": "sol",
+    "☂": "paraguas",
+  };
+  return map[sym] ?? "figura";
+};
+
+// devuelve {row, col} 1-based según columnas actuales
+const getRowCol = (idx) => {
+  const cols = a11y.cols || 4;
+  const row = Math.floor(idx / cols) + 1;
+  const col = (idx % cols) + 1;
+  return { row, col };
+};
+
       const setCardVisual = (card, flipped) => {
         card.flipped = flipped;
         card.faceDown.setVisible(!flipped);
@@ -382,6 +418,11 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
 
         setCardVisual(card, true);
 
+        if (prefs.ttsEnabled) {
+      const { row, col } = getRowCol(card.idx);
+        speakOnce(`Abierta. ${symbolName(card.value)}. Fila ${row}, columna ${col}.`, 400);
+        }
+
         if (!state.first) {
           state.first = card;
           return;
@@ -404,6 +445,8 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
             setCardVisual(a, true);
             setCardVisual(b, true);
 
+            speakOnce(`Par correcto. ${symbolName(a.value)}.`, 300);
+
             say("Correcto");
             state.matchedPairs += 1;
 
@@ -412,6 +455,7 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
           });
         } else {
           this.time.delayedCall(650, () => {
+            speakOnce("No es par. Se voltean de nuevo.", 300);
             say("Incorrecto");
             setCardVisual(a, false);
             setCardVisual(b, false);
@@ -448,6 +492,20 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
           applyFocus(idx, true);
           onCardClick(card);
         });
+
+        hit.on("pointerover", () => {
+  if (!prefs.ttsEnabled) return;
+
+  const { row, col } = getRowCol(idx);
+  const estado = card.matched
+    ? "completada"
+    : card.flipped
+    ? `abierta, ${symbolName(card.value)}`
+    : "cerrada";
+
+  // Cooldown más alto para hover, para que no spamee
+  speakOnce(`Carta fila ${row}, columna ${col}. ${estado}.`, 900);
+});
 
         return card;
       };
