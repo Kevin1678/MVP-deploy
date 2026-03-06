@@ -570,8 +570,12 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
   }
 
   const game = new Phaser.Game({
-    ...config,
-    scene: [new MenuScene(), new MemoryScene()],
+    type: Phaser.AUTO,
+    width: 900,
+    height: 650,
+    parent: parentId,
+    backgroundColor: "#0b1020",
+    scene: [MenuScene, MemoryScene], // ✅ clases, no instancias
   });
 
   return () => {
