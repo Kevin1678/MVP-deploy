@@ -11,6 +11,8 @@ import Game from "./pages/Game";
 import GamesMenu from "./pages/GamesMenu";
 import Protected from "./components/Protected";
 
+import Teacher from "./pages/Teacher";
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
@@ -21,6 +23,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           element={
             <Protected role="ADMIN">
               <Admin />
+            </Protected>
+          }
+        />
+
+        /// RUTA PARA PROFESORES
+        <Route
+          path="/teacher"
+          element={
+            <Protected role="TEACHER">
+              <Teacher />
             </Protected>
           }
         />
