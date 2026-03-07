@@ -39,6 +39,14 @@ export default function GamesMenu() {
         estimated: "3–5 min",
         enabled: true,
       },
+
+      {
+        id: "count-pick",
+        title: "Contar y elegir",
+        route: "/games/contar",
+        icon: "🔢",
+        enabled: true,
+      },
     ],
     []
   );
@@ -119,4 +127,3 @@ export default function GamesMenu() {
   );
 
 }
-
