@@ -1,6 +1,7 @@
 -- AlterTable
-ALTER TABLE `user` ADD COLUMN `createdById` INTEGER NULL,
-    MODIFY `lastNameM` VARCHAR(191) NULL;
+ALTER TABLE `User`
+  ADD COLUMN `createdById` INTEGER NULL,
+  MODIFY `lastNameM` VARCHAR(191) NULL;
 
 -- CreateTable
 CREATE TABLE `StudentProfile` (
@@ -20,7 +21,13 @@ CREATE TABLE `StudentProfile` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
-ALTER TABLE `User` ADD CONSTRAINT `User_createdById_fkey` FOREIGN KEY (`createdById`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `User`
+  ADD CONSTRAINT `User_createdById_fkey`
+  FOREIGN KEY (`createdById`) REFERENCES `User`(`id`)
+  ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `StudentProfile` ADD CONSTRAINT `StudentProfile_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `StudentProfile`
+  ADD CONSTRAINT `StudentProfile_userId_fkey`
+  FOREIGN KEY (`userId`) REFERENCES `User`(`id`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
