@@ -7,6 +7,7 @@ const rateLimit = require("express-rate-limit");
 
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
+const teacherRoutes = require("./routes/teacher");
 const resultsRoutes = require("./routes/results");
 
 const app = express();
@@ -24,6 +25,7 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/teacher", teacherRoutes);
 app.use("/api/results", resultsRoutes);
 
 // Static React (Vite build -> dist) :contentReference[oaicite:2]{index=2}
