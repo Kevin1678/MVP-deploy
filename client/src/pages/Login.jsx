@@ -44,12 +44,27 @@ export default function Login() {
       });
 
       if (!res.ok) {
-        setErr(res.status === 401 ? "Credenciales incorrectas." : `Error (${res.status}). Intenta de nuevo.`);
+        setErr(
+          res.status === 401
+            ? "Credenciales incorrectas."
+            : `Error (${res.status}). Intenta de nuevo.`
+        );
         return;
       }
 
       const me = await res.json();
-      nav(me.role === "ADMIN" ? "/admin" : "/games");
+
+      if (me.role === "ADMIN") {
+        nav("/admin", { replace: true });
+      } else if (me.role === "TEACHER") {
+        nav("/teacher", { replace: true });
+      } else if (me.role === "PARENT") {
+        nav("/games", { replace: true });
+      } else if (me.role === "STUDENT") {
+        nav("/games", { replace: true });
+      } else {
+        setErr("Rol no reconocido.");
+      }
     } catch {
       setErr("No se pudo conectar al servidor.");
     } finally {
