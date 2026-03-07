@@ -10,7 +10,7 @@ import Admin from "./pages/Admin";
 import Game from "./pages/Game";
 import GamesMenu from "./pages/GamesMenu";
 import Protected from "./components/Protected";
-
+import GameCount from "./pages/GameCount";
 import Teacher from "./pages/Teacher";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -56,6 +56,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             </Protected>
           }
         />
+
+        <Route
+          path="/games/contar"
+          element={
+            <Protected>
+              <GameCount />
+          </Protected>
+        }
+      />
+        
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
