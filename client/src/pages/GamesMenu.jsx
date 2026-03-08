@@ -47,6 +47,14 @@ export default function GamesMenu() {
         icon: "🔢",
         enabled: true,
       },
+
+      {
+        id: "lights",
+        title: "Secuencia de luces",
+        route: "/games/lights",
+        icon: "💡",
+        enabled: true,
+      },
     ],
     []
   );
@@ -127,3 +135,4 @@ export default function GamesMenu() {
   );
 
 }
+
