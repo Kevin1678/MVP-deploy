@@ -11,7 +11,7 @@ import Game from "./pages/Game";
 import GamesMenu from "./pages/GamesMenu";
 import Protected from "./components/Protected";
 import GameCount from "./pages/GameCount";
-import GameCount from "./pages/GameLights";
+import GameLights from "./pages/GameLights";
 import Teacher from "./pages/Teacher";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
