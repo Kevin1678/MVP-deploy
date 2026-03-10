@@ -90,7 +90,7 @@ export default function Admin() {
         <div className="adminCard">
           <h3>Registrar usuario</h3>
           <p className="muted" style={{ marginTop: 0 }}>
-            Puedes registrar <b>maestros</b>, <b>padres</b> y (si quieres) <b>alumnos</b>.
+            Puedes registrar <b>maestros</b> y <b>padres</b>.
           </p>
 
           <form onSubmit={createUser} className="adminForm">
