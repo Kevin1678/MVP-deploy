@@ -111,7 +111,7 @@ export default function Admin() {
             </div>
 
             <div className="adminField">
-              <label>Apellido materno (opcional)</label>
+              <label>Apellido materno</label>
               <input
                 value={form.lastNameM}
                 onChange={e => setForm({ ...form, lastNameM: e.target.value })}
