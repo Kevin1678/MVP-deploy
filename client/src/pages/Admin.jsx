@@ -143,7 +143,6 @@ export default function Admin() {
               >
                 <option value="TEACHER">MAESTRO</option>
                 <option value="PARENT">PADRE</option>
-                <option value="STUDENT">ALUMNO</option>
               </select>
             </div>
 
