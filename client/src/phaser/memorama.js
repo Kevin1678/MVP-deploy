@@ -205,39 +205,63 @@ class MemoryScene extends Phaser.Scene {
     speakIfEnabled(this, text);
   }
 
-  applyTheme() {
+applyTheme() {
+  // 1) Si aún no hay a11y, no hagas nada
+  if (!this.a11y) return;
+
+  // 2) Aplica filtros globales (daltonismo, etc.)
+  //    OJO: si applyA11yToScene depende de bg/title, debe soportar que falten.
+  try {
     applyA11yToScene(this, this.a11y);
+  } catch (e) {
+    // Si se dispara demasiado temprano, no rompas el juego
+  }
 
-    const hc = !!this.a11y.highContrast;
-    const ui = this.a11y.uiScale || 1;
-    const ts = this.a11y.textScale || 1;
+  const hc = !!this.a11y.highContrast;
+  const ui = this.a11y.uiScale || 1;
+  const ts = this.a11y.textScale || 1;
 
+  // 3) Protege elementos que pueden NO existir todavía
+  if (this.bg?.setFillStyle) {
     this.bg.setFillStyle(hc ? 0x000000 : 0x0b1020, 1);
+  }
 
+  if (this.title?.setFontSize) {
     this.title.setFontSize(Math.round(22 * ts));
+  }
+
+  if (this.attemptsText?.setFontSize) {
     this.attemptsText.setFontSize(Math.round(18 * ts));
-    this.timeText.setFontSize(Math.round(18 * ts));
-
     this.attemptsText.setColor(hc ? "#ffffff" : "#cbd5e1");
+  }
+
+  if (this.timeText?.setFontSize) {
+    this.timeText.setFontSize(Math.round(18 * ts));
     this.timeText.setColor(hc ? "#ffffff" : "#cbd5e1");
+  }
 
+  // 4) Cartas: también puede ser undefined la primera vez
+  if (Array.isArray(this.cards)) {
     this.cards.forEach((card) => {
-      card.faceDown.setFillStyle(hc ? 0x000000 : 0x111827, 1);
-      card.faceDown.setStrokeStyle(2, 0xffffff, hc ? 0.9 : 0.12);
+      if (!card) return;
 
-      card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
-      card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
+      card.faceDown?.setFillStyle?.(hc ? 0x000000 : 0x111827, 1);
+      card.faceDown?.setStrokeStyle?.(2, 0xffffff, hc ? 0.9 : 0.12);
 
-      card.txt.setColor(hc ? "#000000" : "#0b1020");
+      card.faceUp?.setFillStyle?.(hc ? 0xffffff : 0xf8fafc, 1);
+      card.faceUp?.setStrokeStyle?.(2, 0x111827, hc ? 0.9 : 0.25);
 
-      // escala UI para que sea “grande” cuando el niño lo necesite
-      card.container.setScale(ui);
-      // texto (símbolo) un poco más grande si subes textScale
-      card.txt.setFontSize(Math.round(52 * ts));
+      card.txt?.setColor?.(hc ? "#000000" : "#0b1020");
+      card.container?.setScale?.(ui);
+      card.txt?.setFontSize?.(Math.round(52 * ts));
     });
+  }
 
+  // 5) Solo layout si ya existen cartas y la función
+  if (typeof this.layoutCards === "function" && Array.isArray(this.cards) && this.cards.length) {
     this.layoutCards();
   }
+}
 
   initKeyboard() {
     this.input.keyboard.on("keydown", (e) => {
