@@ -18,14 +18,6 @@ function speak(text) {
 /* ----------------- Utils ----------------- */
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 /* ----------------- Temas ----------------- */
 const THEMES = {
@@ -39,11 +31,12 @@ const THEMES = {
     tileStroke: 0xffffff,
     tileStrokeAlpha: 0.12,
     tileActive: 0x60a5fa,
-    tileActive2: 0xfbbf24, // segundo canal visual (no depende de rojo/verde)
+    tileActive2: 0xfbbf24,
     btnFill: 0x111827,
     btnHover: 0x1f2937,
     btnText: "#ffffff",
     btnStrokeAlpha: 0.14,
+    focusStroke: 0x22c55e,
   },
   protanopia: {
     bg: 0x0b1020,
@@ -60,6 +53,7 @@ const THEMES = {
     btnHover: 0x1e293b,
     btnText: "#ffffff",
     btnStrokeAlpha: 0.18,
+    focusStroke: 0xfbbf24,
   },
   tritanopia: {
     bg: 0x0b1020,
@@ -76,6 +70,7 @@ const THEMES = {
     btnHover: 0x1f2937,
     btnText: "#ffffff",
     btnStrokeAlpha: 0.16,
+    focusStroke: 0xa78bfa,
   },
   highContrast: {
     bg: 0x000000,
@@ -92,6 +87,7 @@ const THEMES = {
     btnHover: 0xffffff,
     btnText: "#000000",
     btnStrokeAlpha: 1,
+    focusStroke: 0xffffff,
   },
 };
 
@@ -119,22 +115,16 @@ function savePrefs(p) {
 function posName(r, c) {
   const row = r === 0 ? "arriba" : r === 1 ? "centro" : "abajo";
   const col = c === 0 ? "izquierda" : c === 1 ? "centro" : "derecha";
-  // el centro central se oye raro si dices "centro centro"
   if (row === "centro" && col === "centro") return "centro";
   if (row === "centro") return `centro ${col}`;
   if (col === "centro") return `${row} centro`;
   return `${row} ${col}`;
 }
 
-/**
- * createLightsSequenceGame(parentId, onFinish, onExit)
- * onFinish: ({score, attempts, durationMs, roundsPlayed, roundsTotal, difficulty}) => void
- * onExit: () => void
- */
 export function createLightsSequenceGame(parentId, onFinish, onExit, options = {}) {
   const prefs = loadPrefs();
 
-  // anti-spam TTS
+  // anti-spam voz
   let lastSpoken = "";
   let lastSpokenAt = 0;
   const say = (msg, cooldownMs = 650) => {
@@ -402,11 +392,12 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
         round: 0,
         score: 0,
         attempts: 0,
-        locked: true,          // bloqueado mientras se muestra secuencia
-        phase: "show",         // show | input
+        locked: true,
+        phase: "show",
         sequence: [],
         inputIndex: 0,
         tiles: [],
+        focusIndex: 0, // teclado
       };
 
       this.bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, th.bg).setOrigin(0);
@@ -496,14 +487,11 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
       // construir grid 3x3
       this.buildGrid();
 
-      // teclado rápido
-      this.input.keyboard.on("keydown", (e) => {
-        if (e.code === "KeyT") this.ttsBtn.emit("pointerdown");
-        if (e.code === "KeyC") this.contrastBtn.emit("pointerdown");
-        if (e.code === "Escape") this.exitBtn.emit("pointerdown");
-      });
+      // teclado: navegación + seleccionar
+      this.initKeyboard();
 
       this.refreshUI();
+      this.applyFocus(0, true);
       this.nextRound(true);
 
       this.scale.on("resize", ({ width, height }) => {
@@ -511,6 +499,7 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
         layoutTopButtons(this, this.topBtns);
         this.layoutBottomControls();
         this.layoutGrid();
+        this.applyFocus(this.state.focusIndex, true);
       });
     }
 
@@ -523,8 +512,8 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
 
     refreshUI() {
       const th = getTheme();
-      this.bg.setFillStyle(th.bg, 1);
 
+      this.bg.setFillStyle(th.bg, 1);
       this.title.setColor(th.text);
       this.sub.setColor(th.muted);
       this.stats.setColor(th.muted);
@@ -547,25 +536,28 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
 
       this.layoutBottomControls();
 
-      // reestiliza tiles
       this.state.tiles.forEach((tile) => {
         tile.bg.setFillStyle(th.tile, 1);
         tile.bg.setStrokeStyle(3, th.tileStroke, th.tileStrokeAlpha);
         tile.lbl.setColor(th.text);
       });
+
+      // re-aplica foco visible
+      this.applyFocus(this.state.focusIndex, true);
     }
 
+    /* --------- GRID (FIX HITBOX) --------- */
     buildGrid() {
       const th = getTheme();
       const s = prefs.uiScale;
 
       const tiles = [];
+
       for (let r = 0; r < 3; r++) {
         for (let c = 0; c < 3; c++) {
           const bg = this.add.rectangle(0, 0, 120 * s, 110 * s, th.tile, 1)
             .setStrokeStyle(3, th.tileStroke, th.tileStrokeAlpha);
 
-          // label corto para NO depender de color (A1..C3)
           const code = String.fromCharCode(65 + r) + String(c + 1);
           const lbl = this.add.text(0, 0, code, {
             fontFamily: "Arial",
@@ -573,23 +565,26 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
             color: th.text,
           }).setOrigin(0.5);
 
-          const container = this.add.container(0, 0, [bg, lbl]);
-          container.setSize(bg.width, bg.height);
-          container.setInteractive(new Phaser.Geom.Rectangle(-bg.width/2, -bg.height/2, bg.width, bg.height), Phaser.Geom.Rectangle.Contains);
+          // foco visible (borde extra) dentro del container
+          const focus = this.add.rectangle(0, 0, bg.width + 10, bg.height + 10, 0x000000, 0)
+            .setStrokeStyle(4, th.focusStroke, 0.0) // invisible al inicio
+            .setVisible(true);
+
+          const container = this.add.container(0, 0, [bg, lbl, focus]);
+
+          // ✅ SOLUCIÓN: usa el bg como área interactiva REAL (así no se descuadra)
+          bg.setInteractive({ useHandCursor: true });
 
           const name = posName(r, c);
 
-          // hover: narra posición
-          container.on("pointerover", () => {
+          bg.on("pointerover", () => {
+            this.applyFocus(r * 3 + c, true);
             say(name, 700);
-            // leve borde para indicar foco, no depende de color
-            bg.setStrokeStyle(4, 0xffffff, prefs.contrast ? 1 : 0.35);
           });
-          container.on("pointerout", () => bg.setStrokeStyle(3, th.tileStroke, th.tileStrokeAlpha));
 
-          container.on("pointerdown", () => this.onTilePress(r, c));
+          bg.on("pointerdown", () => this.onTilePress(r, c));
 
-          tiles.push({ r, c, name, code, container, bg, lbl });
+          tiles.push({ r, c, name, code, container, bg, lbl, focus });
         }
       }
 
@@ -621,12 +616,71 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
       this.state.tiles.forEach((t) => {
         const x = startX + t.c * (tileW + gap);
         const y = startY + t.r * (tileH + gap);
+
         t.container.setPosition(x, y);
 
-        // ajusta sizes por uiScale
         t.bg.setSize(tileW, tileH);
         t.lbl.setFontSize(Math.round(28 * s));
+
+        t.focus.setSize(tileW + 10, tileH + 10);
+
+        // ✅ el área interactiva es el bg, así que su hitbox se actualiza con displaySize
+        t.bg.input?.hitArea?.setTo(-tileW/2, -tileH/2, tileW, tileH); // extra seguro
       });
+    }
+
+    /* --------- Keyboard nav --------- */
+    initKeyboard() {
+      this.input.keyboard.on("keydown", (e) => {
+        if (e.code === "KeyT") return this.ttsBtn.emit("pointerdown");
+        if (e.code === "KeyC") return this.contrastBtn.emit("pointerdown");
+        if (e.code === "Escape") return this.exitBtn.emit("pointerdown");
+
+        // si está mostrando secuencia, no se permite input
+        if (this.state.locked) return;
+
+        const idx = this.state.focusIndex;
+        const r = Math.floor(idx / 3);
+        const c = idx % 3;
+
+        let nr = r, nc = c;
+
+        if (e.code === "ArrowLeft") nc = clamp(c - 1, 0, 2);
+        if (e.code === "ArrowRight") nc = clamp(c + 1, 0, 2);
+        if (e.code === "ArrowUp") nr = clamp(r - 1, 0, 2);
+        if (e.code === "ArrowDown") nr = clamp(r + 1, 0, 2);
+
+        const next = nr * 3 + nc;
+
+        if (next !== idx && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.code)) {
+          this.applyFocus(next);
+          return;
+        }
+
+        if (e.code === "Enter" || e.code === "Space") {
+          const t = this.state.tiles[this.state.focusIndex];
+          if (t) this.onTilePress(t.r, t.c);
+        }
+      });
+    }
+
+    applyFocus(index, silent = false) {
+      const th = getTheme();
+
+      // limpia anterior
+      const prev = this.state.tiles[this.state.focusIndex];
+      if (prev?.focus) prev.focus.setStrokeStyle(4, th.focusStroke, 0.0);
+
+      this.state.focusIndex = index;
+
+      const tile = this.state.tiles[index];
+      if (!tile) return;
+
+      tile.focus.setStrokeStyle(4, th.focusStroke, 1);
+
+      if (!silent) {
+        say(tile.name, 600);
+      }
     }
 
     /* ------------- Juego ------------- */
@@ -638,16 +692,18 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
       this.state.phase = "show";
       this.state.inputIndex = 0;
 
-      // Genera secuencia sin repetir mismo tile consecutivo (evita confusión)
+      // genera secuencia (sin repetir consecutivo)
       const all = this.state.tiles.map((t) => ({ r: t.r, c: t.c }));
       let seq = [];
       let prev = null;
+
       for (let i = 0; i < this.steps; i++) {
         const choices = all.filter((p) => !(prev && p.r === prev.r && p.c === prev.c));
         const pick = choices[randInt(0, choices.length - 1)];
         seq.push(pick);
         prev = pick;
       }
+
       this.state.sequence = seq;
 
       this.stats.setText(
@@ -656,7 +712,7 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
 
       if (prefs.ttsEnabled) {
         say(`Ronda ${this.state.round}. Observa la secuencia.`, 0);
-        if (isFirst) say("Puedes activar voz, contraste y tamaño arriba.", 0);
+        if (isFirst) say("Usa flechas y Enter si no quieres usar mouse.", 0);
       }
 
       this.playSequence();
@@ -670,22 +726,18 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
       const th = getTheme();
       const speed = this.speedMs;
 
-      // pequeña pausa antes de comenzar
       this.time.delayedCall(350, async () => {
         for (let i = 0; i < this.state.sequence.length; i++) {
           const { r, c } = this.state.sequence[i];
           const tile = this.findTile(r, c);
           if (!tile) continue;
 
-          // narración de paso
           if (prefs.ttsEnabled) say(tile.name, 0);
 
-          // highlight: cambia fill + borde grueso + “glow” (no depende solo del color)
           const originalFill = tile.bg.fillColor;
           tile.bg.setFillStyle(th.tileActive, 1);
           tile.bg.setStrokeStyle(5, 0xffffff, prefs.contrast ? 1 : 0.55);
 
-          // animación de “pulso”
           this.tweens.add({
             targets: tile.container,
             scale: { from: 1, to: 1.05 },
@@ -695,16 +747,15 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
 
           await new Promise((res) => this.time.delayedCall(speed, res));
 
-          // vuelve normal
           tile.bg.setFillStyle(originalFill, 1);
           tile.bg.setStrokeStyle(3, th.tileStroke, th.tileStrokeAlpha);
 
           await new Promise((res) => this.time.delayedCall(Math.max(120, speed * 0.20), res));
         }
 
-        // ahora input
         this.state.phase = "input";
         this.state.locked = false;
+
         if (prefs.ttsEnabled) say("Tu turno. Repite la secuencia.", 0);
       });
     }
@@ -715,7 +766,9 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
       const tile = this.findTile(r, c);
       if (!tile) return;
 
-      // feedback instantáneo al tocar
+      // al click, mueve foco ahí también
+      this.applyFocus(r * 3 + c, true);
+
       const th = getTheme();
       const old = tile.bg.fillColor;
       tile.bg.setFillStyle(th.tileActive2, 1);
@@ -770,7 +823,6 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
       say("Incorrecto.", 0);
       this.showOverlayIcon(false);
 
-      // pequeño “shake” general para feedback
       this.tweens.add({
         targets: [this.title, this.sub, this.stats],
         x: "+=8",
@@ -780,7 +832,6 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
       });
 
       this.time.delayedCall(1000, () => {
-        // vuelve a mostrar la misma ronda (o puedes generar nueva: aquí REPETIMOS para aprendizaje)
         this.state.phase = "show";
         this.state.locked = true;
         this.state.inputIndex = 0;
@@ -794,6 +845,7 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
       const s = prefs.uiScale;
 
       const overlay = this.add.container(this.scale.width / 2, 120 * s).setDepth(3000);
+
       const panelW = Math.min(560, this.scale.width * 0.90);
       const panelH = 130 * s;
 
@@ -808,7 +860,7 @@ export function createLightsSequenceGame(parentId, onFinish, onExit, options = {
 
       const text = this.add.text(panelW * 0.08, 0, ok ? "¡Bien!" : "Intenta otra vez", {
         fontFamily: "Arial",
-        fontSize: `${Math.round(ok ? 44 : 36 * s)}px`,
+        fontSize: `${Math.round((ok ? 44 : 36) * s)}px`,
         color: th.text,
       }).setOrigin(0.5);
 
