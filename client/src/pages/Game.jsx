@@ -42,4 +42,9 @@ export default function Game() {
     <div id="phaser-root" style={{ width: "100%", height: "100%" }} />
   </div>
   );
+
+    return () => {
+    try { window.speechSynthesis?.cancel(); } catch {}
+    destroy();
+  };
 }
