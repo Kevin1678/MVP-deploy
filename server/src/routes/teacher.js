@@ -7,12 +7,21 @@ const { requireAuth, requireRole } = require("../middleware/auth");
 const prisma = new PrismaClient();
 const router = express.Router();
 
+const parentSchema = z.object({
+  firstName: z.string().min(2),
+  lastNameP: z.string().min(2),
+  lastNameM: z.string().optional().or(z.literal("")),
+  email: z.string().email(),
+  password: z.string().min(6)
+});
+
 const createStudentSchema = z.object({
   firstName: z.string().min(2),
   lastNameP: z.string().min(2),
   lastNameM: z.string().optional().or(z.literal("")),
   email: z.string().email(),
   password: z.string().min(6),
+  group: z.enum(["1A", "1B", "1C"]).default("1A"),
 
   visualCondition: z.enum(["NONE", "PROTANOPIA", "TRITANOPIA", "LOW_VISION"]).default("NONE"),
   auditoryCondition: z.enum(["NONE", "HARD_OF_HEARING", "DEAF"]).default("NONE"),
@@ -22,27 +31,9 @@ const createStudentSchema = z.object({
   textToSpeechEnabled: z.boolean().default(false),
   voiceInstructions: z.boolean().default(false),
   captionsEnabled: z.boolean().default(true),
-  visualAlertsEnabled: z.boolean().default(true)
-});
+  visualAlertsEnabled: z.boolean().default(true),
 
-router.get("/students", requireAuth, requireRole("TEACHER"), async (req, res) => {
-  try {
-    const students = await prisma.user.findMany({
-      where: {
-        role: "STUDENT",
-        createdById: req.user.id
-      },
-      orderBy: { createdAt: "desc" },
-      include: {
-        studentProfile: true
-      }
-    });
-
-    res.json(students);
-  } catch (error) {
-    console.error("GET /teacher/students error:", error);
-    res.status(500).json({ message: "Error interno" });
-  }
+  parents: z.array(parentSchema).max(2).default([])
 });
 
 router.post("/students", requireAuth, requireRole("TEACHER"), async (req, res) => {
@@ -57,15 +48,15 @@ router.post("/students", requireAuth, requireRole("TEACHER"), async (req, res) =
   const data = parsed.data;
 
   try {
-    const exists = await prisma.user.findUnique({
+    const existingStudent = await prisma.user.findUnique({
       where: { email: data.email }
     });
 
-    if (exists) {
-      return res.status(409).json({ message: "Ese correo ya existe" });
+    if (existingStudent) {
+      return res.status(409).json({ message: "El correo del alumno ya existe." });
     }
 
-    const passwordHash = await bcrypt.hash(data.password, 10);
+    const studentPasswordHash = await bcrypt.hash(data.password, 10);
 
     const student = await prisma.user.create({
       data: {
@@ -73,7 +64,7 @@ router.post("/students", requireAuth, requireRole("TEACHER"), async (req, res) =
         lastNameP: data.lastNameP,
         lastNameM: data.lastNameM || null,
         email: data.email,
-        passwordHash,
+        passwordHash: studentPasswordHash,
         role: Role.STUDENT,
         createdById: req.user.id,
         studentProfile: {
@@ -88,13 +79,54 @@ router.post("/students", requireAuth, requireRole("TEACHER"), async (req, res) =
             visualAlertsEnabled: data.visualAlertsEnabled
           }
         }
-      },
-      include: {
-        studentProfile: true
       }
     });
 
-    res.status(201).json(student);
+    for (const parentData of data.parents) {
+      let parent = await prisma.user.findUnique({
+        where: { email: parentData.email }
+      });
+
+      if (parent && parent.role !== "PARENT") {
+        return res.status(409).json({
+          message: `El correo ${parentData.email} ya existe y no pertenece a una cuenta de padre/madre.`
+        });
+      }
+
+      if (!parent) {
+        const parentPasswordHash = await bcrypt.hash(parentData.password, 10);
+
+        parent = await prisma.user.create({
+          data: {
+            firstName: parentData.firstName,
+            lastNameP: parentData.lastNameP,
+            lastNameM: parentData.lastNameM || null,
+            email: parentData.email,
+            passwordHash: parentPasswordHash,
+            role: Role.PARENT
+          }
+        });
+      }
+
+      await prisma.parentStudent.upsert({
+        where: {
+          parentId_studentId: {
+            parentId: parent.id,
+            studentId: student.id
+          }
+        },
+        update: {},
+        create: {
+          parentId: parent.id,
+          studentId: student.id
+        }
+      });
+    }
+
+    res.status(201).json({
+      message: "Alumno registrado y relaciones familiares creadas.",
+      studentId: student.id
+    });
   } catch (error) {
     console.error("POST /teacher/students error:", error);
     res.status(500).json({ message: "Error interno" });
