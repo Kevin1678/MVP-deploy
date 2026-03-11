@@ -25,42 +25,61 @@ function contentLeft(scene) {
 
 /* ---------- Helpers de botón (menu) ---------- */
 function makeMenuButton(scene, label, onClick) {
+  // Internamente trabajamos en top-left para que el hitArea sea 0..w,0..h
+  let w = 520;
+  let h = 60;
+  let x0 = 0;
+  let y0 = 0;
+
   const box = scene.add
-    .rectangle(0, 0, 520, 60, 0x111827, 1)
-    .setOrigin(0.5)
+    .rectangle(x0, y0, w, h, 0x111827, 1)
+    .setOrigin(0, 0)
     .setStrokeStyle(2, 0xffffff, 0.14);
 
   const text = scene.add
-    .text(0, 0, label, { fontFamily: "Arial", fontSize: "26px", color: "#ffffff" })
+    .text(x0 + w / 2, y0 + h / 2, label, {
+      fontFamily: "Arial",
+      fontSize: "26px",
+      color: "#ffffff",
+    })
     .setOrigin(0.5);
 
-  // ✅ HITBOX dedicado (Zone)
-  const hit = scene.add.zone(0, 0, 520, 60).setOrigin(0.5);
-  hit.setInteractive({ useHandCursor: true });
-  hit.setDepth(999);
+  // ✅ Hitbox robusto: Zone top-left
+  const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0);
+  hit.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
+  hit.setDepth(1000);
 
   hit.on("pointerover", () => speakIfEnabled(scene, label));
   hit.on("pointerdown", onClick);
 
-  return {
-    box,
-    text,
-    hit,
-    setCenter(cx, cy) {
-      box.setPosition(cx, cy);
-      text.setPosition(cx, cy);
-      hit.setPosition(cx, cy);
-    },
-    setSize(w, h) {
-      box.setDisplaySize(w, h);
+  function refreshHit() {
+    // Re-crear interactividad para evitar hitAreas viejas
+    hit.disableInteractive();
+    hit.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
+  }
 
-      // ✅ actualizar zona
-      hit.setSize(w, h);
-      if (hit.input?.hitArea?.setTo) {
-        // Zone usa hitArea local
-        hit.input.hitArea.setTo(-w / 2, -h / 2, w, h);
-      }
+  return {
+    setCenter(cx, cy) {
+      x0 = cx - w / 2;
+      y0 = cy - h / 2;
+
+      box.setPosition(x0, y0);
+      text.setPosition(cx, cy);
+      hit.setPosition(x0, y0);
     },
+
+    setSize(newW, newH) {
+      w = newW;
+      h = newH;
+
+      box.setSize(w, h);
+      hit.setSize(w, h);
+      refreshHit();
+
+      // texto al centro de la caja
+      text.setPosition(x0 + w / 2, y0 + h / 2);
+    },
+
     setTheme({ fill, strokeAlpha, textColor, fontSize }) {
       box.setFillStyle(fill, 1);
       box.setStrokeStyle(2, 0xffffff, strokeAlpha);
