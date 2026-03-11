@@ -489,6 +489,10 @@ class MemoryScene extends Phaser.Scene {
       const baseH = 130;
       const s = Math.min(cardW / baseW, cardH / baseH) * ui;
       card.container.setScale(s);
+      // ✅ Corrige hitbox después de escalar
+      if (card.hit?.setSize) {
+      card.hit.setSize(110 * s, 130 * s);
+      }
     });
   }
 }
