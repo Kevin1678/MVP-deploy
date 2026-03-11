@@ -166,7 +166,13 @@ class MemoryScene extends Phaser.Scene {
 
   init(data) {
     this.pairs = data?.pairs ?? 8;
-    this.state = { first: null, locked: false, attempts: 0, matchedPairs: 0, startTime: Date.now() };
+    this.state = {
+      first: null,
+      locked: false,
+      attempts: 0,
+      matchedPairs: 0,
+      startTime: Date.now(),
+    };
     this.a11y = this.a11y || {};
   }
 
@@ -226,6 +232,7 @@ class MemoryScene extends Phaser.Scene {
       },
     });
 
+    // Cartas (SIN containers)
     const chosen = shuffle(SYMBOLS).slice(0, this.pairs);
     const values = shuffle([...chosen, ...chosen]);
     this.cards = values.map((val, idx) => this.createCard(idx, val));
@@ -258,7 +265,6 @@ class MemoryScene extends Phaser.Scene {
   layout() {
     const W = this.scale.width;
 
-    // texto y botones arriba en el área a la derecha del panel
     const left = 16 + A11Y_PANEL_WIDTH + A11Y_PANEL_GAP;
 
     this.title.setPosition(left, 16);
@@ -291,7 +297,7 @@ class MemoryScene extends Phaser.Scene {
     this.menuBtn.setFontSize(Math.round(16 * ts));
     this.exitBtn.setFontSize(Math.round(16 * ts));
 
-    // cartas: colores y tamaño de símbolo
+    // cartas: solo colores y tamaño de símbolo
     this.cards.forEach((card) => {
       card.faceDown.setFillStyle(hc ? 0x000000 : 0x111827, 1);
       card.faceDown.setStrokeStyle(2, 0xffffff, hc ? 0.9 : 0.12);
@@ -300,7 +306,8 @@ class MemoryScene extends Phaser.Scene {
       card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
 
       card.txt.setColor(hc ? "#000000" : "#0b1020");
-      card.txt.setFontSize(Math.round(52 * ts));
+
+      // tamaño del símbolo se ajusta en layoutCards (depende del tamaño real)
     });
   }
 
@@ -354,15 +361,13 @@ class MemoryScene extends Phaser.Scene {
     if (!card) return;
 
     if (!card.focusOutline) {
-      const w = 110;
-      const h = 130;
-      card.focusOutline = this.add.rectangle(0, 0, w + 14, h + 14, 0x000000, 0)
+      card.focusOutline = this.add.rectangle(card.faceDown.x, card.faceDown.y, 120, 140, 0x000000, 0)
         .setStrokeStyle(4, 0x22c55e, 1);
       card.focusOutline.setVisible(false);
-      card.container.add(card.focusOutline);
     }
 
     card.focusOutline.setVisible(true);
+    card.focusOutline.setPosition(card.faceDown.x, card.faceDown.y);
 
     if (!silent) {
       const cols = this.a11y.cols || 4;
@@ -373,37 +378,41 @@ class MemoryScene extends Phaser.Scene {
     }
   }
 
-  // HITBOX estable + re-size con escala
+  // ✅ SIN container: el objeto interactivo ES faceDown
   createCard(idx, value) {
-    const container = this.add.container(0, 0);
-    const w = 110;
-    const h = 130;
-
-    const hit = this.add.rectangle(0, 0, w, h, 0x000000, 0).setOrigin(0.5);
-    hit.setInteractive({ useHandCursor: true });
-
-    const faceDown = this.add.rectangle(0, 0, w, h, 0x111827).setStrokeStyle(2, 0xffffff, 0.12);
-    const faceUp = this.add.rectangle(0, 0, w, h, 0xf8fafc).setStrokeStyle(2, 0x111827, 0.25);
-
+    const faceDown = this.add.rectangle(0, 0, 110, 130, 0x111827).setStrokeStyle(2, 0xffffff, 0.12);
+    const faceUp = this.add.rectangle(0, 0, 110, 130, 0xf8fafc).setStrokeStyle(2, 0x111827, 0.25);
     const txt = this.add.text(0, 0, value, {
       fontFamily: "Arial",
       fontSize: "52px",
       color: "#0b1020",
     }).setOrigin(0.5);
 
-    container.add([hit, faceDown, faceUp, txt]);
+    faceDown.setInteractive({ useHandCursor: true });
 
-    const card = { idx, value, container, hit, faceDown, faceUp, txt, flipped: false, matched: false, focusOutline: null };
+    const card = {
+      idx,
+      value,
+      faceDown,
+      faceUp,
+      txt,
+      flipped: false,
+      matched: false,
+      focusOutline: null,
+      w: 110,
+      h: 130,
+    };
+
     this.setCardVisual(card, false);
 
-    hit.on("pointerover", () => {
+    faceDown.on("pointerover", () => {
       const cols = this.a11y.cols || 4;
       const row = Math.floor(idx / cols) + 1;
       const col = (idx % cols) + 1;
       this.say(`Carta fila ${row}, columna ${col}`);
     });
 
-    hit.on("pointerdown", () => {
+    faceDown.on("pointerdown", () => {
       this.applyFocus(idx, true);
       this.onCardClick(card);
     });
@@ -416,7 +425,12 @@ class MemoryScene extends Phaser.Scene {
     card.faceDown.setVisible(!isFlipped);
     card.faceUp.setVisible(isFlipped);
     card.txt.setVisible(isFlipped);
-    card.container.setAlpha(card.matched ? 0.55 : 1);
+
+    const alpha = card.matched ? 0.55 : 1;
+    card.faceDown.setAlpha(alpha);
+    card.faceUp.setAlpha(alpha);
+    card.txt.setAlpha(alpha);
+    card.focusOutline?.setAlpha(alpha);
   }
 
   onCardClick(card) {
@@ -465,7 +479,7 @@ class MemoryScene extends Phaser.Scene {
 
   onWin() {
     this.state.locked = true;
-    this.cards.forEach((c) => c.hit.disableInteractive());
+    this.cards.forEach((c) => c.faceDown.disableInteractive());
 
     const durationMs = Date.now() - this.state.startTime;
     this.say(`Ganaste. Tiempo ${Math.floor(durationMs / 1000)} segundos. Intentos ${this.state.attempts}`);
@@ -478,7 +492,6 @@ class MemoryScene extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    // Área de juego a la derecha del panel
     const leftPad = 16 + A11Y_PANEL_WIDTH + A11Y_PANEL_GAP;
     const rightPad = 16;
     const topPad = 120;
@@ -489,7 +502,6 @@ class MemoryScene extends Phaser.Scene {
 
     const totalCards = this.pairs * 2;
 
-    // columnas adaptativas
     let cols = 4;
     if (totalCards >= 12) cols = 6;
     if (totalCards >= 16) cols = 8;
@@ -498,28 +510,42 @@ class MemoryScene extends Phaser.Scene {
     const rows = Math.ceil(totalCards / cols);
     const gap = 18;
 
-    const cardW = Math.floor((areaW - gap * (cols - 1)) / cols);
-    const cardH = Math.floor((areaH - gap * (rows - 1)) / rows);
+    const baseW = 110;
+    const baseH = 130;
+
+    const cellW = Math.floor((areaW - gap * (cols - 1)) / cols);
+    const cellH = Math.floor((areaH - gap * (rows - 1)) / rows);
 
     const ui = this.a11y.uiScale || 1;
+    const ts = this.a11y.textScale || 1;
+
+    const w = Math.max(70, Math.floor(Math.min(cellW, baseW * ui)));
+    const h = Math.max(90, Math.floor(Math.min(cellH, baseH * ui)));
 
     this.cards.forEach((card, i) => {
       const r = Math.floor(i / cols);
       const c = i % cols;
 
-      const x = leftPad + c * (cardW + gap) + cardW / 2;
-      const y = topPad + r * (cardH + gap) + cardH / 2;
+      const x = leftPad + c * (cellW + gap) + cellW / 2;
+      const y = topPad + r * (cellH + gap) + cellH / 2;
 
-      card.container.setPosition(x, y);
+      card.faceDown.setPosition(x, y).setSize(w, h);
+      card.faceUp.setPosition(x, y).setSize(w, h);
+      card.txt.setPosition(x, y);
 
-      const baseW = 110;
-      const baseH = 130;
-      const s = Math.min(cardW / baseW, cardH / baseH) * ui;
+      // actualiza hitArea al tamaño real
+      if (card.faceDown.input?.hitArea?.setTo) {
+        card.faceDown.input.hitArea.setTo(-w / 2, -h / 2, w, h);
+      }
 
-      card.container.setScale(s);
+      // tamaño del símbolo proporcional
+      card.txt.setFontSize(Math.max(24, Math.floor(Math.min(w, h) * 0.42 * ts)));
 
-      // 🔧 Ajusta hitbox al tamaño visible
-      card.hit.setSize(baseW * s, baseH * s);
+      // outline
+      if (card.focusOutline) {
+        card.focusOutline.setPosition(x, y);
+        card.focusOutline.setSize(w + 14, h + 14);
+      }
     });
   }
 }
