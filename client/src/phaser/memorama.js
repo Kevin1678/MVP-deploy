@@ -450,6 +450,8 @@ class MemoryScene extends Phaser.Scene {
 
     const panelW = 260;
     const gapPanel = 16;
+    const centerX = (this.scale.width + panelW + gapPanel) / 2; // empuja a la derecha
+    const c = this.add.container(centerX, y, [box, text, hit]);
 
     const topPad = 120;
     const leftPad = 24 + panelW + gapPanel; // ✅ panel izquierda
