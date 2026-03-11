@@ -528,9 +528,12 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
   const parentEl = document.getElementById(parentId);
   if (!parentEl) throw new Error(`No existe el elemento con id="${parentId}"`);
 
-  // Tamaño inicial NUMÉRICO (Phaser lo necesita)
-  const w = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
-  const h = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
+  // Asegura que el contenedor sea referencia del canvas
+  parentEl.style.position = "relative";
+  parentEl.style.overflow = "hidden";
+
+  const w0 = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
+  const h0 = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -539,11 +542,30 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
     scene: [new MenuScene(onExit), new MemoryScene(onFinish, onExit)],
     scale: {
       mode: Phaser.Scale.RESIZE,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
-      width: w,
-      height: h,
+      autoCenter: Phaser.Scale.NO_CENTER, // ✅ clave: evita offsets de centrado
+      width: w0,
+      height: h0,
     },
   });
+
+  // ✅ Fuerza canvas pegado al contenedor (evita offset de input)
+  const canvas = game.canvas;
+  if (canvas) {
+    canvas.style.display = "block";
+    canvas.style.position = "absolute";
+    canvas.style.left = "0";
+    canvas.style.top = "0";
+  }
+
+  // ✅ Forzar resize 1 tick después (cuando el DOM ya estabilizó tamaños)
+  setTimeout(() => {
+    const w = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
+    const h = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
+    try {
+      game.scale.resize(w, h);
+      game.scale.refresh();
+    } catch {}
+  }, 0);
 
   return () => {
     stopSpeech();
