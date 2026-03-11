@@ -551,9 +551,3 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
     try { game.destroy(true); } catch {}
   };
 }
-
-  return () => {
-    stopSpeech();
-    try { game.destroy(true); } catch {}
-  };
-}
