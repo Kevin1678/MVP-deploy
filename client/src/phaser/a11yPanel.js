@@ -5,6 +5,8 @@ const LS_KEY = "a11y_prefs_v1";
 export const PANEL_OPEN_W = 290;
 export const PANEL_CLOSED_W = 78;
 export const PANEL_GAP = 16;
+export const A11Y_PANEL_WIDTH = PANEL_OPEN_W;
+export const A11Y_PANEL_GAP = PANEL_GAP;
 
 export function defaultA11yPrefs() {
   return {
