@@ -432,7 +432,7 @@ createCard(idx, value) {
   // ✅ HITBOX dedicado (Zone) — esto sí cubre toda la carta siempre
   const hit = this.add.zone(0, 0, 110, 130).setOrigin(0, 0);
   hit.setInteractive({ useHandCursor: true });
-  hit.setDepth(999); // por si algo se empalma
+  hit.setDepth(10); // por si algo se empalma
 
   const card = {
     idx,
