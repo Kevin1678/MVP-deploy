@@ -574,24 +574,29 @@ createCard(idx, value) {
       const x0 = cx - w / 2;
       const y0 = cy - h / 2;
 
-      card.x0 = x0; card.y0 = y0;
-      card.cx = cx; card.cy = cy;
-      card.w = w;   card.h = h;
+card.x0 = x0; card.y0 = y0;
+card.cx = cx; card.cy = cy;
+card.w = w;   card.h = h;
 
-      card.faceDown.setPosition(x0, y0).setSize(w, h);
-      card.faceUp.setPosition(x0, y0).setSize(w, h);
+card.faceDown.setPosition(x0, y0).setSize(w, h);
+card.faceUp.setPosition(x0, y0).setSize(w, h);
 
-      // ✅ hit cubre TODA la carta (cualquier punto)
-      card.hit.setPosition(x0, y0).setSize(w, h);
-      card.hit.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
+// ✅ el hitbox real (Zone) debe moverse y redimensionarse igual que la carta
+card.hit.setPosition(x0, y0);
+card.hit.setSize(w, h);
 
-      card.txt.setPosition(cx, cy);
-      card.txt.setFontSize(Math.max(28, Math.floor(Math.min(w, h) * 0.42 * ts)));
+// ✅ MUY IMPORTANTE: actualizar hitArea del Zone (si no, se queda chiquita)
+if (card.hit.input?.hitArea?.setTo) {
+  card.hit.input.hitArea.setTo(0, 0, w, h);
+}
 
-      if (card.focusOutline) {
-        card.focusOutline.setPosition(cx, cy);
-        card.focusOutline.setSize(w + 14, h + 14);
-      }
+card.txt.setPosition(cx, cy);
+card.txt.setFontSize(Math.max(28, Math.floor(Math.min(w, h) * 0.42 * ts)));
+
+if (card.focusOutline) {
+  card.focusOutline.setPosition(cx, cy);
+  card.focusOutline.setSize(w + 14, h + 14);
+}
     });
   }
 }
