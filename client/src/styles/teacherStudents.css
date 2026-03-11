@@ -1,0 +1,112 @@
+.teacher-students {
+  padding: 32px;
+  color: #f8fafc;
+}
+
+.teacher-students__header h2 {
+  margin: 0 0 8px;
+  font-size: 1.7rem;
+}
+
+.teacher-students__header p {
+  margin: 0 0 24px;
+  color: #cbd5e1;
+}
+
+.teacher-students__form {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.teacher-students__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.teacher-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.teacher-field label {
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.teacher-field input,
+.teacher-field select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: #0f172a;
+  color: #f8fafc;
+  border-radius: 12px;
+  padding: 12px 14px;
+  outline: none;
+}
+
+.teacher-field input:focus,
+.teacher-field select:focus {
+  border-color: rgba(96, 165, 250, 0.8);
+}
+
+.teacher-checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.teacher-checks label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.teacher-students__actions {
+  margin-top: 24px;
+}
+
+.teacher-students__submit {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 18px;
+  background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.teacher-students__submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.teacher-students__message {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(96, 165, 250, 0.14);
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  color: #dbeafe;
+}
+
+@media (max-width: 800px) {
+  .teacher-students {
+    padding: 20px;
+  }
+
+  .teacher-students__grid,
+  .teacher-checks {
+    grid-template-columns: 1fr;
+  }
+}
