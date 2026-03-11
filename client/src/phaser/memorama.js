@@ -265,7 +265,7 @@ class MemoryScene extends Phaser.Scene {
         card.faceUp?.setFillStyle?.(hc ? 0xffffff : 0xf8fafc, 1);
         card.faceUp?.setStrokeStyle?.(2, 0x111827, hc ? 0.9 : 0.25);
 
-        card.txt?.setColor?.(hc ? "#000000" : "#0b1020);
+        card.txt?.setColor?.(hc ? "#000000" : "#0b1020");
         card.txt?.setFontSize?.(Math.round(52 * ts));
       });
     }
