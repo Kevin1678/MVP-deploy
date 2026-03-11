@@ -4,8 +4,7 @@ import {
   applyA11yToScene,
   speakIfEnabled,
   stopSpeech,
-  A11Y_PANEL_WIDTH,
-  A11Y_PANEL_GAP,
+  PANEL_GAP,
 } from "./a11yPanel";
 
 const SYMBOLS = ["★","●","▲","■","◆","❤","☀","☂","☘","♫","✿","☕"];
@@ -19,6 +18,37 @@ function shuffle(arr) {
   return a;
 }
 
+function contentLeft(scene) {
+  const panelW = scene.a11yPanel?.getWidth?.() ?? 290;
+  return 16 + panelW + PANEL_GAP;
+}
+
+function makeMenuButton(scene, label, onClick) {
+  const box = scene.add.rectangle(0, 0, 520, 60, 0x111827, 1).setStrokeStyle(2, 0xffffff, 0.14);
+  const text = scene.add.text(0, 0, label, { fontFamily: "Arial", fontSize: "26px", color: "#ffffff" }).setOrigin(0.5);
+
+  const hit = scene.add.rectangle(0, 0, 520, 60, 0x000000, 0).setOrigin(0.5);
+  hit.setInteractive(new Phaser.Geom.Rectangle(-260, -30, 520, 60), Phaser.Geom.Rectangle.Contains);
+
+  hit.on("pointerover", () => speakIfEnabled(scene, label));
+  hit.on("pointerdown", onClick);
+
+  return {
+    box, text, hit,
+    setPos(x, y) { box.setPosition(x, y); text.setPosition(x, y); hit.setPosition(x, y); },
+    setSize(w, h) {
+      box.setDisplaySize(w, h);
+      hit.setDisplaySize(w, h);
+      hit.setInteractive(new Phaser.Geom.Rectangle(-w/2, -h/2, w, h), Phaser.Geom.Rectangle.Contains);
+    },
+    setStyle({ fill, strokeAlpha, textColor }) {
+      box.setFillStyle(fill, 1);
+      box.setStrokeStyle(2, 0xffffff, strokeAlpha);
+      text.setColor(textColor);
+    },
+  };
+}
+
 /* ---------------- MenuScene ---------------- */
 class MenuScene extends Phaser.Scene {
   constructor(onExit) {
@@ -29,17 +59,8 @@ class MenuScene extends Phaser.Scene {
   create() {
     this.bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020).setOrigin(0);
 
-    this.title = this.add.text(0, 0, "Memorama", {
-      fontFamily: "Arial",
-      fontSize: "54px",
-      color: "#ffffff",
-    }).setOrigin(0.5);
-
-    this.subtitle = this.add.text(0, 0, "Elige dificultad", {
-      fontFamily: "Arial",
-      fontSize: "24px",
-      color: "#cbd5e1",
-    }).setOrigin(0.5);
+    this.title = this.add.text(0, 0, "Memorama", { fontFamily: "Arial", fontSize: "54px", color: "#ffffff" }).setOrigin(0.5);
+    this.subtitle = this.add.text(0, 0, "Elige dificultad", { fontFamily: "Arial", fontSize: "24px", color: "#cbd5e1" }).setOrigin(0.5);
 
     this.exitBtn = this.add.text(0, 0, "Salir", {
       fontFamily: "Arial",
@@ -49,73 +70,25 @@ class MenuScene extends Phaser.Scene {
       padding: { left: 10, right: 10, top: 8, bottom: 8 },
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
 
-    this.exitBtn.on("pointerdown", () => {
-      stopSpeech();
-      this._onExit?.();
-    });
+    this.exitBtn.on("pointerdown", () => { stopSpeech(); this._onExit?.(); });
 
-    const btns = [
-      { label: "Fácil (4 pares)", pairs: 4 },
-      { label: "Medio (6 pares)", pairs: 6 },
-      { label: "Difícil (8 pares)", pairs: 8 },
-    ];
+    this.btnEasy = makeMenuButton(this, "Fácil (4 pares)", () => { stopSpeech(); this.scene.start("MemoryScene", { pairs: 4 }); });
+    this.btnMed  = makeMenuButton(this, "Medio (6 pares)", () => { stopSpeech(); this.scene.start("MemoryScene", { pairs: 6 }); });
+    this.btnHard = makeMenuButton(this, "Difícil (8 pares)", () => { stopSpeech(); this.scene.start("MemoryScene", { pairs: 8 }); });
 
-    this.buttons = btns.map((b) => {
-      const box = this.add.rectangle(0, 0, 520, 60, 0x111827, 1).setStrokeStyle(2, 0xffffff, 0.14);
-      const text = this.add.text(0, 0, b.label, {
-        fontFamily: "Arial",
-        fontSize: "26px",
-        color: "#ffffff",
-      }).setOrigin(0.5);
+    // Panel primero para conocer su ancho efectivo al layout
+    this.a11yPanel = createA11yPanel(this, { anchor: "left", onChange: () => { this.applyTheme(); this.layout(); } });
 
-      const hit = this.add.rectangle(0, 0, 520, 60, 0x000000, 0).setOrigin(0.5);
-      hit.setInteractive(new Phaser.Geom.Rectangle(-260, -30, 520, 60), Phaser.Geom.Rectangle.Contains);
-
-      hit.on("pointerover", () => speakIfEnabled(this, b.label));
-      hit.on("pointerdown", () => {
-        stopSpeech();
-        this.scene.start("MemoryScene", { pairs: b.pairs });
-      });
-
-      return { box, text, hit, label: b.label, pairs: b.pairs };
-    });
-
-    this.a11yPanel = createA11yPanel(this, { anchor: "left", onChange: () => this.applyTheme() });
-
-    this.layout();
     this.applyTheme();
+    this.layout();
 
     this.scale.on("resize", () => {
-      if (!this.bg || !this.buttons || !this.title) return;
-      this.layout();
+      if (!this.bg) return;
       this.applyTheme();
+      this.layout();
     });
 
     this.events.once("shutdown", () => stopSpeech());
-  }
-
-  layout() {
-    const W = this.scale.width;
-
-    const left = 16 + A11Y_PANEL_WIDTH + A11Y_PANEL_GAP;
-    const right = 16;
-    const areaW = W - left - right;
-    const centerX = left + areaW / 2;
-
-    this.exitBtn.setPosition(W - 16, 16);
-
-    this.title.setPosition(centerX, 90);
-    this.subtitle.setPosition(centerX, 150);
-
-    const startY = 260;
-    const gap = 92;
-
-    this.buttons.forEach((b, i) => {
-      const y = startY + i * gap;
-      b.box.setPosition(centerX, y);
-      b.text.setPosition(centerX, y);
-      b.hit.setPosition(centerX, y);
-    });
   }
 
   applyTheme() {
@@ -138,25 +111,39 @@ class MenuScene extends Phaser.Scene {
     });
     this.exitBtn.setFontSize(Math.round(16 * ts));
 
-    // ✅ tamaño REAL (no setScale)
-    const w = Math.round(520 * ui);
-    const h = Math.round(60 * ui);
+    const btnFill = hc ? 0xffffff : 0x111827;
+    const btnText = hc ? "#000000" : "#ffffff";
+    const strokeA = hc ? 1 : 0.14;
 
-    this.buttons.forEach((b) => {
-      b.box.setFillStyle(hc ? 0xffffff : 0x111827, 1);
-      b.box.setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.14);
-      b.text.setColor(hc ? "#000000" : "#ffffff");
-      b.text.setFontSize(Math.round(26 * ts));
+    const bw = Math.round(520 * ui);
+    const bh = Math.round(60 * ui);
 
-      b.box.setDisplaySize(w, h);
-      b.hit.setDisplaySize(w, h);
-
-      // ✅ hitArea exacta (arregla “solo mitad clickeable”)
-      b.hit.setInteractive(
-        new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h),
-        Phaser.Geom.Rectangle.Contains
-      );
+    [this.btnEasy, this.btnMed, this.btnHard].forEach((b) => {
+      b.setStyle({ fill: btnFill, strokeAlpha: strokeA, textColor: btnText });
+      b.setSize(bw, bh);
     });
+  }
+
+  layout() {
+    const W = this.scale.width;
+    const H = this.scale.height;
+
+    const left = contentLeft(this);
+    const right = 16;
+    const areaW = W - left - right;
+    const cx = left + areaW / 2;
+
+    this.exitBtn.setPosition(W - 16, 16);
+
+    this.title.setPosition(cx, 90);
+    this.subtitle.setPosition(cx, 150);
+
+    const startY = 260;
+    const gap = 92;
+
+    this.btnEasy.setPos(cx, startY + 0 * gap);
+    this.btnMed.setPos(cx,  startY + 1 * gap);
+    this.btnHard.setPos(cx, startY + 2 * gap);
   }
 }
 
@@ -211,15 +198,8 @@ class MemoryScene extends Phaser.Scene {
       padding: { left: 10, right: 10, top: 8, bottom: 8 },
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
 
-    this.menuBtn.on("pointerdown", () => {
-      stopSpeech();
-      this.scene.start("MenuScene");
-    });
-
-    this.exitBtn.on("pointerdown", () => {
-      stopSpeech();
-      this._onExit?.();
-    });
+    this.menuBtn.on("pointerdown", () => { stopSpeech(); this.scene.start("MenuScene"); });
+    this.exitBtn.on("pointerdown", () => { stopSpeech(); this._onExit?.(); });
 
     this.time.addEvent({
       delay: 250,
@@ -234,41 +214,31 @@ class MemoryScene extends Phaser.Scene {
     const values = shuffle([...chosen, ...chosen]);
     this.cards = values.map((val, idx) => this.createCard(idx, val));
 
+    this.focusIndex = 0;
+
+    this.a11yPanel = createA11yPanel(this, {
+      anchor: "left",
+      onChange: () => { this.applyTheme(); this.layout(); this.layoutCards(); this.applyFocus(this.focusIndex, true); },
+    });
+
     this.initKeyboard();
-    this.applyFocus(0, true);
-
-    this.a11yPanel = createA11yPanel(this, { anchor: "left", onChange: () => this.applyTheme() });
-
-    this.layout();
     this.applyTheme();
+    this.layout();
     this.layoutCards();
+    this.applyFocus(0, true);
 
     this.scale.on("resize", () => {
       if (!this.bg || !this.cards || !this.title) return;
-      this.layout();
       this.applyTheme();
+      this.layout();
       this.layoutCards();
-      this.applyFocus(this.a11y.focusIndex || 0, true);
+      this.applyFocus(this.focusIndex, true);
     });
 
     this.events.once("shutdown", () => stopSpeech());
   }
 
-  say(text) {
-    speakIfEnabled(this, text);
-  }
-
-  layout() {
-    const W = this.scale.width;
-    const left = 16 + A11Y_PANEL_WIDTH + A11Y_PANEL_GAP;
-
-    this.title.setPosition(left, 16);
-    this.attemptsText.setPosition(left, 48);
-    this.timeText.setPosition(left, 72);
-
-    this.menuBtn.setPosition(W - 120, 16);
-    this.exitBtn.setPosition(W - 16, 16);
-  }
+  say(t) { speakIfEnabled(this, t); }
 
   applyTheme() {
     if (!this.a11y) return;
@@ -303,100 +273,100 @@ class MemoryScene extends Phaser.Scene {
     });
   }
 
+  layout() {
+    const W = this.scale.width;
+    const left = contentLeft(this);
+
+    this.title.setPosition(left, 16);
+    this.attemptsText.setPosition(left, 48);
+    this.timeText.setPosition(left, 72);
+
+    this.menuBtn.setPosition(W - 120, 16);
+    this.exitBtn.setPosition(W - 16, 16);
+  }
+
   initKeyboard() {
     this.input.keyboard.on("keydown", (e) => {
-      if (e.code === "Escape") {
-        stopSpeech();
-        this.scene.start("MenuScene");
-        return;
-      }
+      if (e.code === "Escape") { stopSpeech(); this.scene.start("MenuScene"); return; }
       if (this.state.locked) return;
 
-      if (e.code === "ArrowLeft") return this.moveFocus(-1, 0);
-      if (e.code === "ArrowRight") return this.moveFocus(1, 0);
-      if (e.code === "ArrowUp") return this.moveFocus(0, -1);
-      if (e.code === "ArrowDown") return this.moveFocus(0, 1);
+      const cols = this.gridCols || 4;
+      const total = this.cards.length;
+
+      const r = Math.floor(this.focusIndex / cols);
+      const c = this.focusIndex % cols;
+
+      let nr = r, nc = c;
+
+      if (e.code === "ArrowLeft") nc = Math.max(0, c - 1);
+      if (e.code === "ArrowRight") nc = Math.min(cols - 1, c + 1);
+      if (e.code === "ArrowUp") nr = Math.max(0, r - 1);
+      if (e.code === "ArrowDown") nr = nr + 1;
+
+      let next = nr * cols + nc;
+      if (next >= total) next = total - 1;
+
+      if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.code)) {
+        this.focusIndex = next;
+        this.applyFocus(this.focusIndex);
+        return;
+      }
 
       if (e.code === "Enter" || e.code === "Space") {
-        const card = this.cards[this.a11y.focusIndex || 0];
+        const card = this.cards[this.focusIndex];
         if (card) this.onCardClick(card);
       }
     });
   }
 
-  moveFocus(dx, dy) {
-    const total = this.cards.length;
-    if (!total) return;
-
-    const cols = this.a11y.cols || 4;
-    const rows = Math.ceil(total / cols);
-
-    const idx = this.a11y.focusIndex || 0;
-    const r = Math.floor(idx / cols);
-    const c = idx % cols;
-
-    let nr = Phaser.Math.Clamp(r + dy, 0, rows - 1);
-    let nc = Phaser.Math.Clamp(c + dx, 0, cols - 1);
-
-    let next = nr * cols + nc;
-    if (next >= total) next = total - 1;
-
-    this.applyFocus(next);
-  }
-
   applyFocus(index, silent = false) {
-    const prev = this.cards[this.a11y.focusIndex || 0];
-    if (prev?.focusOutline) prev.focusOutline.setVisible(false);
-
-    this.a11y.focusIndex = index;
+    this.cards.forEach((c) => c.focusOutline?.setVisible(false));
     const card = this.cards[index];
     if (!card) return;
 
     if (!card.focusOutline) {
-      card.focusOutline = this.add.rectangle(card.faceDown.x, card.faceDown.y, 120, 140, 0x000000, 0)
+      card.focusOutline = this.add.rectangle(card.x, card.y, 120, 140, 0x000000, 0)
         .setStrokeStyle(4, 0x22c55e, 1);
       card.focusOutline.setVisible(false);
     }
 
     card.focusOutline.setVisible(true);
-    card.focusOutline.setPosition(card.faceDown.x, card.faceDown.y);
+    card.focusOutline.setPosition(card.x, card.y);
+    card.focusOutline.setSize(card.w + 14, card.h + 14);
 
-    if (!silent) {
-      const cols = this.a11y.cols || 4;
-      const row = Math.floor(index / cols) + 1;
-      const col = (index % cols) + 1;
-      const state = card.matched ? "completada" : card.flipped ? `abierta ${card.value}` : "cerrada";
-      this.say(`Carta fila ${row}, columna ${col}. ${state}`);
-    }
+    if (!silent) this.say(`Carta ${index + 1}`);
   }
 
   createCard(idx, value) {
-    const faceDown = this.add.rectangle(0, 0, 110, 130, 0x111827).setStrokeStyle(2, 0xffffff, 0.12);
-    const faceUp = this.add.rectangle(0, 0, 110, 130, 0xf8fafc).setStrokeStyle(2, 0x111827, 0.25);
-    const txt = this.add.text(0, 0, value, {
-      fontFamily: "Arial",
-      fontSize: "52px",
-      color: "#0b1020",
-    }).setOrigin(0.5);
+    const faceDown = this.add.rectangle(0, 0, 110, 130, 0x111827).setStrokeStyle(2, 0xffffff, 0.12).setOrigin(0.5);
+    const faceUp = this.add.rectangle(0, 0, 110, 130, 0xf8fafc).setStrokeStyle(2, 0x111827, 0.25).setOrigin(0.5);
+    const txt = this.add.text(0, 0, value, { fontFamily: "Arial", fontSize: "52px", color: "#0b1020" }).setOrigin(0.5);
 
-    faceDown.setOrigin(0.5);
-    faceUp.setOrigin(0.5);
-
-    // interactive inicial (luego se recalcula en layoutCards)
+    // hitArea inicial; se recalcula en layoutCards
     faceDown.setInteractive(new Phaser.Geom.Rectangle(-55, -65, 110, 130), Phaser.Geom.Rectangle.Contains);
 
-    const card = { idx, value, faceDown, faceUp, txt, flipped: false, matched: false, focusOutline: null };
+    const card = {
+      idx,
+      value,
+      faceDown,
+      faceUp,
+      txt,
+      flipped: false,
+      matched: false,
+      focusOutline: null,
+      x: 0, y: 0, w: 110, h: 130,
+    };
 
     this.setCardVisual(card, false);
 
     faceDown.on("pointerover", () => {
-      const cols = this.a11y.cols || 4;
-      const row = Math.floor(idx / cols) + 1;
-      const col = (idx % cols) + 1;
+      const row = Math.floor(idx / (this.gridCols || 4)) + 1;
+      const col = (idx % (this.gridCols || 4)) + 1;
       this.say(`Carta fila ${row}, columna ${col}`);
     });
 
     faceDown.on("pointerdown", () => {
+      this.focusIndex = idx;
       this.applyFocus(idx, true);
       this.onCardClick(card);
     });
@@ -454,7 +424,6 @@ class MemoryScene extends Phaser.Scene {
         this.say("Incorrecto");
         this.setCardVisual(a, false);
         this.setCardVisual(b, false);
-
         this.state.first = null;
         this.state.locked = false;
       });
@@ -476,7 +445,7 @@ class MemoryScene extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    const leftPad = 16 + A11Y_PANEL_WIDTH + A11Y_PANEL_GAP;
+    const leftPad = contentLeft(this);
     const rightPad = 16;
     const topPad = 120;
     const bottomPad = 16;
@@ -484,31 +453,24 @@ class MemoryScene extends Phaser.Scene {
     const areaW = W - leftPad - rightPad;
     const areaH = H - topPad - bottomPad;
 
-    const totalCards = this.pairs * 2;
+    const total = this.pairs * 2;
+    const cols = 4; // fijo para cartas más grandes
+    const rows = Math.ceil(total / cols);
+    this.gridCols = cols;
 
-    let cols = 4;
-    if (totalCards >= 12) cols = 6;
-    if (totalCards >= 16) cols = 8;
-    this.a11y.cols = cols;
-
-    const rows = Math.ceil(totalCards / cols);
     const gap = 18;
-
     const cellW = Math.floor((areaW - gap * (cols - 1)) / cols);
     const cellH = Math.floor((areaH - gap * (rows - 1)) / rows);
 
     const ui = this.a11y.uiScale || 1;
     const ts = this.a11y.textScale || 1;
 
-    // ✅ cartas grandes y UI+ funciona
     let w = Math.floor(cellW * 0.92 * ui);
     let h = Math.floor(cellH * 0.92 * ui);
-
     w = Math.min(w, cellW);
     h = Math.min(h, cellH);
-
-    w = Math.max(w, 80);
-    h = Math.max(h, 100);
+    w = Math.max(w, 90);
+    h = Math.max(h, 110);
 
     this.cards.forEach((card, i) => {
       const r = Math.floor(i / cols);
@@ -517,22 +479,22 @@ class MemoryScene extends Phaser.Scene {
       const x = leftPad + c * (cellW + gap) + cellW / 2;
       const y = topPad + r * (cellH + gap) + cellH / 2;
 
+      card.x = x; card.y = y; card.w = w; card.h = h;
+
       card.faceDown.setPosition(x, y);
       card.faceUp.setPosition(x, y);
       card.txt.setPosition(x, y);
 
-      // ✅ tamaño visible real
       card.faceDown.setDisplaySize(w, h);
       card.faceUp.setDisplaySize(w, h);
 
-      // ✅ hitbox exacta (esquinas funcionan)
+      // hitArea exacta (nada de “solo centro” o “media tarjeta”)
       card.faceDown.setInteractive(
         new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h),
         Phaser.Geom.Rectangle.Contains
       );
 
-      // símbolo proporcional
-      card.txt.setFontSize(Math.max(26, Math.floor(Math.min(w, h) * 0.42 * ts)));
+      card.txt.setFontSize(Math.max(28, Math.floor(Math.min(w, h) * 0.42 * ts)));
 
       if (card.focusOutline) {
         card.focusOutline.setPosition(x, y);
@@ -542,7 +504,7 @@ class MemoryScene extends Phaser.Scene {
   }
 }
 
-/* ---------------- createMemoramaGame ---------------- */
+/* ---------------- createMemoramaGame (RESIZE estable) ---------------- */
 export function createMemoramaGame(parentId, onFinish, onExit) {
   const parentEl = document.getElementById(parentId);
   if (!parentEl) throw new Error(`No existe el elemento con id="${parentId}"`);
@@ -574,6 +536,7 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
     canvas.style.top = "0";
   }
 
+  // Asegura tamaño real tras montar
   setTimeout(() => {
     const w = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
     const h = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
