@@ -240,6 +240,7 @@ class MemoryScene extends Phaser.Scene {
     this.layoutCards();
 
     this.scale.on("resize", () => {
+      if (!this.bg || !this.cards || !this.title) return;
       this.layout();
       this.applyTheme();
       this.layoutCards();
