@@ -150,15 +150,30 @@ export function createA11yPanel(scene, { onChange, anchor = "right" } = {}) {
   root.add(body);
 
   // Colapsar / mostrar
-  const collapse = makeBtn(scene, panelW - 62, 28, 90, 34, scene.a11y.panelOpen ? "Ocultar" : "Mostrar", () => {
-    scene.a11y.panelOpen = !scene.a11y.panelOpen;
-    collapse.txt.setText(scene.a11y.panelOpen ? "Ocultar" : "Mostrar");
-    body.setVisible(scene.a11y.panelOpen);
-    commit(); // aplica y guarda
-  });
-  root.add(collapse.c);
+// --- Botón colapsar (COLAPSO REAL) ---
+const headerH = 58;
+function applyCollapseVisual() {
+  const open = !!scene.a11y.panelOpen;
+  collapse.txt.setText(open ? "Ocultar" : "Mostrar");
+  body.setVisible(open);
+  hint.setVisible(open);
 
-  body.setVisible(!!scene.a11y.panelOpen);
+  // reduce el fondo cuando está cerrado
+  bg.setSize(panelW, open ? (scene.scale.height - 32) : headerH);
+
+  // evita que el panel “tape” el juego cuando está cerrado
+  // (solo deja visible el encabezado)
+}
+
+const collapse = makeBtn(scene, panelW - 62, 28, 90, 34, scene.a11y.panelOpen ? "Ocultar" : "Mostrar", () => {
+  scene.a11y.panelOpen = !scene.a11y.panelOpen;
+  applyCollapseVisual();
+  commit();
+});
+root.add(collapse.c);
+
+// después de crear body:
+applyCollapseVisual();
 
   function commit() {
     // guardar global
