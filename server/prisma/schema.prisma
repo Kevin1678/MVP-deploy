@@ -28,22 +28,42 @@ enum AuditoryCondition {
 }
 
 model User {
-  id            Int       @id @default(autoincrement())
-  email         String    @unique
-  passwordHash  String
-  role          Role      @default(STUDENT)
-  createdAt     DateTime  @default(now())
+  id              Int      @id @default(autoincrement())
+  email           String   @unique
+  passwordHash    String
+  role            Role     @default(STUDENT)
+  createdAt       DateTime @default(now())
 
-  firstName     String
-  lastNameP     String
-  lastNameM     String?
+  firstName       String
+  lastNameP       String
+  lastNameM       String?
 
-  createdById   Int?
-  createdBy     User?     @relation("TeacherStudents", fields: [createdById], references: [id])
-  studentsCreated User[]  @relation("TeacherStudents")
+  createdById     Int?
+  createdBy       User?    @relation("TeacherStudents", fields: [createdById], references: [id])
+  studentsCreated User[]   @relation("TeacherStudents")
 
-  studentProfile StudentProfile?
-  results       GameResult[]
+  studentProfile  StudentProfile?
+  results         GameResult[]
+
+  // si este usuario es alumno, aquí estarán sus padres vinculados
+  parentLinks     ParentStudent[] @relation("StudentLinks")
+
+  // si este usuario es padre, aquí estarán sus hijos vinculados
+  childLinks      ParentStudent[] @relation("ParentLinks")
+}
+
+model ParentStudent {
+  id         Int      @id @default(autoincrement())
+  parentId   Int
+  studentId  Int
+  createdAt  DateTime @default(now())
+
+  parent     User     @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  student    User     @relation("StudentLinks", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+  @@index([parentId])
+  @@index([studentId])
 }
 
 model StudentProfile {
