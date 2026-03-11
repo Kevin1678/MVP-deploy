@@ -307,11 +307,11 @@ applyCollapseVisual();
   body.add(bReset.c);
 
   // Posición del panel
-  const place = (w, h) => {
-    const x = anchor === "right" ? w - panelW - 16 : 16;
-    root.setPosition(x, 16);
-    bg.setSize(panelW, h - 32);
-  };
+const place = (w, h) => {
+  const x = anchor === "left" ? 16 : (w - panelW - 16);
+  root.setPosition(x, 16);
+  bg.setSize(panelW, (scene.a11y?.panelOpen ? (h - 32) : 58));
+};
   place(scene.scale.width, scene.scale.height);
 
   scene.scale.on("resize", (gs) => place(gs.width, gs.height));
