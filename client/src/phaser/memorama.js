@@ -464,7 +464,7 @@ createCard(idx, value) {
 
   onWin() {
     this.state.locked = true;
-    this.cards.forEach((c) => c.faceDown.disableInteractive());
+    this.cards.forEach((c) => c.hit.disableInteractive());
 
     const durationMs = Date.now() - this.state.startTime;
     this.say(`Ganaste. Tiempo ${Math.floor(durationMs / 1000)} segundos. Intentos ${this.state.attempts}`);
