@@ -19,7 +19,7 @@ function shuffle(arr) {
   return a;
 }
 
-/* ---------------- MenuScene (SIN containers escalados) ---------------- */
+/* ---------------- MenuScene ---------------- */
 class MenuScene extends Phaser.Scene {
   constructor(onExit) {
     super("MenuScene");
@@ -60,7 +60,6 @@ class MenuScene extends Phaser.Scene {
       { label: "Difícil (8 pares)", pairs: 8 },
     ];
 
-    // Botones: box + text + hit (NO container)
     this.buttons = btns.map((b) => {
       const box = this.add.rectangle(0, 0, 520, 60, 0x111827, 1).setStrokeStyle(2, 0xffffff, 0.14);
       const text = this.add.text(0, 0, b.label, {
@@ -69,7 +68,8 @@ class MenuScene extends Phaser.Scene {
         color: "#ffffff",
       }).setOrigin(0.5);
 
-      const hit = this.add.rectangle(0, 0, 520, 60, 0x000000, 0).setInteractive({ useHandCursor: true });
+      const hit = this.add.rectangle(0, 0, 520, 60, 0x000000, 0).setOrigin(0.5);
+      hit.setInteractive(new Phaser.Geom.Rectangle(-260, -30, 520, 60), Phaser.Geom.Rectangle.Contains);
 
       hit.on("pointerover", () => speakIfEnabled(this, b.label));
       hit.on("pointerdown", () => {
@@ -77,10 +77,9 @@ class MenuScene extends Phaser.Scene {
         this.scene.start("MemoryScene", { pairs: b.pairs });
       });
 
-      return { box, text, hit, pairs: b.pairs, label: b.label };
+      return { box, text, hit, label: b.label, pairs: b.pairs };
     });
 
-    // Panel izquierda
     this.a11yPanel = createA11yPanel(this, { anchor: "left", onChange: () => this.applyTheme() });
 
     this.layout();
@@ -97,7 +96,6 @@ class MenuScene extends Phaser.Scene {
 
   layout() {
     const W = this.scale.width;
-    const H = this.scale.height;
 
     const left = 16 + A11Y_PANEL_WIDTH + A11Y_PANEL_GAP;
     const right = 16;
@@ -105,6 +103,7 @@ class MenuScene extends Phaser.Scene {
     const centerX = left + areaW / 2;
 
     this.exitBtn.setPosition(W - 16, 16);
+
     this.title.setPosition(centerX, 90);
     this.subtitle.setPosition(centerX, 150);
 
@@ -139,7 +138,7 @@ class MenuScene extends Phaser.Scene {
     });
     this.exitBtn.setFontSize(Math.round(16 * ts));
 
-    // Tamaño REAL (no setScale)
+    // ✅ tamaño REAL (no setScale)
     const w = Math.round(520 * ui);
     const h = Math.round(60 * ui);
 
@@ -149,18 +148,19 @@ class MenuScene extends Phaser.Scene {
       b.text.setColor(hc ? "#000000" : "#ffffff");
       b.text.setFontSize(Math.round(26 * ts));
 
-      b.box.setSize(w, h);
-      b.hit.setSize(w, h);
+      b.box.setDisplaySize(w, h);
+      b.hit.setDisplaySize(w, h);
 
-      // hitArea actualizado
-      if (b.hit.input?.hitArea?.setTo) {
-        b.hit.input.hitArea.setTo(-w / 2, -h / 2, w, h);
-      }
+      // ✅ hitArea exacta (arregla “solo mitad clickeable”)
+      b.hit.setInteractive(
+        new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h),
+        Phaser.Geom.Rectangle.Contains
+      );
     });
   }
 }
 
-/* ---------------- MemoryScene (SIN containers en cartas) ---------------- */
+/* ---------------- MemoryScene ---------------- */
 class MemoryScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
     super("MemoryScene");
@@ -230,7 +230,6 @@ class MemoryScene extends Phaser.Scene {
       },
     });
 
-    // Cartas SIN containers
     const chosen = shuffle(SYMBOLS).slice(0, this.pairs);
     const values = shuffle([...chosen, ...chosen]);
     this.cards = values.map((val, idx) => this.createCard(idx, val));
@@ -293,7 +292,6 @@ class MemoryScene extends Phaser.Scene {
     this.menuBtn.setFontSize(Math.round(16 * ts));
     this.exitBtn.setFontSize(Math.round(16 * ts));
 
-    // colores en cartas (tamaño del símbolo se ajusta en layoutCards)
     this.cards.forEach((card) => {
       card.faceDown.setFillStyle(hc ? 0x000000 : 0x111827, 1);
       card.faceDown.setStrokeStyle(2, 0xffffff, hc ? 0.9 : 0.12);
@@ -381,7 +379,11 @@ class MemoryScene extends Phaser.Scene {
       color: "#0b1020",
     }).setOrigin(0.5);
 
-    faceDown.setInteractive({ useHandCursor: true });
+    faceDown.setOrigin(0.5);
+    faceUp.setOrigin(0.5);
+
+    // interactive inicial (luego se recalcula en layoutCards)
+    faceDown.setInteractive(new Phaser.Geom.Rectangle(-55, -65, 110, 130), Phaser.Geom.Rectangle.Contains);
 
     const card = { idx, value, faceDown, faceUp, txt, flipped: false, matched: false, focusOutline: null };
 
@@ -498,9 +500,15 @@ class MemoryScene extends Phaser.Scene {
     const ui = this.a11y.uiScale || 1;
     const ts = this.a11y.textScale || 1;
 
-    // tamaño real (sin setScale)
-    const w = Math.max(70, Math.floor(Math.min(cellW, 110 * ui)));
-    const h = Math.max(90, Math.floor(Math.min(cellH, 130 * ui)));
+    // ✅ cartas grandes y UI+ funciona
+    let w = Math.floor(cellW * 0.92 * ui);
+    let h = Math.floor(cellH * 0.92 * ui);
+
+    w = Math.min(w, cellW);
+    h = Math.min(h, cellH);
+
+    w = Math.max(w, 80);
+    h = Math.max(h, 100);
 
     this.cards.forEach((card, i) => {
       const r = Math.floor(i / cols);
@@ -509,19 +517,23 @@ class MemoryScene extends Phaser.Scene {
       const x = leftPad + c * (cellW + gap) + cellW / 2;
       const y = topPad + r * (cellH + gap) + cellH / 2;
 
-      card.faceDown.setPosition(x, y).setSize(w, h);
-      card.faceUp.setPosition(x, y).setSize(w, h);
+      card.faceDown.setPosition(x, y);
+      card.faceUp.setPosition(x, y);
       card.txt.setPosition(x, y);
 
-      // hitArea actualizado
-      if (card.faceDown.input?.hitArea?.setTo) {
-        card.faceDown.input.hitArea.setTo(-w / 2, -h / 2, w, h);
-      }
+      // ✅ tamaño visible real
+      card.faceDown.setDisplaySize(w, h);
+      card.faceUp.setDisplaySize(w, h);
+
+      // ✅ hitbox exacta (esquinas funcionan)
+      card.faceDown.setInteractive(
+        new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h),
+        Phaser.Geom.Rectangle.Contains
+      );
 
       // símbolo proporcional
-      card.txt.setFontSize(Math.max(24, Math.floor(Math.min(w, h) * 0.42 * ts)));
+      card.txt.setFontSize(Math.max(26, Math.floor(Math.min(w, h) * 0.42 * ts)));
 
-      // outline proporcional
       if (card.focusOutline) {
         card.focusOutline.setPosition(x, y);
         card.focusOutline.setSize(w + 14, h + 14);
@@ -530,7 +542,7 @@ class MemoryScene extends Phaser.Scene {
   }
 }
 
-/* ---------------- createMemoramaGame (RESIZE estable) ---------------- */
+/* ---------------- createMemoramaGame ---------------- */
 export function createMemoramaGame(parentId, onFinish, onExit) {
   const parentEl = document.getElementById(parentId);
   if (!parentEl) throw new Error(`No existe el elemento con id="${parentId}"`);
@@ -554,7 +566,6 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
     },
   });
 
-  // canvas pegado arriba-izquierda
   const canvas = game.canvas;
   if (canvas) {
     canvas.style.display = "block";
