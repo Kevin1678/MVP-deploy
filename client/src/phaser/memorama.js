@@ -34,8 +34,10 @@ function makeMenuButton(scene, label, onClick) {
     .text(0, 0, label, { fontFamily: "Arial", fontSize: "26px", color: "#ffffff" })
     .setOrigin(0.5);
 
-  const hit = scene.add.rectangle(0, 0, 520, 60, 0x000000, 0).setOrigin(0.5);
-  hit.setInteractive(new Phaser.Geom.Rectangle(-260, -30, 520, 60), Phaser.Geom.Rectangle.Contains);
+  // ✅ HITBOX dedicado (Zone)
+  const hit = scene.add.zone(0, 0, 520, 60).setOrigin(0.5);
+  hit.setInteractive({ useHandCursor: true });
+  hit.setDepth(999);
 
   hit.on("pointerover", () => speakIfEnabled(scene, label));
   hit.on("pointerdown", onClick);
@@ -51,8 +53,13 @@ function makeMenuButton(scene, label, onClick) {
     },
     setSize(w, h) {
       box.setDisplaySize(w, h);
-      hit.setDisplaySize(w, h);
-      hit.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
+
+      // ✅ actualizar zona
+      hit.setSize(w, h);
+      if (hit.input?.hitArea?.setTo) {
+        // Zone usa hitArea local
+        hit.input.hitArea.setTo(-w / 2, -h / 2, w, h);
+      }
     },
     setTheme({ fill, strokeAlpha, textColor, fontSize }) {
       box.setFillStyle(fill, 1);
