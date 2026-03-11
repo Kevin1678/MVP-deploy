@@ -523,13 +523,10 @@ class MemoryScene extends Phaser.Scene {
 }
 
 export function createMemoramaGame(parentId, onFinish, onExit) {
-  // ✅ verifica que exista el div antes de crear Phaser
   const parentEl = document.getElementById(parentId);
-  if (!parentEl) {
-    throw new Error(`No existe el elemento con id="${parentId}"`);
-  }
+  if (!parentEl) throw new Error(`No existe el elemento con id="${parentId}"`);
 
-  // ✅ tamaño inicial NUMÉRICO (Phaser lo necesita)
+  // Tamaño inicial NUMÉRICO (Phaser lo necesita)
   const w = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
   const h = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
 
