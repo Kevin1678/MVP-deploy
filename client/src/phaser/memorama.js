@@ -91,6 +91,7 @@ class MenuScene extends Phaser.Scene {
     this.layout();
 
     this.scale.on("resize", () => {
+      if (!this.bg || !this.buttons || !this.title) return;
       this.layout();
       this.applyTheme();
     });
