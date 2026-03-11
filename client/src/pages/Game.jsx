@@ -38,8 +38,8 @@ export default function Game() {
   }, [navigate]);
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", padding: 20 }}>
-      <div id="phaser-root" />
+    <div style={{ width: "100vw", height: "100vh" }}>
+      <div id="phaser-root" style={{ width: "100%", height: "100%" }} />
     </div>
   );
 }
