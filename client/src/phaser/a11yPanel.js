@@ -54,22 +54,19 @@ function clamp(n, a, b) {
 }
 
 /**
- * Aplica filtros globales a la cámara (si existen), y guarda prefs en scene.a11y.
- * Esto NO debe depender de que existan textos/objetos del juego.
+ * Aplica filtros globales a la cámara (si existen).
+ * Esto NO depende de UI del juego.
  */
 export function applyA11yToScene(scene, prefs) {
   if (!scene) return;
   scene.a11y = { ...(scene.a11y || {}), ...(prefs || {}) };
 
-  // PostFX ColorMatrix (si la build de Phaser lo soporta)
   const cam = scene.cameras?.main;
   if (!cam?.postFX?.addColorMatrix) return;
 
-  // Reutiliza instancia
   if (!scene.__a11yColorFx) {
     scene.__a11yColorFx = cam.postFX.addColorMatrix();
   }
-
   const fx = scene.__a11yColorFx;
   fx.reset();
 
@@ -101,7 +98,7 @@ function makeBtn(scene, x, y, w, h, label, onClick) {
 
   c.add([bg, txt]);
 
-  // Hit-area robusta (no se rompe con scale)
+  // hit-area robusta (no se rompe con scale)
   c.setSize(w, h);
   c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h), Phaser.Geom.Rectangle.Contains);
 
@@ -114,17 +111,17 @@ function makeBtn(scene, x, y, w, h, label, onClick) {
 
 /**
  * Panel lateral global.
- * MUY IMPORTANTE:
- * - NO llama onChange durante la creación (para no romper scenes que aún no crean UI).
- * - El scene debe llamar scene.applyTheme() al final de create().
+ * ✅ NO llama onChange durante la creación.
+ * El scene debe llamar scene.applyTheme() al final de create().
  */
-export function createA11yPanel(scene, { onChange, anchor = "right" } = {}) {
+export function createA11yPanel(scene, { onChange, anchor = "left" } = {}) {
   const loaded = loadA11yPrefs();
   const prefs = { ...defaultA11yPrefs(), ...(loaded || {}) };
-
   scene.a11y = { ...(scene.a11y || {}), ...prefs };
 
   const panelW = 260;
+  const headerH = 58;
+
   const root = scene.add.container(0, 16).setDepth(9999);
 
   const bg = scene.add
@@ -149,80 +146,49 @@ export function createA11yPanel(scene, { onChange, anchor = "right" } = {}) {
   const body = scene.add.container(0, 62);
   root.add(body);
 
-  // Colapsar / mostrar
-// --- Botón colapsar (COLAPSO REAL) ---
-const headerH = 58;
-function applyCollapseVisual() {
-  const open = !!scene.a11y.panelOpen;
-  collapse.txt.setText(open ? "Ocultar" : "Mostrar");
-  body.setVisible(open);
-  hint.setVisible(open);
-
-  // reduce el fondo cuando está cerrado
-  bg.setSize(panelW, open ? (scene.scale.height - 32) : headerH);
-
-  // evita que el panel “tape” el juego cuando está cerrado
-  // (solo deja visible el encabezado)
-}
-
-const collapse = makeBtn(scene, panelW - 62, 28, 90, 34, scene.a11y.panelOpen ? "Ocultar" : "Mostrar", () => {
-  scene.a11y.panelOpen = !scene.a11y.panelOpen;
-  applyCollapseVisual();
-  commit();
-});
-root.add(collapse.c);
-
-// después de crear body:
-applyCollapseVisual();
-
   function commit() {
-    // guardar global
-    saveA11yPrefs({
-      ...scene.a11y,
-      uiScale: clamp(scene.a11y.uiScale ?? 1, 0.9, 1.3),
-      textScale: clamp(scene.a11y.textScale ?? 1, 0.9, 1.3),
-    });
+    scene.a11y.uiScale = clamp(scene.a11y.uiScale ?? 1, 0.9, 1.3);
+    scene.a11y.textScale = clamp(scene.a11y.textScale ?? 1, 0.9, 1.3);
 
-    // aplica filtros (no depende de UI)
+    saveA11yPrefs({ ...scene.a11y });
     applyA11yToScene(scene, scene.a11y);
 
-    // callback para que la escena actualice colores/tamaños
     if (typeof onChange === "function") onChange(scene.a11y);
   }
 
-  // Botones
+  // --- Colapso REAL ---
+  function applyCollapseVisual() {
+    const open = !!scene.a11y.panelOpen;
+    body.setVisible(open);
+    hint.setVisible(open);
+    collapse.txt.setText(open ? "Ocultar" : "Mostrar");
+    bg.setSize(panelW, open ? (scene.scale.height - 32) : headerH);
+  }
+
+  const collapse = makeBtn(scene, panelW - 62, 28, 90, 34, scene.a11y.panelOpen ? "Ocultar" : "Mostrar", () => {
+    scene.a11y.panelOpen = !scene.a11y.panelOpen;
+    applyCollapseVisual();
+    commit();
+  });
+  root.add(collapse.c);
+
+  // ---- Contenido ----
   let y = 10;
 
-  const bTTS = makeBtn(
-    scene,
-    panelW / 2,
-    y + 18,
-    panelW - 28,
-    44,
-    scene.a11y.ttsEnabled ? "Voz: ON" : "Voz: OFF",
-    () => {
-      scene.a11y.ttsEnabled = !scene.a11y.ttsEnabled;
-      bTTS.txt.setText(scene.a11y.ttsEnabled ? "Voz: ON" : "Voz: OFF");
-      if (!scene.a11y.ttsEnabled) stopSpeech();
-      commit();
-    }
-  );
+  const bTTS = makeBtn(scene, panelW / 2, y + 18, panelW - 28, 44, scene.a11y.ttsEnabled ? "Voz: ON" : "Voz: OFF", () => {
+    scene.a11y.ttsEnabled = !scene.a11y.ttsEnabled;
+    bTTS.txt.setText(scene.a11y.ttsEnabled ? "Voz: ON" : "Voz: OFF");
+    if (!scene.a11y.ttsEnabled) stopSpeech();
+    commit();
+  });
   body.add(bTTS.c);
   y += 56;
 
-  const bHC = makeBtn(
-    scene,
-    panelW / 2,
-    y + 18,
-    panelW - 28,
-    44,
-    scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal",
-    () => {
-      scene.a11y.highContrast = !scene.a11y.highContrast;
-      bHC.txt.setText(scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal");
-      commit();
-    }
-  );
+  const bHC = makeBtn(scene, panelW / 2, y + 18, panelW - 28, 44, scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal", () => {
+    scene.a11y.highContrast = !scene.a11y.highContrast;
+    bHC.txt.setText(scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal");
+    commit();
+  });
   body.add(bHC.c);
   y += 56;
 
@@ -294,34 +260,31 @@ applyCollapseVisual();
 
   const bReset = makeBtn(scene, panelW / 2, y + 18, panelW - 28, 44, "Restablecer", () => {
     scene.a11y = { ...(scene.a11y || {}), ...defaultA11yPrefs() };
-
     bTTS.txt.setText("Voz: OFF");
     bHC.txt.setText("Contraste: normal");
-
-    collapse.txt.setText(scene.a11y.panelOpen ? "Ocultar" : "Mostrar");
-    body.setVisible(scene.a11y.panelOpen);
-
     stopSpeech();
+    applyCollapseVisual();
     commit();
   });
   body.add(bReset.c);
 
   // Posición del panel
-const place = (w, h) => {
-  const x = anchor === "left" ? 16 : (w - panelW - 16);
-  root.setPosition(x, 16);
-  bg.setSize(panelW, (scene.a11y?.panelOpen ? (h - 32) : 58));
-};
+  const place = (w, h) => {
+    const x = anchor === "left" ? 16 : (w - panelW - 16);
+    root.setPosition(x, 16);
+    bg.setSize(panelW, (scene.a11y?.panelOpen ? (h - 32) : headerH));
+  };
   place(scene.scale.width, scene.scale.height);
 
   scene.scale.on("resize", (gs) => place(gs.width, gs.height));
 
-  // ⚠️ IMPORTANTÍSIMO: aquí NO se llama onChange.
-  // El scene debe llamar applyTheme() al final de create().
+  // aplica visual del colapso (sin disparar onChange)
+  applyCollapseVisual();
 
-  const destroy = () => {
-    try { root.destroy(true); } catch {}
+  return {
+    root,
+    destroy: () => { try { root.destroy(true); } catch {} },
+    getPrefs: () => scene.a11y,
+    commit, // por si una escena quiere forzar guardado
   };
-
-  return { root, destroy, getPrefs: () => scene.a11y };
 }
