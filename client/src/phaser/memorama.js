@@ -23,29 +23,36 @@ function contentLeft(scene) {
   return 16 + panelW + PANEL_GAP;
 }
 
-function makeMenuButton(scene, label, onClick) {
-  const box = scene.add.rectangle(0, 0, 520, 60, 0x111827, 1).setStrokeStyle(2, 0xffffff, 0.14);
+function makeTLButton(scene, label, onClick) {
+  // top-left based objects
+  const box = scene.add.rectangle(0, 0, 520, 60, 0x111827, 1).setOrigin(0, 0).setStrokeStyle(2, 0xffffff, 0.14);
   const text = scene.add.text(0, 0, label, { fontFamily: "Arial", fontSize: "26px", color: "#ffffff" }).setOrigin(0.5);
 
-  const hit = scene.add.rectangle(0, 0, 520, 60, 0x000000, 0).setOrigin(0.5);
-  hit.setInteractive(new Phaser.Geom.Rectangle(-260, -30, 520, 60), Phaser.Geom.Rectangle.Contains);
+  const hit = scene.add.rectangle(0, 0, 520, 60, 0x000000, 0).setOrigin(0, 0);
+  hit.setInteractive(new Phaser.Geom.Rectangle(0, 0, 520, 60), Phaser.Geom.Rectangle.Contains);
 
   hit.on("pointerover", () => speakIfEnabled(scene, label));
   hit.on("pointerdown", onClick);
 
   return {
     box, text, hit,
-    setPos(x, y) { box.setPosition(x, y); text.setPosition(x, y); hit.setPosition(x, y); },
+    setPosCenter(cx, cy, w, h) {
+      const x0 = cx - w / 2;
+      const y0 = cy - h / 2;
+      box.setPosition(x0, y0);
+      hit.setPosition(x0, y0);
+      text.setPosition(cx, cy);
+    },
     setSize(w, h) {
-      box.setDisplaySize(w, h);
-      hit.setDisplaySize(w, h);
-      hit.setInteractive(new Phaser.Geom.Rectangle(-w/2, -h/2, w, h), Phaser.Geom.Rectangle.Contains);
+      box.setSize(w, h);
+      hit.setSize(w, h);
+      hit.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
     },
-    setStyle({ fill, strokeAlpha, textColor }) {
+    setStyle(fill, strokeA, textColor) {
       box.setFillStyle(fill, 1);
-      box.setStrokeStyle(2, 0xffffff, strokeAlpha);
+      box.setStrokeStyle(2, 0xffffff, strokeA);
       text.setColor(textColor);
-    },
+    }
   };
 }
 
@@ -72,12 +79,15 @@ class MenuScene extends Phaser.Scene {
 
     this.exitBtn.on("pointerdown", () => { stopSpeech(); this._onExit?.(); });
 
-    this.btnEasy = makeMenuButton(this, "Fácil (4 pares)", () => { stopSpeech(); this.scene.start("MemoryScene", { pairs: 4 }); });
-    this.btnMed  = makeMenuButton(this, "Medio (6 pares)", () => { stopSpeech(); this.scene.start("MemoryScene", { pairs: 6 }); });
-    this.btnHard = makeMenuButton(this, "Difícil (8 pares)", () => { stopSpeech(); this.scene.start("MemoryScene", { pairs: 8 }); });
+    this.btnEasy = makeTLButton(this, "Fácil (4 pares)", () => { stopSpeech(); this.scene.start("MemoryScene", { pairs: 4 }); });
+    this.btnMed  = makeTLButton(this, "Medio (6 pares)", () => { stopSpeech(); this.scene.start("MemoryScene", { pairs: 6 }); });
+    this.btnHard = makeTLButton(this, "Difícil (8 pares)", () => { stopSpeech(); this.scene.start("MemoryScene", { pairs: 8 }); });
 
-    // Panel primero para conocer su ancho efectivo al layout
-    this.a11yPanel = createA11yPanel(this, { anchor: "left", onChange: () => { this.applyTheme(); this.layout(); } });
+    // Panel
+    this.a11yPanel = createA11yPanel(this, {
+      anchor: "left",
+      onChange: () => { this.applyTheme(); this.layout(); }
+    });
 
     this.applyTheme();
     this.layout();
@@ -105,33 +115,30 @@ class MenuScene extends Phaser.Scene {
     this.subtitle.setFontSize(Math.round(24 * ts));
     this.subtitle.setColor(hc ? "#ffffff" : "#cbd5e1");
 
-    this.exitBtn.setStyle({
-      color: hc ? "#000000" : "#ffffff",
-      backgroundColor: hc ? "#ffffff" : "#111827",
-    });
+    this.exitBtn.setStyle({ color: hc ? "#000000" : "#ffffff", backgroundColor: hc ? "#ffffff" : "#111827" });
     this.exitBtn.setFontSize(Math.round(16 * ts));
-
-    const btnFill = hc ? 0xffffff : 0x111827;
-    const btnText = hc ? "#000000" : "#ffffff";
-    const strokeA = hc ? 1 : 0.14;
 
     const bw = Math.round(520 * ui);
     const bh = Math.round(60 * ui);
 
+    const fill = hc ? 0xffffff : 0x111827;
+    const strokeA = hc ? 1 : 0.14;
+    const tcol = hc ? "#000000" : "#ffffff";
+
     [this.btnEasy, this.btnMed, this.btnHard].forEach((b) => {
-      b.setStyle({ fill: btnFill, strokeAlpha: strokeA, textColor: btnText });
       b.setSize(bw, bh);
+      b.setStyle(fill, strokeA, tcol);
     });
+
+    this._btnW = bw;
+    this._btnH = bh;
   }
 
   layout() {
     const W = this.scale.width;
-    const H = this.scale.height;
-
     const left = contentLeft(this);
     const right = 16;
-    const areaW = W - left - right;
-    const cx = left + areaW / 2;
+    const cx = left + (W - left - right) / 2;
 
     this.exitBtn.setPosition(W - 16, 16);
 
@@ -141,9 +148,12 @@ class MenuScene extends Phaser.Scene {
     const startY = 260;
     const gap = 92;
 
-    this.btnEasy.setPos(cx, startY + 0 * gap);
-    this.btnMed.setPos(cx,  startY + 1 * gap);
-    this.btnHard.setPos(cx, startY + 2 * gap);
+    const bw = this._btnW ?? 520;
+    const bh = this._btnH ?? 60;
+
+    this.btnEasy.setPosCenter(cx, startY + 0 * gap, bw, bh);
+    this.btnMed.setPosCenter(cx,  startY + 1 * gap, bw, bh);
+    this.btnHard.setPosCenter(cx, startY + 2 * gap, bw, bh);
   }
 }
 
@@ -159,28 +169,15 @@ class MemoryScene extends Phaser.Scene {
     this.pairs = data?.pairs ?? 8;
     this.state = { first: null, locked: false, attempts: 0, matchedPairs: 0, startTime: Date.now() };
     this.a11y = this.a11y || {};
+    this.focusIndex = 0;
   }
 
   create() {
     this.bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020).setOrigin(0);
 
-    this.title = this.add.text(0, 0, `Memorama - ${this.pairs} pares`, {
-      fontFamily: "Arial",
-      fontSize: "24px",
-      color: "#ffffff",
-    }).setOrigin(0, 0);
-
-    this.attemptsText = this.add.text(0, 0, "Intentos: 0", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#cbd5e1",
-    }).setOrigin(0, 0);
-
-    this.timeText = this.add.text(0, 0, "Tiempo: 0s", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#cbd5e1",
-    }).setOrigin(0, 0);
+    this.title = this.add.text(0, 0, `Memorama - ${this.pairs} pares`, { fontFamily: "Arial", fontSize: "24px", color: "#ffffff" }).setOrigin(0, 0);
+    this.attemptsText = this.add.text(0, 0, "Intentos: 0", { fontFamily: "Arial", fontSize: "18px", color: "#cbd5e1" }).setOrigin(0, 0);
+    this.timeText = this.add.text(0, 0, "Tiempo: 0s", { fontFamily: "Arial", fontSize: "18px", color: "#cbd5e1" }).setOrigin(0, 0);
 
     this.menuBtn = this.add.text(0, 0, "Menú", {
       fontFamily: "Arial",
@@ -212,23 +209,23 @@ class MemoryScene extends Phaser.Scene {
 
     const chosen = shuffle(SYMBOLS).slice(0, this.pairs);
     const values = shuffle([...chosen, ...chosen]);
-    this.cards = values.map((val, idx) => this.createCard(idx, val));
 
-    this.focusIndex = 0;
+    this.cards = values.map((val, idx) => this.createCard(idx, val));
 
     this.a11yPanel = createA11yPanel(this, {
       anchor: "left",
-      onChange: () => { this.applyTheme(); this.layout(); this.layoutCards(); this.applyFocus(this.focusIndex, true); },
+      onChange: () => { this.applyTheme(); this.layout(); this.layoutCards(); this.applyFocus(this.focusIndex, true); }
     });
 
     this.initKeyboard();
+
     this.applyTheme();
     this.layout();
     this.layoutCards();
     this.applyFocus(0, true);
 
     this.scale.on("resize", () => {
-      if (!this.bg || !this.cards || !this.title) return;
+      if (!this.bg || !this.cards) return;
       this.applyTheme();
       this.layout();
       this.layoutCards();
@@ -265,10 +262,8 @@ class MemoryScene extends Phaser.Scene {
     this.cards.forEach((card) => {
       card.faceDown.setFillStyle(hc ? 0x000000 : 0x111827, 1);
       card.faceDown.setStrokeStyle(2, 0xffffff, hc ? 0.9 : 0.12);
-
       card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
       card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
-
       card.txt.setColor(hc ? "#000000" : "#0b1020");
     });
   }
@@ -325,43 +320,44 @@ class MemoryScene extends Phaser.Scene {
     if (!card) return;
 
     if (!card.focusOutline) {
-      card.focusOutline = this.add.rectangle(card.x, card.y, 120, 140, 0x000000, 0)
+      card.focusOutline = this.add.rectangle(card.cx, card.cy, 120, 140, 0x000000, 0)
+        .setOrigin(0.5)
         .setStrokeStyle(4, 0x22c55e, 1);
       card.focusOutline.setVisible(false);
     }
 
     card.focusOutline.setVisible(true);
-    card.focusOutline.setPosition(card.x, card.y);
+    card.focusOutline.setPosition(card.cx, card.cy);
     card.focusOutline.setSize(card.w + 14, card.h + 14);
 
     if (!silent) this.say(`Carta ${index + 1}`);
   }
 
   createCard(idx, value) {
-    const faceDown = this.add.rectangle(0, 0, 110, 130, 0x111827).setStrokeStyle(2, 0xffffff, 0.12).setOrigin(0.5);
-    const faceUp = this.add.rectangle(0, 0, 110, 130, 0xf8fafc).setStrokeStyle(2, 0x111827, 0.25).setOrigin(0.5);
+    // Rectangles con ORIGIN 0 (TOP-LEFT)
+    const faceDown = this.add.rectangle(0, 0, 110, 130, 0x111827, 1).setOrigin(0, 0).setStrokeStyle(2, 0xffffff, 0.12);
+    const faceUp = this.add.rectangle(0, 0, 110, 130, 0xf8fafc, 1).setOrigin(0, 0).setStrokeStyle(2, 0x111827, 0.25);
+
     const txt = this.add.text(0, 0, value, { fontFamily: "Arial", fontSize: "52px", color: "#0b1020" }).setOrigin(0.5);
 
-    // hitArea inicial; se recalcula en layoutCards
-    faceDown.setInteractive(new Phaser.Geom.Rectangle(-55, -65, 110, 130), Phaser.Geom.Rectangle.Contains);
+    // Interactive top-left basado (0..w,0..h)
+    faceDown.setInteractive(new Phaser.Geom.Rectangle(0, 0, 110, 130), Phaser.Geom.Rectangle.Contains);
 
     const card = {
-      idx,
-      value,
-      faceDown,
-      faceUp,
-      txt,
-      flipped: false,
-      matched: false,
+      idx, value,
+      faceDown, faceUp, txt,
+      flipped: false, matched: false,
       focusOutline: null,
-      x: 0, y: 0, w: 110, h: 130,
+      // layout data
+      x0: 0, y0: 0, cx: 0, cy: 0, w: 110, h: 130
     };
 
     this.setCardVisual(card, false);
 
     faceDown.on("pointerover", () => {
-      const row = Math.floor(idx / (this.gridCols || 4)) + 1;
-      const col = (idx % (this.gridCols || 4)) + 1;
+      const cols = this.gridCols || 4;
+      const row = Math.floor(idx / cols) + 1;
+      const col = (idx % cols) + 1;
       this.say(`Carta fila ${row}, columna ${col}`);
     });
 
@@ -454,7 +450,7 @@ class MemoryScene extends Phaser.Scene {
     const areaH = H - topPad - bottomPad;
 
     const total = this.pairs * 2;
-    const cols = 4; // fijo para cartas más grandes
+    const cols = 4;
     const rows = Math.ceil(total / cols);
     this.gridCols = cols;
 
@@ -476,35 +472,34 @@ class MemoryScene extends Phaser.Scene {
       const r = Math.floor(i / cols);
       const c = i % cols;
 
-      const x = leftPad + c * (cellW + gap) + cellW / 2;
-      const y = topPad + r * (cellH + gap) + cellH / 2;
+      const cx = leftPad + c * (cellW + gap) + cellW / 2;
+      const cy = topPad + r * (cellH + gap) + cellH / 2;
 
-      card.x = x; card.y = y; card.w = w; card.h = h;
+      const x0 = cx - w / 2;
+      const y0 = cy - h / 2;
 
-      card.faceDown.setPosition(x, y);
-      card.faceUp.setPosition(x, y);
-      card.txt.setPosition(x, y);
+      card.x0 = x0; card.y0 = y0;
+      card.cx = cx; card.cy = cy;
+      card.w = w; card.h = h;
 
-      card.faceDown.setDisplaySize(w, h);
-      card.faceUp.setDisplaySize(w, h);
+      card.faceDown.setPosition(x0, y0).setSize(w, h);
+      card.faceUp.setPosition(x0, y0).setSize(w, h);
 
-      // hitArea exacta (nada de “solo centro” o “media tarjeta”)
-      card.faceDown.setInteractive(
-        new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h),
-        Phaser.Geom.Rectangle.Contains
-      );
+      // ✅ hitArea exacta top-left (no se recorre)
+      card.faceDown.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
 
+      card.txt.setPosition(cx, cy);
       card.txt.setFontSize(Math.max(28, Math.floor(Math.min(w, h) * 0.42 * ts)));
 
       if (card.focusOutline) {
-        card.focusOutline.setPosition(x, y);
+        card.focusOutline.setPosition(cx, cy);
         card.focusOutline.setSize(w + 14, h + 14);
       }
     });
   }
 }
 
-/* ---------------- createMemoramaGame (RESIZE estable) ---------------- */
+/* ---------------- createMemoramaGame ---------------- */
 export function createMemoramaGame(parentId, onFinish, onExit) {
   const parentEl = document.getElementById(parentId);
   if (!parentEl) throw new Error(`No existe el elemento con id="${parentId}"`);
@@ -536,14 +531,10 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
     canvas.style.top = "0";
   }
 
-  // Asegura tamaño real tras montar
   setTimeout(() => {
     const w = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
     const h = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
-    try {
-      game.scale.resize(w, h);
-      game.scale.refresh();
-    } catch {}
+    try { game.scale.resize(w, h); game.scale.refresh(); } catch {}
   }, 0);
 
   return () => {
