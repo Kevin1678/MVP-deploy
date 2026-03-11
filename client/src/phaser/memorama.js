@@ -523,18 +523,34 @@ class MemoryScene extends Phaser.Scene {
 }
 
 export function createMemoramaGame(parentId, onFinish, onExit) {
+  // ✅ verifica que exista el div antes de crear Phaser
+  const parentEl = document.getElementById(parentId);
+  if (!parentEl) {
+    throw new Error(`No existe el elemento con id="${parentId}"`);
+  }
+
+  // ✅ tamaño inicial NUMÉRICO (Phaser lo necesita)
+  const w = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
+  const h = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
+
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: parentId,
     backgroundColor: "#0b1020",
     scene: [new MenuScene(onExit), new MemoryScene(onFinish, onExit)],
     scale: {
-      mode: Phaser.Scale.RESIZE,          // ✅ fullscreen responsive
+      mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
-      width: "100%",
-      height: "100%",
+      width: w,
+      height: h,
     },
   });
+
+  return () => {
+    stopSpeech();
+    try { game.destroy(true); } catch {}
+  };
+}
 
   return () => {
     stopSpeech();
