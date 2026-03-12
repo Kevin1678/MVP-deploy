@@ -178,9 +178,31 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     refresh();
   });
 
-  const labelFilter = scene.add.text(pad, 220, "Filtro", { fontFamily: "Arial", fontSize: "13px", color: "#cbd5e1" });
-  const btnNormal = makeBtn(scene, pad, 244, 124, 42, "Normal", () => { scene.a11y.colorMode = "normal"; commit(); refresh(); });
-  const btnGray   = makeBtn(scene, pad + 138, 244, 124, 42, "Grises", () => { scene.a11y.colorMode = "grayscale"; commit(); refresh(); });
+const labelFilter = scene.add.text(pad, 220, "Filtro", { fontFamily: "Arial", fontSize: "13px", color: "#cbd5e1" });
+
+const btnNormal = makeBtn(scene, pad, 244, 124, 42, "Normal", () => {
+  scene.a11y.colorMode = "normal";
+  commit();
+  refresh();
+});
+
+const btnProtan = makeBtn(scene, pad + 138, 244, 124, 42, "Protan.", () => {
+  scene.a11y.colorMode = "protanopia";
+  commit();
+  refresh();
+});
+
+const btnTritan = makeBtn(scene, pad, 294, 124, 42, "Tritan.", () => {
+  scene.a11y.colorMode = "tritanopia";
+  commit();
+  refresh();
+});
+
+const btnGray = makeBtn(scene, pad + 138, 294, 124, 42, "Grises", () => {
+  scene.a11y.colorMode = "grayscale";
+  commit();
+  refresh();
+});
 
   const labelSize = scene.add.text(pad, 302, "Tamaño", { fontFamily: "Arial", fontSize: "13px", color: "#cbd5e1" });
   const btnAminus = makeBtn(scene, pad, 326, 124, 42, "A-", () => { scene.a11y.textScale = clamp(scene.a11y.textScale - 0.1, 0.9, 1.3); commit(); refresh(); });
@@ -201,6 +223,8 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     btnHC.box, btnHC.hit, btnHC.text,
     labelFilter,
     btnNormal.box, btnNormal.hit, btnNormal.text,
+    btnProtan.box, btnProtan.hit, btnProtan.text,
+    btnTritan.box, btnTritan.hit, btnTritan.text,
     btnGray.box, btnGray.hit, btnGray.text,
     labelSize,
     btnAminus.box, btnAminus.hit, btnAminus.text,
@@ -253,8 +277,8 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     const btnText = hc ? "#000000" : "#ffffff";
     const strokeA = hc ? 1 : 0.16;
 
-    [toggle, btnTTS, btnHC, btnNormal, btnGray, btnAminus, btnAplus, btnUIminus, btnUIplus, btnReset]
-      .forEach((b) => b.setStyle(btnFill, btnText, strokeA));
+[toggle, btnTTS, btnHC, btnNormal, btnProtan, btnTritan, btnGray, btnAminus, btnAplus, btnUIminus, btnUIplus, btnReset]
+  .forEach((b) => b.setStyle(btnFill, btnText, strokeA));
 
     // collapse hide
     const v = open;
@@ -263,8 +287,8 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     labelFilter.setVisible(v);
     labelSize.setVisible(v);
 
-    [btnTTS, btnHC, btnNormal, btnGray, btnAminus, btnAplus, btnUIminus, btnUIplus, btnReset]
-      .forEach((b) => b.setVisible(v));
+[btnTTS, btnHC, btnNormal, btnProtan, btnTritan, btnGray, btnAminus, btnAplus, btnUIminus, btnUIplus, btnReset]
+  .forEach((b) => b.setVisible(v));
 
     // toggle pos (top-left within panel)
     toggle.setPos(pw - 112, 14);
