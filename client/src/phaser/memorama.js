@@ -566,6 +566,128 @@ onWin() {
   });
 }
 
+  showEndModal({ durationMs, moves, score }) {
+  // evitar duplicados
+  if (this.endModal) return;
+
+  const W = this.scale.width;
+  const H = this.scale.height;
+
+  const hc = !!this.a11y.highContrast;
+  const ts = this.a11y.textScale || 1;
+
+  const overlay = this.add.rectangle(0, 0, W, H, 0x000000, 0.55).setOrigin(0).setDepth(2000);
+
+  const boxW = Math.min(560, W * 0.9);
+  const boxH = 260;
+
+  const panelFill = hc ? 0xffffff : 0x111827;
+  const panelStroke = hc ? 0x000000 : 0xffffff;
+  const textColor = hc ? "#000000" : "#ffffff";
+  const subColor = hc ? "#000000" : "#cbd5e1";
+
+  const box = this.add.rectangle(W / 2, H / 2, boxW, boxH, panelFill, 1)
+    .setStrokeStyle(2, panelStroke, hc ? 1 : 0.16)
+    .setDepth(2001);
+
+  const t1 = this.add.text(W / 2, H / 2 - 80, "¡Excelente!", {
+    fontFamily: "Arial",
+    fontSize: Math.round(40 * ts),
+    color: textColor,
+  }).setOrigin(0.5).setDepth(2002);
+
+  const sec = Math.floor(durationMs / 1000);
+  const t2 = this.add.text(W / 2, H / 2 - 25, `Tiempo: ${sec}s   •   Intentos: ${moves}`, {
+    fontFamily: "Arial",
+    fontSize: Math.round(20 * ts),
+    color: subColor,
+  }).setOrigin(0.5).setDepth(2002);
+
+  // Botones como Zone+Rect (hit perfecto)
+  const makeModalBtn = (cx, cy, label, onClick) => {
+    const bw = 220, bh = 52;
+
+    const btnBg = this.add.rectangle(cx - bw/2, cy - bh/2, bw, bh, hc ? 0x000000 : 0x0b1220, 1)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, panelStroke, hc ? 1 : 0.16)
+      .setDepth(2003);
+
+    const btnTx = this.add.text(cx, cy, label, {
+      fontFamily: "Arial",
+      fontSize: Math.round(18 * ts),
+      color: textColor,
+    }).setOrigin(0.5).setDepth(2004);
+
+    const hit = this.add.zone(cx - bw/2, cy - bh/2, bw, bh).setOrigin(0, 0).setDepth(2005);
+    hit.setInteractive({ useHandCursor: true });
+    hit.on("pointerdown", onClick);
+
+    return { btnBg, btnTx, hit };
+  };
+
+  const btnAgain = makeModalBtn(W / 2 - 130, H / 2 + 70, "Jugar otra vez", () => {
+    this.hideEndModal();
+    // reinicia juego manteniendo dificultad (pairs)
+    this.scene.restart({ pairs: this.pairs });
+  });
+
+  const btnExit = makeModalBtn(W / 2 + 130, H / 2 + 70, "Salir", () => {
+    this.hideEndModal();
+    // aquí sí guardas resultado y sales
+    this._onFinish?.({ score, moves, durationMs });
+  });
+
+  // guardar referencias para destruir
+  this.endModal = { overlay, box, t1, t2, btnAgain, btnExit };
+
+  // ✅ ajusta al resize
+  this.__endResize = () => {
+    if (!this.endModal) return;
+    const W2 = this.scale.width;
+    const H2 = this.scale.height;
+
+    overlay.setSize(W2, H2);
+    box.setPosition(W2/2, H2/2);
+
+    t1.setPosition(W2/2, H2/2 - 80);
+    t2.setPosition(W2/2, H2/2 - 25);
+
+    // reubicar botones
+    const moveBtn = (btn, cx, cy) => {
+      const bw = 220, bh = 52;
+      btn.btnBg.setPosition(cx - bw/2, cy - bh/2);
+      btn.btnTx.setPosition(cx, cy);
+      btn.hit.setPosition(cx - bw/2, cy - bh/2);
+    };
+
+    moveBtn(btnAgain, W2/2 - 130, H2/2 + 70);
+    moveBtn(btnExit,  W2/2 + 130, H2/2 + 70);
+  };
+
+  this.scale.on("resize", this.__endResize);
+}
+
+hideEndModal() {
+  if (!this.endModal) return;
+  const { overlay, box, t1, t2, btnAgain, btnExit } = this.endModal;
+
+  try {
+    overlay.destroy();
+    box.destroy();
+    t1.destroy();
+    t2.destroy();
+    btnAgain.btnBg.destroy(); btnAgain.btnTx.destroy(); btnAgain.hit.destroy();
+    btnExit.btnBg.destroy();  btnExit.btnTx.destroy();  btnExit.hit.destroy();
+  } catch {}
+
+  this.endModal = null;
+
+  if (this.__endResize) {
+    this.scale.off("resize", this.__endResize);
+    this.__endResize = null;
+  }
+}
+
   layoutCards() {
     const W = this.scale.width;
     const H = this.scale.height;
