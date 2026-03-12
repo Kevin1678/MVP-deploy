@@ -548,16 +548,23 @@ createCard(idx, value) {
     }
   }
 
-  onWin() {
-    this.state.locked = true;
-    this.cards.forEach((c) => c.hit.disableInteractive());
+onWin() {
+  this.state.locked = true;
+  this.cards.forEach((c) => c.hit.disableInteractive());
 
-    const durationMs = Date.now() - this.state.startTime;
-    this.say(`Ganaste. Tiempo ${Math.floor(durationMs / 1000)} segundos. Intentos ${this.state.attempts}`);
+  const durationMs = Date.now() - this.state.startTime;
 
-    stopSpeech();
-    this._onFinish?.({ score: this.state.matchedPairs, moves: this.state.attempts, durationMs });
-  }
+  // Voz
+  this.say(`Ganaste. Tiempo ${Math.floor(durationMs / 1000)} segundos. Intentos ${this.state.attempts}`);
+  stopSpeech();
+
+  // ✅ Modal fin de juego
+  this.showEndModal({
+    durationMs,
+    moves: this.state.attempts,
+    score: this.state.matchedPairs,
+  });
+}
 
   layoutCards() {
     const W = this.scale.width;
