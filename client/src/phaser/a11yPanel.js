@@ -71,7 +71,10 @@ export function applyA11yToScene(scene, prefs) {
   const fx = scene.__a11yColorFx;
   fx.reset();
 
-  if (scene.a11y.colorMode === "grayscale") fx.grayscale?.();
+  // ✅ filtros
+if (scene.a11y.colorMode === "grayscale") fx.grayscale?.();
+if (scene.a11y.colorMode === "protanopia") fx.protanopia?.();
+if (scene.a11y.colorMode === "tritanopia") fx.tritanopia?.();
 }
 
 function makeBtn(scene, x, y, w, h, label, onClick) {
