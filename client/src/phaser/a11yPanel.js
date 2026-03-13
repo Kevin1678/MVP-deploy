@@ -2,12 +2,11 @@ import Phaser from "phaser";
 
 const LS_KEY = "a11y_prefs_v1";
 
-// Anchos del panel
 export const PANEL_OPEN_W = 290;
 export const PANEL_CLOSED_W = 78;
 export const PANEL_GAP = 16;
 
-// ✅ Aliases por compatibilidad (por si algún archivo viejo los importa)
+// Compat: por si aún importas estos nombres
 export const A11Y_PANEL_WIDTH = PANEL_OPEN_W;
 export const A11Y_PANEL_GAP = PANEL_GAP;
 
@@ -15,9 +14,10 @@ export function defaultA11yPrefs() {
   return {
     ttsEnabled: false,
     highContrast: false,
-    colorMode: "normal", // normal | grayscale
-    uiScale: 1.0,        // 0.9 - 1.3
-    textScale: 1.0,      // 0.9 - 1.3
+    // ✅ filtros reales
+    colorMode: "normal", // normal | protanopia | tritanopia | grayscale
+    uiScale: 1.0,
+    textScale: 1.0,
     panelOpen: true,
   };
 }
@@ -34,11 +34,15 @@ export function loadA11yPrefs() {
 }
 
 export function saveA11yPrefs(prefs) {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(prefs)); } catch {}
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(prefs));
+  } catch {}
 }
 
 export function stopSpeech() {
-  try { window.speechSynthesis?.cancel(); } catch {}
+  try {
+    window.speechSynthesis?.cancel();
+  } catch {}
 }
 
 export function speakIfEnabled(scene, text) {
@@ -58,27 +62,44 @@ function clamp(n, a, b) {
 }
 
 /**
- * Filtros de cámara (si existe ColorMatrix)
+ * ✅ Opción 1: filtros reales de daltonismo vía ColorMatrix.
+ * Se aplica a TODA la escena (cámara principal).
  */
 export function applyA11yToScene(scene, prefs) {
   if (!scene) return;
   scene.a11y = { ...(scene.a11y || {}), ...(prefs || {}) };
 
   const cam = scene.cameras?.main;
-  if (!cam?.postFX?.addColorMatrix) return;
+  const hasFX = !!cam?.postFX?.addColorMatrix;
 
-  if (!scene.__a11yColorFx) scene.__a11yColorFx = cam.postFX.addColorMatrix();
-  const fx = scene.__a11yColorFx;
+  // Si el Phaser que tienes no soporta ColorMatrix, no rompe:
+  if (!hasFX) return;
+
+  if (!scene.__a11yFx) {
+    scene.__a11yFx = cam.postFX.addColorMatrix();
+  }
+
+  const fx = scene.__a11yFx;
   fx.reset();
 
-  // ✅ filtros
-if (scene.a11y.colorMode === "grayscale") fx.grayscale?.();
-if (scene.a11y.colorMode === "protanopia") fx.protanopia?.();
-if (scene.a11y.colorMode === "tritanopia") fx.tritanopia?.();
+  switch (scene.a11y.colorMode) {
+    case "protanopia":
+      fx.protanopia?.();
+      break;
+    case "tritanopia":
+      fx.tritanopia?.();
+      break;
+    case "grayscale":
+      fx.grayscale?.();
+      break;
+    default:
+      // normal
+      break;
+  }
 }
 
 function makeBtn(scene, x, y, w, h, label, onClick) {
-  // x,y son TOP-LEFT del botón
+  // TOP-LEFT button, hit 0..w 0..h (estable)
   const box = scene.add.rectangle(x, y, w, h, 0x111827, 1).setOrigin(0, 0);
   box.setStrokeStyle(2, 0xffffff, 0.16);
 
@@ -88,25 +109,17 @@ function makeBtn(scene, x, y, w, h, label, onClick) {
     color: "#ffffff",
   }).setOrigin(0.5);
 
-  const hit = scene.add.rectangle(x, y, w, h, 0x000000, 0).setOrigin(0, 0);
-  hit.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
+  const hit = scene.add.zone(x, y, w, h).setOrigin(0, 0);
+  hit.setInteractive({ useHandCursor: true });
 
   hit.on("pointerdown", onClick);
 
   const setLabel = (t) => text.setText(t);
 
-  const setPos = (nx, ny) => {
-    box.setPosition(nx, ny);
-    hit.setPosition(nx, ny);
-    text.setPosition(nx + w / 2, ny + h / 2);
-  };
-
-  const setSize = (nw, nh) => {
-    w = nw; h = nh;
-    box.setSize(w, h);
-    hit.setSize(w, h);
-    hit.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
-    text.setPosition(box.x + w / 2, box.y + h / 2);
+  const setVisible = (v) => {
+    box.setVisible(v);
+    text.setVisible(v);
+    hit.setVisible(v);
   };
 
   const setStyle = (fill, textColor, strokeAlpha) => {
@@ -115,19 +128,26 @@ function makeBtn(scene, x, y, w, h, label, onClick) {
     text.setColor(textColor);
   };
 
-  const setVisible = (v) => {
-    box.setVisible(v);
-    hit.setVisible(v);
-    text.setVisible(v);
+  const setPos = (nx, ny) => {
+    box.setPosition(nx, ny);
+    text.setPosition(nx + w / 2, ny + h / 2);
+    hit.setPosition(nx, ny);
+  };
+
+  const setSize = (nw, nh) => {
+    w = nw; h = nh;
+    box.setSize(w, h);
+    hit.setSize(w, h);
+    text.setPosition(box.x + w / 2, box.y + h / 2);
   };
 
   const destroy = () => {
     box.destroy();
-    hit.destroy();
     text.destroy();
+    hit.destroy();
   };
 
-  return { box, hit, text, setLabel, setPos, setSize, setStyle, setVisible, destroy };
+  return { box, text, hit, setLabel, setVisible, setStyle, setPos, setSize, destroy };
 }
 
 export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
@@ -143,8 +163,17 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const bg = scene.add.rectangle(0, 0, PANEL_OPEN_W, scene.scale.height - 32, 0x0a1222, 0.92).setOrigin(0, 0);
   bg.setStrokeStyle(2, 0xffffff, 0.14);
 
-  const title = scene.add.text(pad, 14, "Accesibilidad", { fontFamily: "Arial", fontSize: "20px", color: "#ffffff" });
-  const hint = scene.add.text(pad, 40, "Opciones rápidas", { fontFamily: "Arial", fontSize: "14px", color: "#cbd5e1" });
+  const title = scene.add.text(pad, 14, "Accesibilidad", {
+    fontFamily: "Arial",
+    fontSize: "20px",
+    color: "#ffffff",
+  });
+
+  const hint = scene.add.text(pad, 40, "Opciones rápidas", {
+    fontFamily: "Arial",
+    fontSize: "14px",
+    color: "#cbd5e1",
+  });
 
   root.add([shadow, bg, title, hint]);
 
@@ -153,65 +182,50 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     scene.a11y.textScale = clamp(scene.a11y.textScale ?? 1, 0.9, 1.3);
 
     saveA11yPrefs({ ...scene.a11y });
-    try { applyA11yToScene(scene, scene.a11y); } catch {}
+    applyA11yToScene(scene, scene.a11y);
+
     if (typeof onChange === "function") onChange(scene.a11y);
   }
 
-  // Botón toggle
   const toggle = makeBtn(scene, PANEL_OPEN_W - 112, 14, 98, 40, scene.a11y.panelOpen ? "Ocultar" : "Mostrar", () => {
     scene.a11y.panelOpen = !scene.a11y.panelOpen;
     commit();
     refresh();
   });
-  root.add([toggle.box, toggle.hit, toggle.text]);
 
-  // Controles
   const btnTTS = makeBtn(scene, pad, 102, PANEL_OPEN_W - 2 * pad, 46, scene.a11y.ttsEnabled ? "Voz: ON" : "Voz: OFF", () => {
     scene.a11y.ttsEnabled = !scene.a11y.ttsEnabled;
     if (!scene.a11y.ttsEnabled) stopSpeech();
     commit();
     refresh();
   });
+
   const btnHC = makeBtn(scene, pad, 158, PANEL_OPEN_W - 2 * pad, 46, scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal", () => {
     scene.a11y.highContrast = !scene.a11y.highContrast;
     commit();
     refresh();
   });
 
-const labelFilter = scene.add.text(pad, 220, "Filtro", { fontFamily: "Arial", fontSize: "13px", color: "#cbd5e1" });
+  const labelFilter = scene.add.text(pad, 220, "Filtro (daltonismo)", {
+    fontFamily: "Arial",
+    fontSize: "13px",
+    color: "#cbd5e1",
+  });
 
-const btnNormal = makeBtn(scene, pad, 244, 124, 42, "Normal", () => {
-  scene.a11y.colorMode = "normal";
-  commit();
-  refresh();
-});
+  // 2 filas de botones
+  const btnNormal = makeBtn(scene, pad, 244, 124, 42, "Normal", () => { scene.a11y.colorMode = "normal"; commit(); refresh(); });
+  const btnProtan = makeBtn(scene, pad + 138, 244, 124, 42, "Protan.", () => { scene.a11y.colorMode = "protanopia"; commit(); refresh(); });
+  const btnTritan = makeBtn(scene, pad, 294, 124, 42, "Tritan.", () => { scene.a11y.colorMode = "tritanopia"; commit(); refresh(); });
+  const btnGray   = makeBtn(scene, pad + 138, 294, 124, 42, "Grises", () => { scene.a11y.colorMode = "grayscale"; commit(); refresh(); });
 
-const btnProtan = makeBtn(scene, pad + 138, 244, 124, 42, "Protan.", () => {
-  scene.a11y.colorMode = "protanopia";
-  commit();
-  refresh();
-});
+  const labelSize = scene.add.text(pad, 350, "Tamaño", { fontFamily: "Arial", fontSize: "13px", color: "#cbd5e1" });
 
-const btnTritan = makeBtn(scene, pad, 294, 124, 42, "Tritan.", () => {
-  scene.a11y.colorMode = "tritanopia";
-  commit();
-  refresh();
-});
+  const btnAminus = makeBtn(scene, pad, 374, 124, 42, "A-", () => { scene.a11y.textScale = clamp(scene.a11y.textScale - 0.1, 0.9, 1.3); commit(); refresh(); });
+  const btnAplus  = makeBtn(scene, pad + 138, 374, 124, 42, "A+", () => { scene.a11y.textScale = clamp(scene.a11y.textScale + 0.1, 0.9, 1.3); commit(); refresh(); });
+  const btnUIminus = makeBtn(scene, pad, 426, 124, 42, "UI-", () => { scene.a11y.uiScale = clamp(scene.a11y.uiScale - 0.1, 0.9, 1.3); commit(); refresh(); });
+  const btnUIplus  = makeBtn(scene, pad + 138, 426, 124, 42, "UI+", () => { scene.a11y.uiScale = clamp(scene.a11y.uiScale + 0.1, 0.9, 1.3); commit(); refresh(); });
 
-const btnGray = makeBtn(scene, pad + 138, 294, 124, 42, "Grises", () => {
-  scene.a11y.colorMode = "grayscale";
-  commit();
-  refresh();
-});
-
-  const labelSize = scene.add.text(pad, 302, "Tamaño", { fontFamily: "Arial", fontSize: "13px", color: "#cbd5e1" });
-  const btnAminus = makeBtn(scene, pad, 326, 124, 42, "A-", () => { scene.a11y.textScale = clamp(scene.a11y.textScale - 0.1, 0.9, 1.3); commit(); refresh(); });
-  const btnAplus  = makeBtn(scene, pad + 138, 326, 124, 42, "A+", () => { scene.a11y.textScale = clamp(scene.a11y.textScale + 0.1, 0.9, 1.3); commit(); refresh(); });
-
-  const btnUIminus = makeBtn(scene, pad, 378, 124, 42, "UI-", () => { scene.a11y.uiScale = clamp(scene.a11y.uiScale - 0.1, 0.9, 1.3); commit(); refresh(); });
-  const btnUIplus  = makeBtn(scene, pad + 138, 378, 124, 42, "UI+", () => { scene.a11y.uiScale = clamp(scene.a11y.uiScale + 0.1, 0.9, 1.3); commit(); refresh(); });
-
-  const btnReset = makeBtn(scene, pad, 438, PANEL_OPEN_W - 2 * pad, 46, "Restablecer", () => {
+  const btnReset = makeBtn(scene, pad, 486, PANEL_OPEN_W - 2 * pad, 46, "Restablecer", () => {
     scene.a11y = { ...defaultA11yPrefs() };
     stopSpeech();
     commit();
@@ -219,19 +233,20 @@ const btnGray = makeBtn(scene, pad + 138, 294, 124, 42, "Grises", () => {
   });
 
   root.add([
-    btnTTS.box, btnTTS.hit, btnTTS.text,
-    btnHC.box, btnHC.hit, btnHC.text,
+    toggle.box, toggle.text, toggle.hit,
+    btnTTS.box, btnTTS.text, btnTTS.hit,
+    btnHC.box, btnHC.text, btnHC.hit,
     labelFilter,
-    btnNormal.box, btnNormal.hit, btnNormal.text,
-    btnProtan.box, btnProtan.hit, btnProtan.text,
-    btnTritan.box, btnTritan.hit, btnTritan.text,
-    btnGray.box, btnGray.hit, btnGray.text,
+    btnNormal.box, btnNormal.text, btnNormal.hit,
+    btnProtan.box, btnProtan.text, btnProtan.hit,
+    btnTritan.box, btnTritan.text, btnTritan.hit,
+    btnGray.box, btnGray.text, btnGray.hit,
     labelSize,
-    btnAminus.box, btnAminus.hit, btnAminus.text,
-    btnAplus.box, btnAplus.hit, btnAplus.text,
-    btnUIminus.box, btnUIminus.hit, btnUIminus.text,
-    btnUIplus.box, btnUIplus.hit, btnUIplus.text,
-    btnReset.box, btnReset.hit, btnReset.text,
+    btnAminus.box, btnAminus.text, btnAminus.hit,
+    btnAplus.box, btnAplus.text, btnAplus.hit,
+    btnUIminus.box, btnUIminus.text, btnUIminus.hit,
+    btnUIplus.box, btnUIplus.text, btnUIplus.hit,
+    btnReset.box, btnReset.text, btnReset.hit,
   ]);
 
   function getWidth() {
@@ -246,20 +261,19 @@ const btnGray = makeBtn(scene, pad + 138, 294, 124, 42, "Grises", () => {
 
   function refresh() {
     const open = !!scene.a11y.panelOpen;
+
     toggle.setLabel(open ? "Ocultar" : "Mostrar");
     btnTTS.setLabel(scene.a11y.ttsEnabled ? "Voz: ON" : "Voz: OFF");
     btnHC.setLabel(scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal");
 
     const hc = !!scene.a11y.highContrast;
 
-    // panel size
-    const pw = getWidth();
-    const ph = open ? (scene.scale.height - 32) : headerH;
+    const panelW = getWidth();
+    const panelH = open ? (scene.scale.height - 32) : headerH;
 
-    bg.setSize(pw, ph);
-    shadow.setSize(pw, ph);
+    bg.setSize(panelW, panelH);
+    shadow.setSize(panelW, panelH);
 
-    // recolor
     const panelFill = hc ? 0xffffff : 0x0a1222;
     bg.setFillStyle(panelFill, hc ? 1 : 0.92);
     bg.setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.14);
@@ -272,26 +286,24 @@ const btnGray = makeBtn(scene, pad + 138, 294, 124, 42, "Grises", () => {
     labelFilter.setColor(muted);
     labelSize.setColor(muted);
 
-    // buttons style
     const btnFill = hc ? 0xffffff : 0x111827;
     const btnText = hc ? "#000000" : "#ffffff";
     const strokeA = hc ? 1 : 0.16;
 
-[toggle, btnTTS, btnHC, btnNormal, btnProtan, btnTritan, btnGray, btnAminus, btnAplus, btnUIminus, btnUIplus, btnReset]
-  .forEach((b) => b.setStyle(btnFill, btnText, strokeA));
+    [toggle, btnTTS, btnHC, btnNormal, btnProtan, btnTritan, btnGray, btnAminus, btnAplus, btnUIminus, btnUIplus, btnReset]
+      .forEach((b) => b.setStyle(btnFill, btnText, strokeA));
 
-    // collapse hide
+    // colapso
     const v = open;
     title.setVisible(v);
     hint.setVisible(v);
     labelFilter.setVisible(v);
     labelSize.setVisible(v);
 
-[btnTTS, btnHC, btnNormal, btnProtan, btnTritan, btnGray, btnAminus, btnAplus, btnUIminus, btnUIplus, btnReset]
-  .forEach((b) => b.setVisible(v));
+    [btnTTS, btnHC, btnNormal, btnProtan, btnTritan, btnGray, btnAminus, btnAplus, btnUIminus, btnUIplus, btnReset]
+      .forEach((b) => b.setVisible(v));
 
-    // toggle pos (top-left within panel)
-    toggle.setPos(pw - 112, 14);
+    toggle.setPos(panelW - 112, 14);
 
     place();
   }
