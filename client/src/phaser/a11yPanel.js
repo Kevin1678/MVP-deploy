@@ -65,35 +65,50 @@ function clamp(n, a, b) {
  * ✅ Opción 1: filtros reales de daltonismo vía ColorMatrix.
  * Se aplica a TODA la escena (cámara principal).
  */
+// Matrices 3x3 (RGB) convertidas a 4x5 (20 valores) para ColorMatrix.set()
+// Fuente: matrices tipo Coblis (aprox) :contentReference[oaicite:2]{index=2}
+const CVD = {
+  protanopia: [
+    0.567, 0.433, 0.000, 0, 0,
+    0.558, 0.442, 0.000, 0, 0,
+    0.000, 0.242, 0.758, 0, 0,
+    0,     0,     0,     1, 0,
+  ],
+  tritanopia: [
+    0.950, 0.050, 0.000, 0, 0,
+    0.000, 0.433, 0.567, 0, 0,
+    0.000, 0.475, 0.525, 0, 0,
+    0,     0,     0,     1, 0,
+  ],
+};
+
 export function applyA11yToScene(scene, prefs) {
   if (!scene) return;
   scene.a11y = { ...(scene.a11y || {}), ...(prefs || {}) };
 
   const cam = scene.cameras?.main;
-  const hasFX = !!cam?.postFX?.addColorMatrix;
+  if (!cam?.postFX?.addColorMatrix) return; // si no hay WebGL / FX, no hacemos nada
 
-  // Si el Phaser que tienes no soporta ColorMatrix, no rompe:
-  if (!hasFX) return;
-
-  if (!scene.__a11yFx) {
-    scene.__a11yFx = cam.postFX.addColorMatrix();
-  }
-
+  if (!scene.__a11yFx) scene.__a11yFx = cam.postFX.addColorMatrix();
   const fx = scene.__a11yFx;
-  fx.reset();
+
+  fx.reset(); // limpia cualquier filtro previo :contentReference[oaicite:3]{index=3}
 
   switch (scene.a11y.colorMode) {
-    case "protanopia":
-      fx.protanopia?.();
-      break;
-    case "tritanopia":
-      fx.tritanopia?.();
-      break;
     case "grayscale":
-      fx.grayscale?.();
+      fx.grayscale(); // existe :contentReference[oaicite:4]{index=4}
       break;
+
+    case "protanopia":
+      fx.set(CVD.protanopia); // set() existe y requiere 20 valores :contentReference[oaicite:5]{index=5}
+      break;
+
+    case "tritanopia":
+      fx.set(CVD.tritanopia);
+      break;
+
     default:
-      // normal
+      // normal = sin filtro
       break;
   }
 }
