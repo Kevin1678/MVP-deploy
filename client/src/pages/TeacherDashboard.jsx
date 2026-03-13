@@ -80,7 +80,7 @@ export default function TeacherDashboard() {
         </div>
 
         <div className="teacher-dashboard__badge">
-          Datos demostrativos
+          
         </div>
       </div>
 
@@ -194,3 +194,4 @@ export default function TeacherDashboard() {
     </div>
   );
 }
+
