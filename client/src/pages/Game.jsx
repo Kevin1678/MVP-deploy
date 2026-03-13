@@ -20,7 +20,6 @@ export default function Game() {
             body: JSON.stringify({ game: "memorama", score, moves, durationMs }),
           });
 
-          alert(res.ok ? "¡Juego terminado! Resultado guardado." : "No se pudo guardar el resultado.");
         } catch {
           alert("Error de conexión al guardar el resultado.");
         } finally {
