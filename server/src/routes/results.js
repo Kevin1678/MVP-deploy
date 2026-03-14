@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 const resultSchema = z.object({
-  game: z.enum(["memorama", "countPick", "lights"]),
+  game: z.enum(["memorama", "countPick", "lights-sequence"]),
   score: z.number().int().min(0),
   moves: z.number().int().min(0),
   durationMs: z.number().int().min(0)
