@@ -1,33 +1,50 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { createCountPickGame } from "../phaser/countPick";
 
 export default function GameCount() {
   const navigate = useNavigate();
+  const doneRef = useRef(false);
 
   useEffect(() => {
+    doneRef.current = false;
+
     const destroy = createCountPickGame(
       "phaser-root",
-      async ({ score, attempts, durationMs }) => {
-        // opcional: guardar resultado en BD
+      async ({ score, moves, durationMs, game }) => {
+        if (doneRef.current) return;
+        doneRef.current = true;
+
         try {
           await fetch("/api/results", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ game: "count-pick", score, attempts, durationMs }),
+            body: JSON.stringify({ game: game || "countPick", score, moves, durationMs }),
           });
-        } catch (_) {}
-        navigate("/games");
+        } catch {
+          alert("Error de conexión al guardar el resultado.");
+        } finally {
+          try { window.speechSynthesis?.cancel(); } catch {}
+          navigate("/games", { replace: true });
+        }
       },
-      () => navigate("/games")
+      () => {
+        if (doneRef.current) return;
+        doneRef.current = true;
+        try { window.speechSynthesis?.cancel(); } catch {}
+        navigate("/games", { replace: true });
+      }
     );
 
-    return () => destroy();
+    return () => {
+      try { window.speechSynthesis?.cancel(); } catch {}
+      try { destroy?.(); } catch {}
+    };
   }, [navigate]);
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", padding: 20 }}>
-      <div id="phaser-root" />
+    <div style={{ width: "100vw", height: "100vh", margin: 0, padding: 0, overflow: "hidden" }}>
+      <div id="phaser-root" style={{ width: "100%", height: "100%", position: "relative" }} />
     </div>
   );
 }
