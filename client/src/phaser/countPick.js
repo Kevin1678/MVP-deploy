@@ -670,16 +670,26 @@ class CountPickGameScene extends Phaser.Scene {
     this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
     this.layoutEndModal();
 
-    const fill = hc ? 0xffffff : 0x0b1220;
-    const strokeAlpha = hc ? 1 : 0.16;
-    const textColor = hc ? "#000000" : "#ffffff";
-    const fontSize = Math.round(18 * ts);
+const btnFill = hc ? 0x000000 : 0x2563eb; // negro en HC, azul visible en normal
+const btnText = "#ffffff";
+const btnStrokeAlpha = 1;
+const fontSize = Math.round(18 * ts);
 
-    btnAgain.setSize(210, 52);
-    btnAgain.setTheme({ fill, strokeAlpha, textColor, fontSize });
+btnAgain.setSize(210, 52);
+btnAgain.setTheme({
+  fill: btnFill,
+  strokeAlpha: btnStrokeAlpha,
+  textColor: btnText,
+  fontSize,
+});
 
-    btnExit.setSize(170, 52);
-    btnExit.setTheme({ fill, strokeAlpha, textColor, fontSize });
+btnExit.setSize(170, 52);
+btnExit.setTheme({
+  fill: hc ? 0x000000 : 0xdc2626, // rojo visible
+  strokeAlpha: btnStrokeAlpha,
+  textColor: "#ffffff",
+  fontSize,
+});
   }
 
   layoutEndModal() {
