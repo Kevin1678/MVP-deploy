@@ -11,7 +11,7 @@ export default function GameCount() {
 
     const destroy = createCountPickGame(
       "phaser-root",
-      async ({ score = 0, moves = 0, durationMs = 0, game = "countPick" }) => {
+      async ({ score, moves, durationMs, game }) => {
 
         const gameName = game || (location.pathname === "/games/countPick" ? "contar y elegir" : "countPick");
         if (doneRef.current) return;
