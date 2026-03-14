@@ -1,5 +1,5 @@
 import "./styles.css";
-import "./styles/gamesMenu.css"; // está bien si tu carpeta styles está fuera de src
+import "./styles/gamesMenu.css";
 
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -19,6 +19,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
+
         <Route
           path="/admin"
           element={
@@ -28,7 +29,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
 
-        /// RUTA PARA PROFESORES
+        {/* RUTA PARA PROFESORES */}
         <Route
           path="/teacher"
           element={
@@ -48,7 +49,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
 
-        {/* JUEGO ACTUAL */}
+        {/* MEMORAMA */}
         <Route
           path="/games/memorama"
           element={
@@ -58,24 +59,25 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
 
+        {/* CONTAR */}
         <Route
           path="/games/contar"
           element={
             <Protected>
               <GameCount />
-          </Protected>
-        }
-      />  
+            </Protected>
+          }
+        />
 
-      <Route
-        path="/games/lights"
-        element={
-          <Protected>
-            <GameLights />
-        </Protected>
-      }
-    />
-        
+        {/* LUCES */}
+        <Route
+          path="/games/lights"
+          element={
+            <Protected>
+              <GameLights />
+            </Protected>
+          }
+        />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
