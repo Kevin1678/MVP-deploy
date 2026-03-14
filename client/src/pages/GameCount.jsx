@@ -11,7 +11,7 @@ export default function GameCount() {
 
     const destroy = createCountPickGame(
       "phaser-root",
-      async ({ score, moves, durationMs, game }) => {
+      async ({ score = 0, moves = 0, durationMs = 0, game = "countPick" }) => {
         if (doneRef.current) return;
         doneRef.current = true;
 
@@ -19,26 +19,42 @@ export default function GameCount() {
           await fetch("/api/results", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ game: game || "countPick", score, moves, durationMs }),
+            body: JSON.stringify({
+              game,
+              score,
+              moves,
+              durationMs,
+            }),
           });
         } catch {
           alert("Error de conexión al guardar el resultado.");
         } finally {
-          try { window.speechSynthesis?.cancel(); } catch {}
+          try {
+            window.speechSynthesis?.cancel();
+          } catch {}
           navigate("/games", { replace: true });
         }
       },
       () => {
         if (doneRef.current) return;
         doneRef.current = true;
-        try { window.speechSynthesis?.cancel(); } catch {}
+
+        try {
+          window.speechSynthesis?.cancel();
+        } catch {}
+
         navigate("/games", { replace: true });
       }
     );
 
     return () => {
-      try { window.speechSynthesis?.cancel(); } catch {}
-      try { destroy?.(); } catch {}
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {}
+
+      try {
+        destroy?.();
+      } catch {}
     };
   }, [navigate]);
 
