@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 const router = express.Router();
 
 const resultSchema = z.object({
-  game: z.literal("memorama"),
+  game: z.enum(["memorama", "countPick", "lights"]),
   score: z.number().int().min(0),
   moves: z.number().int().min(0),
   durationMs: z.number().int().min(0)
@@ -15,13 +15,27 @@ const resultSchema = z.object({
 
 router.post("/", requireAuth, async (req, res) => {
   const parsed = resultSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ message: "Resultado inválido" });
 
-  const created = await prisma.gameResult.create({
-    data: { ...parsed.data, userId: req.user.id }
-  });
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: "Resultado inválido",
+      errors: parsed.error.flatten()
+    });
+  }
 
-  res.status(201).json({ id: created.id });
+  try {
+    const created = await prisma.gameResult.create({
+      data: {
+        ...parsed.data,
+        userId: req.user.id
+      }
+    });
+
+    res.status(201).json({ id: created.id });
+  } catch (error) {
+    console.error("Error guardando resultado:", error);
+    res.status(500).json({ message: "Error guardando resultado" });
+  }
 });
 
 module.exports = router;
