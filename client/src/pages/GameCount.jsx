@@ -12,6 +12,8 @@ export default function GameCount() {
     const destroy = createCountPickGame(
       "phaser-root",
       async ({ score = 0, moves = 0, durationMs = 0, game = "countPick" }) => {
+
+        const gameName = game || (location.pathname === "/games/countPick" ? "contar y elegir" : "countPick");
         if (doneRef.current) return;
         doneRef.current = true;
 
@@ -19,11 +21,7 @@ export default function GameCount() {
           await fetch("/api/results", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              game,
-              score,
-              moves,
-              durationMs,
+            body: JSON.stringify({ game: gameName, score, moves, durationMs }),
             }),
           });
         } catch {
