@@ -29,7 +29,7 @@ function contentLeft(scene) {
   return 16 + panelW + (PANEL_GAP ?? 16);
 }
 
-function makeTopLeftButton(scene, label, onClick) {
+function makeTopLeftButton(scene, label, onClick, depth = 10) {
   let w = 160;
   let h = 60;
   let x0 = 0;
@@ -38,7 +38,8 @@ function makeTopLeftButton(scene, label, onClick) {
   const box = scene.add
     .rectangle(x0, y0, w, h, 0x111827, 1)
     .setOrigin(0, 0)
-    .setStrokeStyle(2, 0xffffff, 0.14);
+    .setStrokeStyle(2, 0xffffff, 0.14)
+    .setDepth(depth);
 
   const text = scene.add
     .text(x0 + w / 2, y0 + h / 2, label, {
@@ -46,9 +47,10 @@ function makeTopLeftButton(scene, label, onClick) {
       fontSize: "28px",
       color: "#ffffff",
     })
-    .setOrigin(0.5);
+    .setOrigin(0.5)
+    .setDepth(depth + 1);
 
-  const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0);
+  const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0).setDepth(depth + 2);
   hit.setInteractive({ useHandCursor: true });
 
   hit.on("pointerover", () => speakIfEnabled(scene, `Botón ${label}`));
@@ -58,44 +60,66 @@ function makeTopLeftButton(scene, label, onClick) {
     box,
     text,
     hit,
+
     setLabel(next) {
+      label = next;
       text.setText(next);
     },
+
     setTL(nx, ny) {
       x0 = nx;
       y0 = ny;
+
       box.setPosition(x0, y0);
       hit.setPosition(x0, y0);
       text.setPosition(x0 + w / 2, y0 + h / 2);
     },
+
     setCenter(cx, cy) {
       x0 = cx - w / 2;
       y0 = cy - h / 2;
+
       box.setPosition(x0, y0);
       hit.setPosition(x0, y0);
       text.setPosition(cx, cy);
     },
+
     setSize(nw, nh) {
       w = nw;
       h = nh;
+
       box.setSize(w, h);
       hit.setSize(w, h);
+
       if (hit.input?.hitArea?.setTo) {
         hit.input.hitArea.setTo(0, 0, w, h);
       }
+
       text.setPosition(x0 + w / 2, y0 + h / 2);
     },
+
     setTheme({ fill, strokeAlpha, textColor, fontSize }) {
       box.setFillStyle(fill, 1);
       box.setStrokeStyle(2, 0xffffff, strokeAlpha);
       text.setColor(textColor);
-      if (fontSize) text.setFontSize(fontSize);
+
+      if (fontSize) {
+        text.setFontSize(fontSize);
+      }
     },
+
     setVisible(v) {
       box.setVisible(v);
       text.setVisible(v);
       hit.setVisible(v);
     },
+
+    setDepth(nextDepth) {
+      box.setDepth(nextDepth);
+      text.setDepth(nextDepth + 1);
+      hit.setDepth(nextDepth + 2);
+    },
+
     destroy() {
       box.destroy();
       text.destroy();
