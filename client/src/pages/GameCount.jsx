@@ -11,28 +11,38 @@ export default function GameCount() {
 
     const destroy = createCountPickGame(
       "phaser-root",
-      async ({ score, moves, durationMs, game }) => {
+      async ({ score = 0, moves = 0, durationMs = 0, game = "countPick" }) => {
+  if (doneRef.current) return;
+  doneRef.current = true;
 
-        const gameName = game || (location.pathname === "/games/countPick" ? "contar y elegir" : "countPick");
-        if (doneRef.current) return;
-        doneRef.current = true;
+  try {
+    const res = await fetch("/api/results", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        game,
+        score,
+        moves,
+        durationMs,
+      }),
+    });
 
-        try {
-          await fetch("/api/results", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ game: gameName, score, moves, durationMs }),
-            }),
-          });
-        } catch {
-          alert("Error de conexión al guardar el resultado.");
-        } finally {
-          try {
-            window.speechSynthesis?.cancel();
-          } catch {}
-          navigate("/games", { replace: true });
-        }
-      },
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      console.error("Error guardando resultado:", data);
+      alert(data?.message || "No se pudo guardar el resultado.");
+    }
+  } catch (err) {
+    console.error("Error de conexión:", err);
+    alert("Error de conexión al guardar el resultado.");
+  } finally {
+    try {
+      window.speechSynthesis?.cancel();
+    } catch {}
+    navigate("/games", { replace: true });
+  }
+},
       () => {
         if (doneRef.current) return;
         doneRef.current = true;
