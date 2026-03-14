@@ -630,7 +630,7 @@ class CountPickGameScene extends Phaser.Scene {
     const durationMs = Date.now() - this.state.startTime;
 
     const overlay = this.add.rectangle(0, 0, W, H, 0x000000, 0.55).setOrigin(0).setDepth(4000);
-    const box = this.add.rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x111827, 1)
+    const box = this.add.rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x111827a, 1)
       .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
       .setDepth(4001);
 
