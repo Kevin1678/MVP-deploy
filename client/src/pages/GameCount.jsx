@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createCountPickGame } from "../phaser/countPick";
+
 
 export default function GameCount() {
   const navigate = useNavigate();
