@@ -11,10 +11,6 @@ function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
-}
-
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -69,7 +65,6 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
     setTL(nx, ny) {
       x0 = nx;
       y0 = ny;
-
       box.setPosition(x0, y0);
       hit.setPosition(x0, y0);
       text.setPosition(x0 + w / 2, y0 + h / 2);
@@ -78,7 +73,6 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
     setCenter(cx, cy) {
       x0 = cx - w / 2;
       y0 = cy - h / 2;
-
       box.setPosition(x0, y0);
       hit.setPosition(x0, y0);
       text.setPosition(cx, cy);
@@ -87,7 +81,6 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
     setSize(nw, nh) {
       w = nw;
       h = nh;
-
       box.setSize(w, h);
       hit.setSize(w, h);
 
@@ -102,10 +95,7 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
       box.setFillStyle(fill, 1);
       box.setStrokeStyle(2, 0xffffff, strokeAlpha);
       text.setColor(textColor);
-
-      if (fontSize) {
-        text.setFontSize(fontSize);
-      }
+      if (fontSize) text.setFontSize(fontSize);
     },
 
     setVisible(v) {
@@ -168,7 +158,7 @@ function recolorBall(parts, r, hc = false) {
   parts.eyes.strokePath();
 }
 
-/* ===================== MENU DE DIFICULTAD ===================== */
+/* ===================== MENU ===================== */
 class CountPickMenuScene extends Phaser.Scene {
   constructor(onExit) {
     super("CountPickMenuScene");
@@ -269,9 +259,6 @@ class CountPickMenuScene extends Phaser.Scene {
       b.setSize(bw, bh);
       b.setTheme({ fill, strokeAlpha, textColor, fontSize });
     });
-
-    this._btnW = bw;
-    this._btnH = bh;
   }
 
   layout() {
@@ -294,7 +281,7 @@ class CountPickMenuScene extends Phaser.Scene {
   }
 }
 
-/* ===================== ESCENA DEL JUEGO ===================== */
+/* ===================== GAME ===================== */
 class CountPickGameScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
     super("CountPickGameScene");
@@ -430,7 +417,6 @@ class CountPickGameScene extends Phaser.Scene {
       b.setTheme({ fill, strokeAlpha, textColor, fontSize });
     });
 
-    // recolor bolas
     const ui = this.a11y.uiScale || 1;
     const r = Math.round(28 * ui);
     this.ballParts.forEach((p) => recolorBall(p, r, hc));
@@ -472,7 +458,6 @@ class CountPickGameScene extends Phaser.Scene {
 
     for (let i = 0; i < this.state.target; i++) {
       const parts = makeBall(this, 0, 0, r, hc);
-      parts.container.setScale(1);
       this.ballParts.push(parts);
     }
 
@@ -506,8 +491,6 @@ class CountPickGameScene extends Phaser.Scene {
     const cellH = 110 * ui;
 
     const total = this.ballParts.length;
-    const rows = Math.ceil(total / cols);
-
     const contentW = cols * cellW + (cols - 1) * gapX;
     const startX = left + Math.max(0, (W - left - 16 - contentW) / 2);
 
@@ -643,132 +626,107 @@ class CountPickGameScene extends Phaser.Scene {
     });
   }
 
-showEndModal() {
-  if (this.endModal) return;
+  showEndModal() {
+    if (this.endModal) return;
 
-  const W = this.scale.width;
-  const H = this.scale.height;
-  const hc = !!this.a11y.highContrast;
-  const ts = this.a11y.textScale || 1;
+    const W = this.scale.width;
+    const H = this.scale.height;
+    const hc = !!this.a11y.highContrast;
+    const ts = this.a11y.textScale || 1;
 
-  const durationMs = Date.now() - this.state.startTime;
+    const durationMs = Date.now() - this.state.startTime;
 
-  // Fondo oscuro
-  const overlay = this.add
-    .rectangle(0, 0, W, H, 0x000000, 0.55)
-    .setOrigin(0)
-    .setDepth(4000);
+    const overlay = this.add
+      .rectangle(0, 0, W, H, 0x000000, 0.55)
+      .setOrigin(0)
+      .setDepth(4000);
 
-  // Caja principal
-  const box = this.add
-    .rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x0f172a, 1)
-    .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
-    .setDepth(4001);
+    const box = this.add
+      .rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x0f172a, 1)
+      .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
+      .setDepth(4001);
 
-  const title = this.add
-    .text(W / 2, H / 2 - 70, "¡Terminaste!", {
-      fontFamily: "Arial",
-      fontSize: `${Math.round(38 * ts)}px`,
-      color: hc ? "#000000" : "#ffffff",
-    })
-    .setOrigin(0.5)
-    .setDepth(4002);
-
-  const sub = this.add
-    .text(
-      W / 2,
-      H / 2 - 18,
-      `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
-      {
+    const title = this.add
+      .text(W / 2, H / 2 - 70, "¡Terminaste!", {
         fontFamily: "Arial",
-        fontSize: `${Math.round(20 * ts)}px`,
-        color: hc ? "#000000" : "#cbd5e1",
-      }
-    )
-    .setOrigin(0.5)
-    .setDepth(4002);
+        fontSize: `${Math.round(38 * ts)}px`,
+        color: hc ? "#000000" : "#ffffff",
+      })
+      .setOrigin(0.5)
+      .setDepth(4002);
 
-  // ✅ Botones con depth alto para que NO queden detrás del panel
-  const btnAgain = makeTopLeftButton(
-    this,
-    "Jugar otra vez",
-    () => {
-      this.hideEndModal();
-      this.scene.restart({ roundsTotal: this.roundsTotal });
-    },
-    4003
-  );
+    const sub = this.add
+      .text(
+        W / 2,
+        H / 2 - 18,
+        `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
+        {
+          fontFamily: "Arial",
+          fontSize: `${Math.round(20 * ts)}px`,
+          color: hc ? "#000000" : "#cbd5e1",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(4002);
 
-  const btnExit = makeTopLeftButton(
-    this,
-    "Salir",
-    () => {
-      this.hideEndModal();
-      stopSpeech();
-      this._onFinish?.({
-        score: this.state.score,
-        moves: this.state.attempts,
-        durationMs,
-        game: "countPick",
-      });
-    },
-    4003
-  );
+    const btnAgain = makeTopLeftButton(
+      this,
+      "Jugar otra vez",
+      () => {
+        this.hideEndModal();
+        this.scene.restart({ roundsTotal: this.roundsTotal });
+      },
+      4003
+    );
 
-  // ✅ colores visibles
-  const btnAgainFill = hc ? 0x000000 : 0x2563eb;
-  const btnExitFill = hc ? 0x222222 : 0xdc2626;
-  const btnStrokeAlpha = 1;
-  const btnTextColor = "#ffffff";
-  const fontSize = Math.round(18 * ts);
+    const btnExit = makeTopLeftButton(
+      this,
+      "Salir",
+      () => {
+        this.hideEndModal();
+        stopSpeech();
+        this._onFinish?.({
+          score: this.state.score,
+          moves: this.state.attempts,
+          durationMs,
+          game: "countPick",
+        });
+      },
+      4003
+    );
 
-  btnAgain.setSize(210, 52);
-  btnAgain.setTheme({
-    fill: btnAgainFill,
-    strokeAlpha: btnStrokeAlpha,
-    textColor: btnTextColor,
-    fontSize,
-  });
+    const btnAgainFill = hc ? 0x000000 : 0x2563eb;
+    const btnExitFill = hc ? 0x222222 : 0xdc2626;
+    const btnStrokeAlpha = 1;
+    const btnTextColor = "#ffffff";
+    const fontSize = Math.round(18 * ts);
 
-  btnExit.setSize(170, 52);
-  btnExit.setTheme({
-    fill: btnExitFill,
-    strokeAlpha: btnStrokeAlpha,
-    textColor: btnTextColor,
-    fontSize,
-  });
+    btnAgain.setSize(210, 52);
+    btnAgain.setTheme({
+      fill: btnAgainFill,
+      strokeAlpha: btnStrokeAlpha,
+      textColor: btnTextColor,
+      fontSize,
+    });
 
-  this.endModal = {
-    overlay,
-    box,
-    title,
-    sub,
-    btnAgain,
-    btnExit,
-  };
+    btnExit.setSize(170, 52);
+    btnExit.setTheme({
+      fill: btnExitFill,
+      strokeAlpha: btnStrokeAlpha,
+      textColor: btnTextColor,
+      fontSize,
+    });
 
-  this.layoutEndModal();
+    this.endModal = {
+      overlay,
+      box,
+      title,
+      sub,
+      btnAgain,
+      btnExit,
+    };
 
-const btnFill = hc ? 0x000000 : 0x2563eb; // negro en HC, azul visible en normal
-const btnText = "#ffffff";
-const btnStrokeAlpha = 1;
-const fontSize = Math.round(18 * ts);
-
-btnAgain.setSize(210, 52);
-btnAgain.setTheme({
-  fill: btnFill,
-  strokeAlpha: btnStrokeAlpha,
-  textColor: btnText,
-  fontSize,
-});
-
-btnExit.setSize(170, 52);
-btnExit.setTheme({
-  fill: hc ? 0x000000 : 0xdc2626, // rojo visible
-  strokeAlpha: btnStrokeAlpha,
-  textColor: "#ffffff",
-  fontSize,
-});
+    this.layoutEndModal();
   }
 
   layoutEndModal() {
