@@ -27,71 +27,117 @@ enum AuditoryCondition {
   DEAF
 }
 
-model User {
-  id              Int      @id @default(autoincrement())
-  email           String   @unique
-  passwordHash    String
-  role            Role     @default(STUDENT)
-  createdAt       DateTime @default(now())
+enum ParentRelationType {
+  FATHER
+  MOTHER
+  TUTOR
+  OTHER
+}
 
-  firstName       String
-  lastNameP       String
-  lastNameM       String?
+enum GameType {
+  MEMORAMA
+  COUNT_PICK
+  LIGHTS_SEQUENCE
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(STUDENT)
+  createdAt    DateTime @default(now())
+
+  firstName String
+  lastNameP String
+  lastNameM String?
 
   createdById     Int?
-  createdBy       User?    @relation("TeacherStudents", fields: [createdById], references: [id])
-  studentsCreated User[]   @relation("TeacherStudents")
+  createdBy       User?  @relation("TeacherStudents", fields: [createdById], references: [id])
+  studentsCreated User[] @relation("TeacherStudents")
 
-  studentProfile  StudentProfile?
-  results         GameResult[]
+  groupId Int?
+  group   Group? @relation("GroupStudents", fields: [groupId], references: [id], onDelete: SetNull)
 
-  // si este usuario es alumno, aquí estarán sus padres vinculados
-  parentLinks     ParentStudent[] @relation("StudentLinks")
+  groupsOwned Group[] @relation("TeacherGroups")
 
-  // si este usuario es padre, aquí estarán sus hijos vinculados
-  childLinks      ParentStudent[] @relation("ParentLinks")
+  studentProfile StudentProfile?
+  results        GameResult[]
+
+  parentLinks ParentStudent[] @relation("StudentLinks")
+  childLinks  ParentStudent[] @relation("ParentLinks")
+
+  @@index([groupId])
+}
+
+model Group {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+
+  teacherId Int?
+  teacher   User? @relation("TeacherGroups", fields: [teacherId], references: [id], onDelete: SetNull)
+
+  students User[]       @relation("GroupStudents")
+  results  GameResult[]
+
+  @@unique([teacherId, name])
+  @@index([teacherId])
 }
 
 model ParentStudent {
-  id         Int      @id @default(autoincrement())
-  parentId   Int
-  studentId  Int
-  createdAt  DateTime @default(now())
+  id           Int                @id @default(autoincrement())
+  parentId     Int
+  studentId    Int
+  relationType ParentRelationType @default(OTHER)
+  createdAt    DateTime           @default(now())
 
-  parent     User     @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
-  student    User     @relation("StudentLinks", fields: [studentId], references: [id], onDelete: Cascade)
+  parent  User @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  student User @relation("StudentLinks", fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([parentId, studentId])
   @@index([parentId])
   @@index([studentId])
+  @@index([studentId, relationType])
 }
 
 model StudentProfile {
   id                  Int               @id @default(autoincrement())
-  userId               Int               @unique
-  visualCondition      VisualCondition   @default(NONE)
-  auditoryCondition    AuditoryCondition @default(NONE)
-  fontScale            Int               @default(100)
-  highContrast         Boolean           @default(false)
-  textToSpeechEnabled  Boolean           @default(false)
-  voiceInstructions    Boolean           @default(false)
-  captionsEnabled      Boolean           @default(true)
-  visualAlertsEnabled  Boolean           @default(true)
+  userId              Int               @unique
+  visualCondition     VisualCondition   @default(NONE)
+  auditoryCondition   AuditoryCondition @default(NONE)
+  fontScale           Int               @default(100)
+  highContrast        Boolean           @default(false)
+  textToSpeechEnabled Boolean           @default(false)
+  voiceInstructions   Boolean           @default(false)
+  captionsEnabled     Boolean           @default(true)
+  visualAlertsEnabled Boolean           @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model GameResult {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  game       String
-  score      Int
-  moves      Int
-  durationMs Int
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  groupId   Int?
+  gameType  GameType
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // métricas generales
+  score      Int?
+  durationMs Int?
+  moves      Int?
+  accuracy   Float?
+  attempts   Int?
+  level      String?
 
-  @@index([userId])
-  @@index([createdAt])
+  // datos extra por juego
+  metadata Json?
+
+  playedAt DateTime @default(now())
+
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group   Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([studentId, playedAt])
+  @@index([groupId, playedAt])
+  @@index([gameType, playedAt])
 }
