@@ -554,16 +554,29 @@ onWin() {
 
   const durationMs = Date.now() - this.state.startTime;
 
-  // Voz
-  this.say(`Ganaste. Tiempo ${Math.floor(durationMs / 1000)} segundos. Intentos ${this.state.attempts}`);
+  let level = "MEDIUM";
+  if (this.pairs === 4) level = "EASY";
+  if (this.pairs === 6) level = "MEDIUM";
+  if (this.pairs === 8) level = "HARD";
+
+  this.finalResult = {
+    game: "memorama",
+    score: this.state.matchedPairs,
+    moves: this.state.attempts,
+    durationMs,
+    level,
+    metadata: {
+      pairs: this.pairs,
+      matchedPairs: this.state.matchedPairs,
+    },
+  };
+
+  this.say(
+    `Ganaste. Tiempo ${Math.floor(durationMs / 1000)} segundos. Intentos ${this.state.attempts}`
+  );
   stopSpeech();
 
-  // ✅ Modal fin de juego
-  this.showEndModal({
-    durationMs,
-    moves: this.state.attempts,
-    score: this.state.matchedPairs,
-  });
+  this.showEndModal(this.finalResult);
 }
 
   showEndModal({ durationMs, moves, score }) {
