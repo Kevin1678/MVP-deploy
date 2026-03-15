@@ -13,6 +13,9 @@ import Protected from "./components/Protected";
 import GameCount from "./pages/GameCount";
 import GameLights from "./pages/GameLights";
 import Teacher from "./pages/Teacher";
+import TeacherDashboard from "./pages/TeacherDashboard";
+import TeacherStudents from "./pages/TeacherStudents";
+import TeacherParents from "./pages/TeacherParents";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -29,7 +32,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
 
-        {/* RUTA PARA PROFESORES */}
         <Route
           path="/teacher"
           element={
@@ -37,9 +39,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               <Teacher />
             </Protected>
           }
-        />
+        >
+          <Route index element={<TeacherDashboard />} />
+          <Route path="students" element={<TeacherStudents />} />
+          <Route path="parents" element={<TeacherParents />} />
+        </Route>
 
-        {/* MENU */}
         <Route
           path="/games"
           element={
@@ -49,7 +54,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
 
-        {/* MEMORAMA */}
         <Route
           path="/games/memorama"
           element={
@@ -59,7 +63,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
 
-        {/* CONTAR */}
         <Route
           path="/games/contar"
           element={
@@ -69,7 +72,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
 
-        {/* LUCES */}
         <Route
           path="/games/lights"
           element={
