@@ -1,6 +1,6 @@
 const express = require("express");
 const { z } = require("zod");
-const { PrismaClient, GameType } = require("@prisma/client");
+const { PrismaClient, GameType, Role } = require("@prisma/client");
 const { requireAuth } = require("../middleware/auth");
 
 const prisma = new PrismaClient();
@@ -11,11 +11,11 @@ const resultSchema = z.object({
   score: z.number().int().min(0),
   moves: z.number().int().min(0),
   durationMs: z.number().int().min(0),
+  level: z.string().max(50).optional(),
   accuracy: z.number().min(0).max(100).optional(),
   attempts: z.number().int().min(0).optional(),
-  level: z.string().max(100).optional(),
   metadata: z.any().optional(),
-  groupId: z.number().int().positive().optional().nullable()
+  groupId: z.number().int().positive().optional().nullable(),
 });
 
 function mapGameToGameType(game) {
@@ -37,11 +37,17 @@ router.post("/", requireAuth, async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({
       message: "Resultado inválido",
-      errors: parsed.error.flatten()
+      errors: parsed.error.flatten(),
     });
   }
 
   try {
+    if (req.user.role !== Role.STUDENT) {
+      return res.status(403).json({
+        message: "Solo los alumnos pueden registrar resultados",
+      });
+    }
+
     const data = parsed.data;
 
     const created = await prisma.gameResult.create({
@@ -52,11 +58,11 @@ router.post("/", requireAuth, async (req, res) => {
         score: data.score,
         moves: data.moves,
         durationMs: data.durationMs,
+        level: data.level ?? null,
         accuracy: data.accuracy ?? null,
         attempts: data.attempts ?? null,
-        level: data.level ?? null,
-        metadata: data.metadata ?? null
-      }
+        metadata: data.metadata ?? null,
+      },
     });
 
     res.status(201).json({ id: created.id });
