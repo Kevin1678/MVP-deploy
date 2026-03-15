@@ -1,7 +1,5 @@
 -- AlterTable
 ALTER TABLE `GameResult`
-    ADD COLUMN `accuracy` DOUBLE NULL,
-    ADD COLUMN `attempts` INTEGER NULL,
     ADD COLUMN `gameType` ENUM('MEMORAMA', 'COUNT_PICK', 'LIGHTS_SEQUENCE') NULL,
     ADD COLUMN `groupId` INTEGER NULL,
     ADD COLUMN `level` VARCHAR(191) NULL,
