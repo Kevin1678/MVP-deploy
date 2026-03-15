@@ -8,9 +8,6 @@
   - Added the required column `studentId` to the `GameResult` table without a default value. This is not possible if the table is not empty.
 */
 
--- DropIndex
-DROP INDEX `GameResult_createdAt_idx` ON `GameResult`;
-
 -- AlterTable
 ALTER TABLE `GameResult`
     DROP COLUMN `createdAt`,
