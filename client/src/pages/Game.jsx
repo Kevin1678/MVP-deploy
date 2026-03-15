@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { createMemoramaGame } from "../phaser/memorama";
-import { createCountPickGame } from "../phaser/countPick"; // <-- asegúrate que existe
+import { createCountPickGame } from "../phaser/countPick";
 
 export default function Game() {
   const navigate = useNavigate();
@@ -12,7 +12,6 @@ export default function Game() {
   useEffect(() => {
     doneRef.current = false;
 
-    // ✅ Selecciona qué juego montar según la URL
     const factory =
       location.pathname === "/games/memorama"
         ? createMemoramaGame
@@ -21,47 +20,72 @@ export default function Game() {
         : null;
 
     if (!factory) {
-      // ruta no soportada
       navigate("/games", { replace: true });
       return;
     }
 
     const destroy = factory(
       "phaser-root",
-      async ({ score, moves, durationMs, game }) => {
-        // game puede venir del juego (countPick), si no, usa el de la ruta
-        const gameName = game || (location.pathname === "/games/memorama" ? "memorama" : "countPick");
+      async ({ score, moves, durationMs, game, level, metadata, accuracy, attempts }) => {
+        const gameName =
+          game || (location.pathname === "/games/memorama" ? "memorama" : "countPick");
 
         if (doneRef.current) return;
         doneRef.current = true;
 
         try {
-          await fetch("/api/results", {
+          const res = await fetch("/api/results", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ game: gameName, score, moves, durationMs }),
+            body: JSON.stringify({
+              game: gameName,
+              score,
+              moves,
+              durationMs,
+              level,
+              metadata,
+              accuracy,
+              attempts,
+            }),
           });
-        } catch {
+
+          if (!res.ok) {
+            const text = await res.text();
+            console.error("Error al guardar resultado:", res.status, text);
+            alert(`No se pudo guardar el resultado. Error ${res.status}`);
+            doneRef.current = false;
+            return;
+          }
+        } catch (err) {
+          console.error("Error de conexión al guardar el resultado:", err);
           alert("Error de conexión al guardar el resultado.");
-        } finally {
-          // Limpia voz y vuelve al menú
-          try { window.speechSynthesis?.cancel(); } catch {}
-          navigate("/games", { replace: true });
+          doneRef.current = false;
+          return;
         }
+
+        try {
+          window.speechSynthesis?.cancel();
+        } catch {}
+
+        navigate("/games", { replace: true });
       },
       () => {
-        // onExit
         if (doneRef.current) return;
         doneRef.current = true;
-        try { window.speechSynthesis?.cancel(); } catch {}
+        try {
+          window.speechSynthesis?.cancel();
+        } catch {}
         navigate("/games", { replace: true });
       }
     );
 
-    // ✅ cleanup correcto
     return () => {
-      try { window.speechSynthesis?.cancel(); } catch {}
-      try { destroy?.(); } catch {}
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {}
+      try {
+        destroy?.();
+      } catch {}
     };
   }, [location.pathname, navigate]);
 
