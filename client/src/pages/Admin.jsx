@@ -4,10 +4,14 @@ import "../admin.css";
 
 function splitByRole(users) {
   return {
-    STUDENT: users.filter(u => u.role === "STUDENT"),
-    TEACHER: users.filter(u => u.role === "TEACHER"),
-    PARENT: users.filter(u => u.role === "PARENT"),
+    STUDENT: users.filter((u) => u.role === "STUDENT"),
+    TEACHER: users.filter((u) => u.role === "TEACHER"),
+    PARENT: users.filter((u) => u.role === "PARENT")
   };
+}
+
+function fullName(user) {
+  return [user.firstName, user.lastNameP, user.lastNameM].filter(Boolean).join(" ");
 }
 
 export default function Admin() {
@@ -19,7 +23,7 @@ export default function Admin() {
     lastNameM: "",
     email: "",
     password: "",
-    role: "TEACHER",
+    role: "TEACHER"
   });
 
   const [msg, setMsg] = useState("");
@@ -62,7 +66,7 @@ export default function Admin() {
       }
 
       setMsg("✅ Usuario creado");
-      setForm(f => ({ ...f, email: "", password: "" }));
+      setForm((f) => ({ ...f, email: "", password: "" }));
       await loadUsers();
     } finally {
       setCreating(false);
@@ -74,7 +78,9 @@ export default function Admin() {
     nav("/", { replace: true });
   }
 
-  useEffect(() => { loadUsers(); }, []);
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const grouped = useMemo(() => splitByRole(users), [users]);
 
@@ -82,11 +88,12 @@ export default function Admin() {
     <div className="adminWrap">
       <div className="adminTop">
         <h2 style={{ margin: 0 }}>Panel Admin</h2>
-        <button className="btn" onClick={logout}>Cerrar sesión</button>
+        <button className="btn" onClick={logout}>
+          Cerrar sesión
+        </button>
       </div>
 
       <div className="adminGrid">
-        {/* FORM */}
         <div className="adminCard">
           <h3>Registrar usuario</h3>
           <p className="muted" style={{ marginTop: 0 }}>
@@ -98,7 +105,7 @@ export default function Admin() {
               <label>Nombre(s)</label>
               <input
                 value={form.firstName}
-                onChange={e => setForm({ ...form, firstName: e.target.value })}
+                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
               />
             </div>
 
@@ -106,7 +113,7 @@ export default function Admin() {
               <label>Apellido paterno</label>
               <input
                 value={form.lastNameP}
-                onChange={e => setForm({ ...form, lastNameP: e.target.value })}
+                onChange={(e) => setForm({ ...form, lastNameP: e.target.value })}
               />
             </div>
 
@@ -114,7 +121,7 @@ export default function Admin() {
               <label>Apellido materno</label>
               <input
                 value={form.lastNameM}
-                onChange={e => setForm({ ...form, lastNameM: e.target.value })}
+                onChange={(e) => setForm({ ...form, lastNameM: e.target.value })}
               />
             </div>
 
@@ -122,7 +129,7 @@ export default function Admin() {
               <label>Correo</label>
               <input
                 value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </div>
 
@@ -131,7 +138,7 @@ export default function Admin() {
               <input
                 type="password"
                 value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
             </div>
 
@@ -139,7 +146,7 @@ export default function Admin() {
               <label>Rol</label>
               <select
                 value={form.role}
-                onChange={e => setForm({ ...form, role: e.target.value })}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
               >
                 <option value="TEACHER">MAESTRO</option>
                 <option value="PARENT">PADRE</option>
@@ -154,7 +161,6 @@ export default function Admin() {
           </form>
         </div>
 
-        {/* TABLES */}
         <div className="adminCard">
           <div className="tableHeader">
             <h3 style={{ margin: 0 }}>Usuarios registrados</h3>
@@ -163,19 +169,26 @@ export default function Admin() {
             </button>
           </div>
 
-          <UserSection title="Alumnos" users={grouped.STUDENT} />
-          <UserSection title="Maestros" users={grouped.TEACHER} />
-          <UserSection title="Padres" users={grouped.PARENT} />
+          <UserSection title="Alumnos" role="STUDENT" users={grouped.STUDENT} />
+          <UserSection title="Maestros" role="TEACHER" users={grouped.TEACHER} />
+          <UserSection title="Padres" role="PARENT" users={grouped.PARENT} />
         </div>
       </div>
     </div>
   );
 }
 
-function UserSection({ title, users }) {
+function UserSection({ title, role, users }) {
+  const isStudent = role === "STUDENT";
+  const isParent = role === "PARENT";
+
+  const colSpan = isStudent ? 6 : isParent ? 5 : 4;
+
   return (
     <div style={{ marginTop: 14 }}>
-      <h4 style={{ marginBottom: 8 }}>{title} ({users.length})</h4>
+      <h4 style={{ marginBottom: 8 }}>
+        {title} ({users.length})
+      </h4>
 
       <div className="tableWrap">
         <table className="table">
@@ -183,22 +196,46 @@ function UserSection({ title, users }) {
             <tr>
               <th>ID</th>
               <th>Nombre</th>
+
+              {isStudent && (
+                <>
+                  <th>Padre</th>
+                  <th>Madre</th>
+                </>
+              )}
+
+              {isParent && <th>Alumnos / hijos</th>}
+
               <th>Email</th>
               <th>Rol</th>
             </tr>
           </thead>
+
           <tbody>
-            {users.map(u => (
+            {users.map((u) => (
               <tr key={u.id}>
                 <td>{u.id}</td>
-                <td>{u.firstName} {u.lastNameP} {u.lastNameM || ""}</td>
+                <td>{fullName(u)}</td>
+
+                {isStudent && (
+                  <>
+                    <td>{u.fatherName || "—"}</td>
+                    <td>{u.motherName || "—"}</td>
+                  </>
+                )}
+
+                {isParent && <td>{u.childrenText || "—"}</td>}
+
                 <td>{u.email}</td>
                 <td>{u.role}</td>
               </tr>
             ))}
+
             {users.length === 0 && (
               <tr>
-                <td colSpan={4} className="emptyRow">Sin registros</td>
+                <td colSpan={colSpan} className="emptyRow">
+                  Sin registros
+                </td>
               </tr>
             )}
           </tbody>
