@@ -8,9 +8,6 @@
   - Added the required column `studentId` to the `GameResult` table without a default value. This is not possible if the table is not empty.
 */
 
--- DropForeignKey
-ALTER TABLE `GameResult` DROP FOREIGN KEY `GameResult_userId_fkey`;
-
 -- DropIndex
 DROP INDEX `GameResult_createdAt_idx` ON `GameResult`;
 
