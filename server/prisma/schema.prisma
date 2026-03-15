@@ -67,6 +67,7 @@ model User {
   childLinks  ParentStudent[] @relation("ParentLinks")
 
   @@index([groupId])
+  @@map("user")
 }
 
 model Group {
@@ -82,6 +83,7 @@ model Group {
 
   @@unique([teacherId, name])
   @@index([teacherId])
+  @@map("group")
 }
 
 model ParentStudent {
@@ -98,6 +100,7 @@ model ParentStudent {
   @@index([parentId])
   @@index([studentId])
   @@index([studentId, relationType])
+  @@map("parentstudent")
 }
 
 model StudentProfile {
@@ -113,6 +116,8 @@ model StudentProfile {
   visualAlertsEnabled Boolean           @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("studentprofile")
 }
 
 model GameResult {
@@ -121,7 +126,6 @@ model GameResult {
   groupId   Int?
   gameType  GameType
 
-  // métricas generales
   score      Int?
   durationMs Int?
   moves      Int?
@@ -129,7 +133,6 @@ model GameResult {
   attempts   Int?
   level      String?
 
-  // datos extra por juego
   metadata Json?
 
   playedAt DateTime @default(now())
@@ -140,4 +143,5 @@ model GameResult {
   @@index([studentId, playedAt])
   @@index([groupId, playedAt])
   @@index([gameType, playedAt])
+  @@map("gameresult")
 }
