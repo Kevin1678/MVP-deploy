@@ -1,26 +1,13 @@
-/*
-  Warnings:
-
-  - You are about to drop the column `createdAt` on the `GameResult` table. All the data in the column will be lost.
-  - You are about to drop the column `game` on the `GameResult` table. All the data in the column will be lost.
-  - You are about to drop the column `userId` on the `GameResult` table. All the data in the column will be lost.
-  - Added the required column `gameType` to the `GameResult` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `studentId` to the `GameResult` table without a default value. This is not possible if the table is not empty.
-*/
-
 -- AlterTable
 ALTER TABLE `GameResult`
-    DROP COLUMN `createdAt`,
-    DROP COLUMN `game`,
-    DROP COLUMN `userId`,
     ADD COLUMN `accuracy` DOUBLE NULL,
     ADD COLUMN `attempts` INTEGER NULL,
-    ADD COLUMN `gameType` ENUM('MEMORAMA', 'COUNT_PICK', 'LIGHTS_SEQUENCE') NOT NULL,
+    ADD COLUMN `gameType` ENUM('MEMORAMA', 'COUNT_PICK', 'LIGHTS_SEQUENCE') NULL,
     ADD COLUMN `groupId` INTEGER NULL,
     ADD COLUMN `level` VARCHAR(191) NULL,
     ADD COLUMN `metadata` JSON NULL,
     ADD COLUMN `playedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    ADD COLUMN `studentId` INTEGER NOT NULL,
+    ADD COLUMN `studentId` INTEGER NULL,
     MODIFY `score` INTEGER NULL,
     MODIFY `moves` INTEGER NULL,
     MODIFY `durationMs` INTEGER NULL;
@@ -88,12 +75,6 @@ ALTER TABLE `ParentStudent`
 -- AddForeignKey
 ALTER TABLE `ParentStudent`
     ADD CONSTRAINT `ParentStudent_studentId_fkey`
-    FOREIGN KEY (`studentId`) REFERENCES `User`(`id`)
-    ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `GameResult`
-    ADD CONSTRAINT `GameResult_studentId_fkey`
     FOREIGN KEY (`studentId`) REFERENCES `User`(`id`)
     ON DELETE CASCADE ON UPDATE CASCADE;
 
