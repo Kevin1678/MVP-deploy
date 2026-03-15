@@ -1,21 +1,22 @@
 /*
   Warnings:
 
-  - You are about to drop the column `createdAt` on the `gameresult` table. All the data in the column will be lost.
-  - You are about to drop the column `game` on the `gameresult` table. All the data in the column will be lost.
-  - You are about to drop the column `userId` on the `gameresult` table. All the data in the column will be lost.
+  - You are about to drop the column `createdAt` on the `GameResult` table. All the data in the column will be lost.
+  - You are about to drop the column `game` on the `GameResult` table. All the data in the column will be lost.
+  - You are about to drop the column `userId` on the `GameResult` table. All the data in the column will be lost.
   - Added the required column `gameType` to the `GameResult` table without a default value. This is not possible if the table is not empty.
   - Added the required column `studentId` to the `GameResult` table without a default value. This is not possible if the table is not empty.
-
 */
+
 -- DropForeignKey
-ALTER TABLE `gameresult` DROP FOREIGN KEY `GameResult_userId_fkey`;
+ALTER TABLE `GameResult` DROP FOREIGN KEY `GameResult_userId_fkey`;
 
 -- DropIndex
-DROP INDEX `GameResult_createdAt_idx` ON `gameresult`;
+DROP INDEX `GameResult_createdAt_idx` ON `GameResult`;
 
 -- AlterTable
-ALTER TABLE `gameresult` DROP COLUMN `createdAt`,
+ALTER TABLE `GameResult`
+    DROP COLUMN `createdAt`,
     DROP COLUMN `game`,
     DROP COLUMN `userId`,
     ADD COLUMN `accuracy` DOUBLE NULL,
@@ -31,7 +32,8 @@ ALTER TABLE `gameresult` DROP COLUMN `createdAt`,
     MODIFY `durationMs` INTEGER NULL;
 
 -- AlterTable
-ALTER TABLE `user` ADD COLUMN `groupId` INTEGER NULL;
+ALTER TABLE `User`
+    ADD COLUMN `groupId` INTEGER NULL;
 
 -- CreateTable
 CREATE TABLE `Group` (
@@ -72,19 +74,37 @@ CREATE INDEX `GameResult_gameType_playedAt_idx` ON `GameResult`(`gameType`, `pla
 CREATE INDEX `User_groupId_idx` ON `User`(`groupId`);
 
 -- AddForeignKey
-ALTER TABLE `User` ADD CONSTRAINT `User_groupId_fkey` FOREIGN KEY (`groupId`) REFERENCES `Group`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `User`
+    ADD CONSTRAINT `User_groupId_fkey`
+    FOREIGN KEY (`groupId`) REFERENCES `Group`(`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `Group` ADD CONSTRAINT `Group_teacherId_fkey` FOREIGN KEY (`teacherId`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `Group`
+    ADD CONSTRAINT `Group_teacherId_fkey`
+    FOREIGN KEY (`teacherId`) REFERENCES `User`(`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `ParentStudent` ADD CONSTRAINT `ParentStudent_parentId_fkey` FOREIGN KEY (`parentId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `ParentStudent`
+    ADD CONSTRAINT `ParentStudent_parentId_fkey`
+    FOREIGN KEY (`parentId`) REFERENCES `User`(`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `ParentStudent` ADD CONSTRAINT `ParentStudent_studentId_fkey` FOREIGN KEY (`studentId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `ParentStudent`
+    ADD CONSTRAINT `ParentStudent_studentId_fkey`
+    FOREIGN KEY (`studentId`) REFERENCES `User`(`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `GameResult` ADD CONSTRAINT `GameResult_studentId_fkey` FOREIGN KEY (`studentId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `GameResult`
+    ADD CONSTRAINT `GameResult_studentId_fkey`
+    FOREIGN KEY (`studentId`) REFERENCES `User`(`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `GameResult` ADD CONSTRAINT `GameResult_groupId_fkey` FOREIGN KEY (`groupId`) REFERENCES `Group`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `GameResult`
+    ADD CONSTRAINT `GameResult_groupId_fkey`
+    FOREIGN KEY (`groupId`) REFERENCES `Group`(`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE;
