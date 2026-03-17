@@ -557,7 +557,7 @@ createCard(idx, value) {
   }
 }
 
-onWin() {
+ onWin() {
   this.state.locked = true;
   this.cards.forEach((c) => c.hit.disableInteractive());
 
@@ -574,9 +574,12 @@ onWin() {
     moves: this.state.attempts,
     durationMs,
     level,
+    accuracy: this.state.matchedPairs, // número de aciertos
+    attempts: this.state.attempts,     // intentos de pareja
     metadata: {
       pairs: this.pairs,
       matchedPairs: this.state.matchedPairs,
+      flips: this.state.flips,         // volteos individuales
     },
   };
 
@@ -585,8 +588,12 @@ onWin() {
   );
   stopSpeech();
 
+  // guardar inmediatamente al ganar
+  this._onFinish?.(this.finalResult);
+
+  // mostrar modal ya solo visual
   this.showEndModal(this.finalResult);
-}
+} 
 
 showEndModal({ durationMs, moves, score }) {
   if (this.endModal) return;
