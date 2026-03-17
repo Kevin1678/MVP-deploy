@@ -595,7 +595,7 @@ createCard(idx, value) {
   this.showEndModal(this.finalResult);
 } 
 
-showEndModal({ durationMs, moves, score }) {
+showEndModal({ durationMs, moves }) {
   if (this.endModal) return;
 
   const W = this.scale.width;
@@ -677,7 +677,7 @@ showEndModal({ durationMs, moves, score }) {
 
   const btnExit = makeModalBtn(W / 2 + 130, H / 2 + 70, "Salir", () => {
     this.hideEndModal();
-    this._onFinish?.(this.finalResult);
+    this._onExit?.();
   });
 
   this.endModal = { overlay, box, t1, t2, btnAgain, btnExit };
