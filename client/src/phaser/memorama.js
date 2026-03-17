@@ -513,47 +513,49 @@ createCard(idx, value) {
   }
 
   onCardClick(card) {
-    if (this.state.locked || card.matched || card.flipped) return;
+  if (this.state.locked || card.matched || card.flipped) return;
 
-    this.setCardVisual(card, true);
-    this.say(`Figura ${card.value}`);
+  this.state.flips += 1;
 
-    if (!this.state.first) {
-      this.state.first = card;
-      return;
-    }
+  this.setCardVisual(card, true);
+  this.say(`Figura ${card.value}`);
 
-    this.state.locked = true;
-    this.state.attempts += 1;
-    this.attemptsText.setText(`Intentos: ${this.state.attempts}`);
-
-    const a = this.state.first;
-    const b = card;
-
-    if (a.value === b.value) {
-      this.time.delayedCall(250, () => {
-        a.matched = true;
-        b.matched = true;
-        this.setCardVisual(a, true);
-        this.setCardVisual(b, true);
-
-        this.say("Correcto");
-        this.state.matchedPairs += 1;
-        this.state.first = null;
-        this.state.locked = false;
-
-        if (this.state.matchedPairs === this.pairs) this.onWin();
-      });
-    } else {
-      this.time.delayedCall(650, () => {
-        this.say("Incorrecto");
-        this.setCardVisual(a, false);
-        this.setCardVisual(b, false);
-        this.state.first = null;
-        this.state.locked = false;
-      });
-    }
+  if (!this.state.first) {
+    this.state.first = card;
+    return;
   }
+
+  this.state.locked = true;
+  this.state.attempts += 1;
+  this.attemptsText.setText(`Intentos: ${this.state.attempts}`);
+
+  const a = this.state.first;
+  const b = card;
+
+  if (a.value === b.value) {
+    this.time.delayedCall(250, () => {
+      a.matched = true;
+      b.matched = true;
+      this.setCardVisual(a, true);
+      this.setCardVisual(b, true);
+
+      this.say("Correcto");
+      this.state.matchedPairs += 1;
+      this.state.first = null;
+      this.state.locked = false;
+
+      if (this.state.matchedPairs === this.pairs) this.onWin();
+    });
+  } else {
+    this.time.delayedCall(650, () => {
+      this.say("Incorrecto");
+      this.setCardVisual(a, false);
+      this.setCardVisual(b, false);
+      this.state.first = null;
+      this.state.locked = false;
+    });
+  }
+}
 
 onWin() {
   this.state.locked = true;
