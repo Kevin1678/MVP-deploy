@@ -12,10 +12,9 @@ const resultSchema = z.object({
   moves: z.number().int().min(0),
   durationMs: z.number().int().min(0),
   level: z.string().max(50).optional(),
-  accuracy: z.number().min(0).max(100).optional(),
+  accuracy: z.number().int().min(0).optional(),
   attempts: z.number().int().min(0).optional(),
   metadata: z.any().optional(),
-  groupId: z.number().int().positive().optional().nullable(),
 });
 
 function mapGameToGameType(game) {
@@ -50,10 +49,19 @@ router.post("/", requireAuth, async (req, res) => {
 
     const data = parsed.data;
 
+    const student = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, groupId: true },
+    });
+
+    if (!student) {
+      return res.status(404).json({ message: "Alumno no encontrado" });
+    }
+
     const created = await prisma.gameResult.create({
       data: {
-        studentId: req.user.id,
-        groupId: data.groupId ?? null,
+        studentId: student.id,
+        groupId: student.groupId ?? null,
         gameType: mapGameToGameType(data.game),
         score: data.score,
         moves: data.moves,
