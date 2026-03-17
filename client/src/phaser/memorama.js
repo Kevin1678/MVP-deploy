@@ -228,7 +228,14 @@ class MemoryScene extends Phaser.Scene {
 
   init(data) {
     this.pairs = data?.pairs ?? 8;
-    this.state = { first: null, locked: false, attempts: 0, matchedPairs: 0, startTime: Date.now() };
+    this.state = {
+  first: null,
+  locked: false,
+  attempts: 0,      // intentos de pareja
+  flips: 0,         // volteos individuales
+  matchedPairs: 0,  // aciertos
+  startTime: Date.now(),
+};
     this.a11y = this.a11y || {};
     this.focusIndex = 0;
   }
