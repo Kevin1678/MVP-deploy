@@ -627,20 +627,20 @@ this.state = {
     }
   }
 
-  successFeedback() {
-    this.state.locked = true;
-    this.state.score += 1;
-    speakIfEnabled(this, "Correcto");
-    this.showOverlayIcon(true);
+successFeedback() {
+  this.state.locked = true;
+  this.state.score += 1;
+  speakIfEnabled(this, "Correcto");
+  this.showOverlayIcon(true);
 
-    this.time.delayedCall(900, () => {
-      if (this.state.round >= this.roundsTotal) {
-        this.showEndModal();
-      } else {
-        this.nextRound();
-      }
-    });
-  }
+  this.time.delayedCall(900, () => {
+    if (this.state.round >= this.roundsTotal) {
+      this.finishGame();
+    } else {
+      this.nextRound();
+    }
+  });
+}
 
   failFeedback() {
     this.state.locked = true;
