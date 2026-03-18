@@ -11,38 +11,56 @@ export default function GameCount() {
 
     const destroy = createCountPickGame(
       "phaser-root",
-      async ({ score = 0, moves = 0, durationMs = 0, game = "countPick" }) => {
-  if (doneRef.current) return;
-  doneRef.current = true;
+      async ({
+        score = 0,
+        moves = 0,
+        durationMs = 0,
+        game = "countPick",
+        level,
+        accuracy,
+        attempts,
+        metadata,
+      }) => {
+        if (doneRef.current) return;
+        doneRef.current = true;
 
-  try {
-    const res = await fetch("/api/results", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        game,
-        score,
-        moves,
-        durationMs,
-      }),
-    });
+        try {
+          const res = await fetch("/api/results", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              game,
+              score,
+              moves,
+              durationMs,
+              level,
+              accuracy,
+              attempts,
+              metadata,
+            }),
+          });
 
-    const data = await res.json().catch(() => null);
+          const data = await res.json().catch(() => null);
 
-    if (!res.ok) {
-      console.error("Error guardando resultado:", data);
-      alert(data?.message || "No se pudo guardar el resultado.");
-    }
-  } catch (err) {
-    console.error("Error de conexión:", err);
-    alert("Error de conexión al guardar el resultado.");
-  } finally {
-    try {
-      window.speechSynthesis?.cancel();
-    } catch {}
-    navigate("/games", { replace: true });
-  }
-},
+          if (!res.ok) {
+            console.error("Error guardando resultado:", data);
+            alert(data?.message || "No se pudo guardar el resultado.");
+            doneRef.current = false;
+            return;
+          }
+        } catch (err) {
+          console.error("Error de conexión:", err);
+          alert("Error de conexión al guardar el resultado.");
+          doneRef.current = false;
+          return;
+        }
+
+        try {
+          window.speechSynthesis?.cancel();
+        } catch {}
+
+        navigate("/games", { replace: true });
+      },
       () => {
         if (doneRef.current) return;
         doneRef.current = true;
