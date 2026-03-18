@@ -11,7 +11,16 @@ export default function GameLights() {
 
     const destroy = createLightsSequenceGame(
       "phaser-root",
-      async ({ score = 0, moves = 0, durationMs = 0, game = "lights-sequence" }) => {
+      async ({
+        score = 0,
+        moves = 0,
+        durationMs = 0,
+        game = "lights-sequence",
+        level,
+        accuracy,
+        attempts,
+        metadata,
+      }) => {
         if (doneRef.current) return;
         doneRef.current = true;
 
@@ -24,6 +33,10 @@ export default function GameLights() {
               score,
               moves,
               durationMs,
+              level,
+              accuracy,
+              attempts,
+              metadata,
             }),
           });
 
@@ -32,16 +45,21 @@ export default function GameLights() {
           if (!res.ok) {
             console.error("Error guardando resultado:", data);
             alert(data?.message || "No se pudo guardar el resultado.");
+            doneRef.current = false;
+            return;
           }
         } catch (err) {
           console.error("Error de conexión:", err);
           alert("Error de conexión al guardar el resultado.");
-        } finally {
-          try {
-            window.speechSynthesis?.cancel();
-          } catch {}
-          navigate("/games", { replace: true });
+          doneRef.current = false;
+          return;
         }
+
+        try {
+          window.speechSynthesis?.cancel();
+        } catch {}
+
+        navigate("/games", { replace: true });
       },
       () => {
         if (doneRef.current) return;
