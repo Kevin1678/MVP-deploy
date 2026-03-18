@@ -294,14 +294,15 @@ class CountPickGameScene extends Phaser.Scene {
   }
 
   create() {
-    this.state = {
-      startTime: Date.now(),
-      round: 0,
-      score: 0,
-      attempts: 0,
-      target: 0,
-      locked: false,
-    };
+this.state = {
+  startTime: Date.now(),
+  round: 0,
+  score: 0,          // aciertos
+  attempts: 0,       // respuestas dadas
+  wrongAnswers: 0,   // errores
+  target: 0,
+  locked: false,
+};
 
     this.ballParts = [];
     this.choiceButtons = [];
