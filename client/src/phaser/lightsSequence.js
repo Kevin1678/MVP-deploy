@@ -642,25 +642,26 @@ successFeedback() {
   });
 }
 
-  failFeedback() {
-    this.state.locked = true;
-    speakIfEnabled(this, "Incorrecto");
-    this.showOverlayIcon(false);
+failFeedback() {
+  this.state.locked = true;
+  this.state.wrongRounds += 1;
+  speakIfEnabled(this, "Incorrecto");
+  this.showOverlayIcon(false);
 
-    this.tweens.add({
-      targets: [this.title, this.sub, this.stats],
-      x: "+=8",
-      yoyo: true,
-      repeat: 3,
-      duration: 60,
-    });
+  this.tweens.add({
+    targets: [this.title, this.sub, this.stats],
+    x: "+=8",
+    yoyo: true,
+    repeat: 3,
+    duration: 60,
+  });
 
-    this.time.delayedCall(1000, () => {
-      this.state.inputIndex = 0;
-      speakIfEnabled(this, "Mira otra vez.");
-      this.playSequence();
-    });
-  }
+  this.time.delayedCall(1000, () => {
+    this.state.inputIndex = 0;
+    speakIfEnabled(this, "Mira otra vez.");
+    this.playSequence();
+  });
+}
 
   showOverlayIcon(ok) {
     const W = this.scale.width;
