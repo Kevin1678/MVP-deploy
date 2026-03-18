@@ -598,34 +598,35 @@ this.state = {
     });
   }
 
-  pickAnswer(value) {
-    if (this.state.locked) return;
-    this.state.locked = true;
-    this.state.attempts += 1;
+pickAnswer(value) {
+  if (this.state.locked) return;
+  this.state.locked = true;
+  this.state.attempts += 1;
 
-    const ok = value === this.state.target;
+  const ok = value === this.state.target;
 
-    if (ok) {
-      this.state.score += 1;
-      this.animateCorrect();
-      speakIfEnabled(this, "Correcto");
-    } else {
-      this.animateWrong();
-      speakIfEnabled(this, `Incorrecto. Eran ${this.state.target}`);
-    }
-
-    this.stats.setText(
-      `Puntos: ${this.state.score} • Intentos: ${this.state.attempts} • Ronda: ${this.state.round}/${this.roundsTotal}`
-    );
-
-    this.time.delayedCall(1200, () => {
-      if (this.state.round >= this.roundsTotal) {
-        this.showEndModal();
-      } else {
-        this.nextRound();
-      }
-    });
+  if (ok) {
+    this.state.score += 1;
+    this.animateCorrect();
+    speakIfEnabled(this, "Correcto");
+  } else {
+    this.state.wrongAnswers += 1;
+    this.animateWrong();
+    speakIfEnabled(this, `Incorrecto. Eran ${this.state.target}`);
   }
+
+  this.stats.setText(
+    `Puntos: ${this.state.score} • Intentos: ${this.state.attempts} • Ronda: ${this.state.round}/${this.roundsTotal}`
+  );
+
+  this.time.delayedCall(1200, () => {
+    if (this.state.round >= this.roundsTotal) {
+      this.finishGame();
+    } else {
+      this.nextRound();
+    }
+  });
+}
 
   showEndModal() {
     if (this.endModal) return;
