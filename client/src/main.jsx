@@ -16,6 +16,9 @@ import Teacher from "./pages/Teacher";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherStudents from "./pages/TeacherStudents";
 import TeacherParents from "./pages/TeacherParents";
+import Parent from "./pages/Parent";
+import ParentDashboard from "./pages/ParentDashboard";
+import ParentChildren from "./pages/ParentChildren";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -46,9 +49,21 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         </Route>
 
         <Route
+          path="/parent"
+          element={
+            <Protected role="PARENT">
+              <Parent />
+            </Protected>
+          }
+        >
+          <Route index element={<ParentDashboard />} />
+          <Route path="children" element={<ParentChildren />} />
+        </Route>
+
+        <Route
           path="/games"
           element={
-            <Protected>
+            <Protected role="STUDENT">
               <GamesMenu />
             </Protected>
           }
@@ -57,7 +72,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route
           path="/games/memorama"
           element={
-            <Protected>
+            <Protected role="STUDENT">
               <Game />
             </Protected>
           }
@@ -66,7 +81,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route
           path="/games/contar"
           element={
-            <Protected>
+            <Protected role="STUDENT">
               <GameCount />
             </Protected>
           }
@@ -75,7 +90,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route
           path="/games/lights"
           element={
-            <Protected>
+            <Protected role="STUDENT">
               <GameLights />
             </Protected>
           }
