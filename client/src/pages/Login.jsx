@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const LS_THEME = "pref_theme";     // "soft" | "high"
-const LS_TEXT = "pref_text_size";  // "normal" | "large"
+const LS_THEME = "pref_theme";
+const LS_TEXT = "pref_text_size";
 
 export default function Login() {
   const nav = useNavigate();
 
-  // Cargar preferencias (defaults: soft + normal)
   const initialTheme = useMemo(() => localStorage.getItem(LS_THEME) || "soft", []);
   const initialText = useMemo(() => localStorage.getItem(LS_TEXT) || "normal", []);
 
-  const [theme, setTheme] = useState(initialTheme); // "soft" | "high"
-  const [textSize, setTextSize] = useState(initialText); // "normal" | "large"
+  const [theme, setTheme] = useState(initialTheme);
+  const [textSize, setTextSize] = useState(initialText);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +19,6 @@ export default function Login() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Aplicar clases al body + persistir
   useEffect(() => {
     document.body.classList.toggle("theme-high", theme === "high");
     localStorage.setItem(LS_THEME, theme);
@@ -59,7 +57,7 @@ export default function Login() {
       } else if (me.role === "TEACHER") {
         nav("/teacher", { replace: true });
       } else if (me.role === "PARENT") {
-        nav("/games", { replace: true });
+        nav("/parent", { replace: true });
       } else if (me.role === "STUDENT") {
         nav("/games", { replace: true });
       } else {
@@ -86,11 +84,18 @@ export default function Login() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              justifyContent: "flex-end"
+            }}
+          >
             <button
               type="button"
               className="chip"
-              onClick={() => setTextSize(v => (v === "large" ? "normal" : "large"))}
+              onClick={() => setTextSize((v) => (v === "large" ? "normal" : "large"))}
               aria-pressed={textSize === "large"}
               title="Cambiar tamaño de texto"
             >
@@ -100,7 +105,7 @@ export default function Login() {
             <button
               type="button"
               className="chip"
-              onClick={() => setTheme(v => (v === "high" ? "soft" : "high"))}
+              onClick={() => setTheme((v) => (v === "high" ? "soft" : "high"))}
               aria-pressed={theme === "high"}
               title="Cambiar contraste"
             >
@@ -136,7 +141,7 @@ export default function Login() {
               <button
                 type="button"
                 className="iconBtn"
-                onClick={() => setShowPass(v => !v)}
+                onClick={() => setShowPass((v) => !v)}
                 aria-pressed={showPass}
                 aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
                 title={showPass ? "Ocultar" : "Mostrar"}
@@ -152,7 +157,11 @@ export default function Login() {
             </button>
           </div>
 
-          {err && <div className="error" role="alert">{err}</div>}
+          {err && (
+            <div className="error" role="alert">
+              {err}
+            </div>
+          )}
         </form>
       </div>
     </div>
