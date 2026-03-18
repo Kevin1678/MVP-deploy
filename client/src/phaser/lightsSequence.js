@@ -727,90 +727,85 @@ failFeedback() {
   this.showEndModal();
 }
   
-  showEndModal() {
-    if (this.endModal) return;
+showEndModal() {
+  if (this.endModal) return;
 
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
-    const durationMs = Date.now() - this.state.startTime;
+  const W = this.scale.width;
+  const H = this.scale.height;
+  const hc = !!this.a11y.highContrast;
+  const ts = this.a11y.textScale || 1;
+  const durationMs = Date.now() - this.state.startTime;
 
-    const overlay = this.add.rectangle(0, 0, W, H, 0x000000, 0.55)
-      .setOrigin(0)
-      .setDepth(4000);
+  const overlay = this.add.rectangle(0, 0, W, H, 0x000000, 0.55)
+    .setOrigin(0)
+    .setDepth(4000);
 
-    const box = this.add.rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x0f172a, 1)
-      .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
-      .setDepth(4001);
+  const box = this.add.rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x0f172a, 1)
+    .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
+    .setDepth(4001);
 
-    const title = this.add.text(W / 2, H / 2 - 70, "¡Terminaste!", {
+  const title = this.add.text(W / 2, H / 2 - 70, "¡Terminaste!", {
+    fontFamily: "Arial",
+    fontSize: `${Math.round(38 * ts)}px`,
+    color: hc ? "#000000" : "#ffffff",
+  }).setOrigin(0.5).setDepth(4002);
+
+  const sub = this.add.text(
+    W / 2,
+    H / 2 - 18,
+    `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
+    {
       fontFamily: "Arial",
-      fontSize: `${Math.round(38 * ts)}px`,
-      color: hc ? "#000000" : "#ffffff",
-    }).setOrigin(0.5).setDepth(4002);
+      fontSize: `${Math.round(20 * ts)}px`,
+      color: hc ? "#000000" : "#cbd5e1",
+    }
+  ).setOrigin(0.5).setDepth(4002);
 
-    const sub = this.add.text(
-      W / 2,
-      H / 2 - 18,
-      `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
-      {
-        fontFamily: "Arial",
-        fontSize: `${Math.round(20 * ts)}px`,
-        color: hc ? "#000000" : "#cbd5e1",
-      }
-    ).setOrigin(0.5).setDepth(4002);
+  const btnAgain = makeTopLeftButton(
+    this,
+    "Jugar otra vez",
+    () => {
+      this.hideEndModal();
+      this.scene.restart({
+        steps: this.steps,
+        speedMs: this.speedMs,
+        roundsTotal: this.roundsTotal,
+        difficulty: this.difficulty,
+      });
+    },
+    4003
+  );
 
-    const btnAgain = makeTopLeftButton(
-      this,
-      "Jugar otra vez",
-      () => {
-        this.hideEndModal();
-        this.scene.restart({
-          steps: this.steps,
-          speedMs: this.speedMs,
-          roundsTotal: this.roundsTotal,
-          difficulty: this.difficulty,
-        });
-      },
-      4003
-    );
+  const btnExit = makeTopLeftButton(
+    this,
+    "Salir",
+    () => {
+      this.hideEndModal();
+      stopSpeech();
+      this._onExit?.();
+    },
+    4003
+  );
 
-    const btnExit = makeTopLeftButton(
-      this,
-      "Salir",
-      () => {
-        this.hideEndModal();
-        stopSpeech();
-        this._onFinish?.({
-          score: this.state.score,
-          moves: this.state.attempts,
-          durationMs,
-          game: "lights-sequence",
-        });
-      },
-      4003
-    );
+  btnAgain.setSize(210, 52);
+  btnAgain.setTheme({
+    fill: hc ? 0x000000 : 0x2563eb,
+    strokeAlpha: 1,
+    textColor: "#ffffff",
+    fontSize: Math.round(18 * ts),
+  });
 
-    btnAgain.setSize(210, 52);
-    btnAgain.setTheme({
-      fill: hc ? 0x000000 : 0x2563eb,
-      strokeAlpha: 1,
-      textColor: "#ffffff",
-      fontSize: Math.round(18 * ts),
-    });
+  btnExit.setSize(170, 52);
+  btnExit.setTheme({
+    fill: hc ? 0x222222 : 0xdc2626,
+    strokeAlpha: 1,
+    textColor: "#ffffff",
+    fontSize: Math.round(18 * ts),
+  });
 
-    btnExit.setSize(170, 52);
-    btnExit.setTheme({
-      fill: hc ? 0x222222 : 0xdc2626,
-      strokeAlpha: 1,
-      textColor: "#ffffff",
-      fontSize: Math.round(18 * ts),
-    });
-
-    this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
-    this.layoutEndModal();
-  }
+  this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
+  this.layoutEndModal();
+}
 
   layoutEndModal() {
     if (!this.endModal) return;
