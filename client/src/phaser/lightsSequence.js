@@ -272,16 +272,17 @@ class LightsGameScene extends Phaser.Scene {
   }
 
   create() {
-    this.state = {
-      startTime: Date.now(),
-      round: 0,
-      score: 0,
-      attempts: 0,
-      locked: true,
-      sequence: [],
-      inputIndex: 0,
-      focusIndex: 0,
-    };
+this.state = {
+  startTime: Date.now(),
+  round: 0,
+  score: 0,          // rondas correctas
+  attempts: 0,       // rondas intentadas
+  wrongRounds: 0,    // rondas falladas
+  locked: true,
+  sequence: [],
+  inputIndex: 0,
+  focusIndex: 0,
+};
 
     this.endModal = null;
 
