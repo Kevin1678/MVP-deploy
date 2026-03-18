@@ -697,6 +697,35 @@ this.state = {
     });
   }
 
+  finishGame() {
+  const durationMs = Date.now() - this.state.startTime;
+
+  let level = "MEDIUM";
+  if (this.difficulty === "easy") level = "EASY";
+  if (this.difficulty === "medium") level = "MEDIUM";
+  if (this.difficulty === "hard") level = "HARD";
+
+  this.finalResult = {
+    game: "lights-sequence",
+    score: this.state.score,
+    moves: this.state.attempts,
+    durationMs,
+    level,
+    accuracy: this.state.score,
+    attempts: this.state.attempts,
+    metadata: {
+      steps: this.steps,
+      speedMs: this.speedMs,
+      roundsTotal: this.roundsTotal,
+      wrongRounds: this.state.wrongRounds,
+      difficulty: this.difficulty,
+    },
+  };
+
+  this._onFinish?.(this.finalResult);
+  this.showEndModal();
+}
+  
   showEndModal() {
     if (this.endModal) return;
 
