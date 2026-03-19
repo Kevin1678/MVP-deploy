@@ -436,6 +436,8 @@ this.state = {
   }
 
 buildGrid() {
+  this.tiles = [];
+
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
       const tile = makeGridTile(this, r, c);
