@@ -613,7 +613,7 @@ this.state = {
         tile.bg.setStrokeStyle(5, 0xffffff, 1);
 
         this.tweens.add({
-          targets: tile.container,
+          targets: [tile.bg, tile.label, tile.focus],
           scale: { from: 1, to: 1.05 },
           yoyo: true,
           duration: Math.max(180, this.speedMs * 0.35),
