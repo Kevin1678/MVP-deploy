@@ -458,43 +458,52 @@ this.state = {
   }
 
   layoutGrid() {
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const left = contentLeft(this);
+  const W = this.scale.width;
+  const H = this.scale.height;
+  const left = contentLeft(this);
 
-    const ui = this.a11y.uiScale || 1;
-    const tileW = Math.round(120 * ui);
-    const tileH = Math.round(110 * ui);
-    const gap = Math.round(18 * ui);
+  const ui = this.a11y.uiScale || 1;
+  const ts = this.a11y.textScale || 1;
 
-    const totalW = tileW * 3 + gap * 2;
-    const totalH = tileH * 3 + gap * 2;
+  const tileW = Math.round(120 * ui);
+  const tileH = Math.round(110 * ui);
+  const gap = Math.round(18 * ui);
 
-    const centerX = left + (W - left - 16) / 2;
-    const centerY = 170 + (H - 170 - 130) / 2;
+  const totalW = tileW * 3 + gap * 2;
+  const totalH = tileH * 3 + gap * 2;
 
-    const startX = centerX - totalW / 2 + tileW / 2;
-    const startY = centerY - totalH / 2 + tileH / 2;
+  const centerX = left + (W - left - 16) / 2;
+  const centerY = 170 + (H - 170 - 130) / 2;
 
-    this.tiles.forEach((tile) => {
-      const x = startX + tile.c * (tileW + gap);
-      const y = startY + tile.r * (tileH + gap);
+  const startX = centerX - totalW / 2 + tileW / 2;
+  const startY = centerY - totalH / 2 + tileH / 2;
 
-      tile.container.setPosition(x, y);
-      tile.bg.setSize(tileW, tileH);
-tile.hit.setSize(tileW, tileH);
-tile.focus.setSize(tileW + 12, tileH + 12);
-tile.label.setFontSize(Math.round(20 * (this.a11y.textScale || 1)));
-tile.label.setWordWrapWidth(Math.round(tileW * 0.82));
+  this.tiles.forEach((tile) => {
+    const x = startX + tile.c * (tileW + gap);
+    const y = startY + tile.r * (tileH + gap);
 
-// ✅ recrea el área interactiva centrada correctamente
-tile.hit.removeInteractive();
-tile.hit.setInteractive(
-  new Phaser.Geom.Rectangle(-tileW / 2, -tileH / 2, tileW, tileH),
-  Phaser.Geom.Rectangle.Contains
-);
-    });
-  }
+    // ✅ todos directos en escena, mismo centro
+    tile.bg.setPosition(x, y);
+    tile.label.setPosition(x, y);
+    tile.focus.setPosition(x, y);
+    tile.hit.setPosition(x, y);
+
+    tile.bg.setSize(tileW, tileH);
+    tile.focus.setSize(tileW + 12, tileH + 12);
+
+    tile.label.setFontSize(Math.round(20 * ts));
+    tile.label.setWordWrapWidth(Math.round(tileW * 0.82));
+
+    // ✅ rehacer hitbox centrada
+    tile.hit.removeInteractive();
+    tile.hit.setSize(tileW, tileH);
+    tile.hit.setInteractive(
+      new Phaser.Geom.Rectangle(-tileW / 2, -tileH / 2, tileW, tileH),
+      Phaser.Geom.Rectangle.Contains
+    );
+    tile.hit.input.cursor = "pointer";
+  });
+}
 
   initKeyboard() {
     this.input.keyboard.on("keydown", (e) => {
