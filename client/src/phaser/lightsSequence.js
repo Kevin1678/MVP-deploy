@@ -42,7 +42,11 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
     .setDepth(depth + 1);
 
   const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0).setDepth(depth + 2);
-  hit.setInteractive({ useHandCursor: true });
+  hit.setInteractive(
+  new Phaser.Geom.Rectangle(-60, -55, 120, 110),
+  Phaser.Geom.Rectangle.Contains
+);
+hit.input.cursor = "pointer";
 
   hit.on("pointerover", () => speakIfEnabled(scene, `Botón ${label}`));
   hit.on("pointerdown", onClick);
