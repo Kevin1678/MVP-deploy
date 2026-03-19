@@ -459,14 +459,17 @@ this.state = {
 
       tile.container.setPosition(x, y);
       tile.bg.setSize(tileW, tileH);
-      tile.hit.setSize(tileW, tileH);
-      tile.focus.setSize(tileW + 12, tileH + 12);
-      tile.label.setFontSize(Math.round(20 * (this.a11y.textScale || 1)));
-      tile.label.setWordWrapWidth(Math.round(tileW * 0.82));
+tile.hit.setSize(tileW, tileH);
+tile.focus.setSize(tileW + 12, tileH + 12);
+tile.label.setFontSize(Math.round(20 * (this.a11y.textScale || 1)));
+tile.label.setWordWrapWidth(Math.round(tileW * 0.82));
 
-      if (tile.hit.input?.hitArea?.setTo) {
-        tile.hit.input.hitArea.setTo(-tileW / 2, -tileH / 2, tileW, tileH);
-      }
+// ✅ recrea el área interactiva centrada correctamente
+tile.hit.removeInteractive();
+tile.hit.setInteractive(
+  new Phaser.Geom.Rectangle(-tileW / 2, -tileH / 2, tileW, tileH),
+  Phaser.Geom.Rectangle.Contains
+);
     });
   }
 
