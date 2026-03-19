@@ -437,25 +437,25 @@ this.state = {
     this.exitBtn.setPosition(W - 16, 16);
   }
 
-  buildGrid() {
-    for (let r = 0; r < 3; r++) {
-      for (let c = 0; c < 3; c++) {
-        const tile = makeGridTile(this, r, c);
+ buildGrid() {
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const tile = makeGridTile(this, r, c);
 
-        tile.hit.on("pointerover", () => {
-          this.applyFocus(r * 3 + c, true);
-          speakIfEnabled(this, tile.label.text);
-        });
+      tile.hit.on("pointerover", () => {
+        this.applyFocus(r * 3 + c, true);
+        speakIfEnabled(this, tile.name);
+      });
 
-        tile.hit.on("pointerdown", () => {
-          this.applyFocus(r * 3 + c, true);
-          this.onTilePress(r, c);
-        });
+      tile.hit.on("pointerdown", () => {
+        this.applyFocus(r * 3 + c, true);
+        this.onTilePress(r, c);
+      });
 
-        this.tiles.push(tile);
-      }
+      this.tiles.push(tile);
     }
   }
+}
 
   layoutGrid() {
   const W = this.scale.width;
