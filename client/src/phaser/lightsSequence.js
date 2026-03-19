@@ -43,10 +43,10 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
 
   const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0).setDepth(depth + 2);
   hit.setInteractive(
-  new Phaser.Geom.Rectangle(-60, -55, 120, 110),
-  Phaser.Geom.Rectangle.Contains
-);
-hit.input.cursor = "pointer";
+    new Phaser.Geom.Rectangle(0, 0, w, h),
+    Phaser.Geom.Rectangle.Contains
+  );
+  hit.input.cursor = "pointer";
 
   hit.on("pointerover", () => speakIfEnabled(scene, `Botón ${label}`));
   hit.on("pointerdown", onClick);
@@ -80,12 +80,16 @@ hit.input.cursor = "pointer";
     setSize(nw, nh) {
       w = nw;
       h = nh;
+
       box.setSize(w, h);
       hit.setSize(w, h);
 
-      if (hit.input?.hitArea?.setTo) {
-        hit.input.hitArea.setTo(0, 0, w, h);
-      }
+      hit.removeInteractive();
+      hit.setInteractive(
+        new Phaser.Geom.Rectangle(0, 0, w, h),
+        Phaser.Geom.Rectangle.Contains
+      );
+      hit.input.cursor = "pointer";
 
       text.setPosition(x0 + w / 2, y0 + h / 2);
     },
@@ -120,7 +124,7 @@ function makeGridTile(scene, r, c) {
 
   const bg = scene.add
     .rectangle(0, 0, 120, 110, 0x111827, 1)
-    .setOrigin(0.5);
+    .setOrigin(0, 0);
 
   const label = scene.add
     .text(0, 0, name, {
@@ -137,12 +141,12 @@ function makeGridTile(scene, r, c) {
     .setOrigin(0.5)
     .setStrokeStyle(4, 0x22c55e, 0);
 
-  // ✅ El mismo cuadro visible es interactivo
-  bg.setInteractive(
-    new Phaser.Geom.Rectangle(-60, -55, 120, 110),
+  const hit = scene.add.zone(0, 0, 120, 110).setOrigin(0, 0);
+  hit.setInteractive(
+    new Phaser.Geom.Rectangle(0, 0, 120, 110),
     Phaser.Geom.Rectangle.Contains
   );
-  bg.input.cursor = "pointer";
+  hit.input.cursor = "pointer";
 
   return {
     r,
@@ -151,6 +155,13 @@ function makeGridTile(scene, r, c) {
     bg,
     label,
     focus,
+    hit,
+    x0: 0,
+    y0: 0,
+    w: 120,
+    h: 110,
+    cx: 60,
+    cy: 55,
   };
 }
 
@@ -191,17 +202,32 @@ class LightsMenuScene extends Phaser.Scene {
 
     this.btnEasy = makeTopLeftButton(this, "Fácil (3 pasos)", () => {
       stopSpeech();
-      this.scene.start("LightsGameScene", { steps: 3, speedMs: 650, roundsTotal: 5, difficulty: "easy" });
+      this.scene.start("LightsGameScene", {
+        steps: 3,
+        speedMs: 650,
+        roundsTotal: 5,
+        difficulty: "easy",
+      });
     });
 
     this.btnMed = makeTopLeftButton(this, "Medio (4 pasos)", () => {
       stopSpeech();
-      this.scene.start("LightsGameScene", { steps: 4, speedMs: 520, roundsTotal: 7, difficulty: "medium" });
+      this.scene.start("LightsGameScene", {
+        steps: 4,
+        speedMs: 520,
+        roundsTotal: 7,
+        difficulty: "medium",
+      });
     });
 
     this.btnHard = makeTopLeftButton(this, "Difícil (5 pasos)", () => {
       stopSpeech();
-      this.scene.start("LightsGameScene", { steps: 5, speedMs: 420, roundsTotal: 10, difficulty: "hard" });
+      this.scene.start("LightsGameScene", {
+        steps: 5,
+        speedMs: 420,
+        roundsTotal: 10,
+        difficulty: "hard",
+      });
     });
 
     this.a11yPanel = createA11yPanel(this, {
@@ -293,17 +319,17 @@ class LightsGameScene extends Phaser.Scene {
   }
 
   create() {
-this.state = {
-  startTime: Date.now(),
-  round: 0,
-  score: 0,          // rondas correctas
-  attempts: 0,       // rondas intentadas
-  wrongRounds: 0,    // rondas falladas
-  locked: true,
-  sequence: [],
-  inputIndex: 0,
-  focusIndex: 0,
-};
+    this.state = {
+      startTime: Date.now(),
+      round: 0,
+      score: 0,
+      attempts: 0,
+      wrongRounds: 0,
+      locked: true,
+      sequence: [],
+      inputIndex: 0,
+      focusIndex: 0,
+    };
 
     this.endModal = null;
 
@@ -418,7 +444,7 @@ this.state = {
     this.tiles.forEach((tile) => {
       tile.bg.setFillStyle(hc ? 0x000000 : 0x111827, 1);
       tile.bg.setStrokeStyle(3, 0xffffff, hc ? 1 : 0.12);
-      tile.label.setColor(hc ? "#ffffff" : "#ffffff");
+      tile.label.setColor("#ffffff");
       tile.focus.setStrokeStyle(4, hc ? 0xffffff : 0x22c55e, 0);
     });
   }
@@ -435,72 +461,79 @@ this.state = {
     this.exitBtn.setPosition(W - 16, 16);
   }
 
-buildGrid() {
-  this.tiles = [];
+  buildGrid() {
+    this.tiles = [];
 
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
-      const tile = makeGridTile(this, r, c);
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        const tile = makeGridTile(this, r, c);
 
-      tile.bg.on("pointerover", () => {
-        this.applyFocus(r * 3 + c, true);
-        speakIfEnabled(this, tile.name);
-      });
+        tile.hit.on("pointerover", () => {
+          this.applyFocus(r * 3 + c, true);
+          speakIfEnabled(this, tile.name);
+        });
 
-      tile.bg.on("pointerdown", () => {
-        this.applyFocus(r * 3 + c, true);
-        this.onTilePress(r, c);
-      });
+        tile.hit.on("pointerdown", () => {
+          this.applyFocus(r * 3 + c, true);
+          this.onTilePress(r, c);
+        });
 
-      this.tiles.push(tile);
+        this.tiles.push(tile);
+      }
     }
   }
-}
-  
- layoutGrid() {
-  const W = this.scale.width;
-  const H = this.scale.height;
-  const left = contentLeft(this);
 
-  const ui = this.a11y.uiScale || 1;
-  const ts = this.a11y.textScale || 1;
+  layoutGrid() {
+    const W = this.scale.width;
+    const H = this.scale.height;
+    const left = contentLeft(this);
 
-  const tileW = Math.round(120 * ui);
-  const tileH = Math.round(110 * ui);
-  const gap = Math.round(18 * ui);
+    const ui = this.a11y.uiScale || 1;
+    const ts = this.a11y.textScale || 1;
 
-  const totalW = tileW * 3 + gap * 2;
-  const totalH = tileH * 3 + gap * 2;
+    const tileW = Math.round(120 * ui);
+    const tileH = Math.round(110 * ui);
+    const gap = Math.round(18 * ui);
 
-  const centerX = left + (W - left - 16) / 2;
-  const centerY = 170 + (H - 170 - 130) / 2;
+    const totalW = tileW * 3 + gap * 2;
+    const totalH = tileH * 3 + gap * 2;
 
-  const startX = centerX - totalW / 2 + tileW / 2;
-  const startY = centerY - totalH / 2 + tileH / 2;
+    const centerX = left + (W - left - 16) / 2;
+    const centerY = 170 + (H - 170 - 130) / 2;
 
-  this.tiles.forEach((tile) => {
-    const x = startX + tile.c * (tileW + gap);
-    const y = startY + tile.r * (tileH + gap);
+    const startX = centerX - totalW / 2;
+    const startY = centerY - totalH / 2;
 
-    tile.bg.setPosition(x, y);
-    tile.label.setPosition(x, y);
-    tile.focus.setPosition(x, y);
+    this.tiles.forEach((tile) => {
+      const x0 = startX + tile.c * (tileW + gap);
+      const y0 = startY + tile.r * (tileH + gap);
+      const cx = x0 + tileW / 2;
+      const cy = y0 + tileH / 2;
 
-    tile.bg.setSize(tileW, tileH);
-    tile.focus.setSize(tileW + 12, tileH + 12);
+      tile.x0 = x0;
+      tile.y0 = y0;
+      tile.w = tileW;
+      tile.h = tileH;
+      tile.cx = cx;
+      tile.cy = cy;
 
-    tile.label.setFontSize(Math.round(20 * ts));
-    tile.label.setWordWrapWidth(Math.round(tileW * 0.82));
+      tile.bg.setPosition(x0, y0).setSize(tileW, tileH);
+      tile.label.setPosition(cx, cy);
+      tile.focus.setPosition(cx, cy).setSize(tileW + 12, tileH + 12);
 
-    // ✅ rehace la interactividad del mismo rectángulo visible
-    tile.bg.removeInteractive();
-    tile.bg.setInteractive(
-      new Phaser.Geom.Rectangle(-tileW / 2, -tileH / 2, tileW, tileH),
-      Phaser.Geom.Rectangle.Contains
-    );
-    tile.bg.input.cursor = "pointer";
-  });
-}
+      tile.label.setFontSize(Math.round(20 * ts));
+      tile.label.setWordWrapWidth(Math.round(tileW * 0.82));
+
+      tile.hit.setPosition(x0, y0);
+      tile.hit.setSize(tileW, tileH);
+      tile.hit.removeInteractive();
+      tile.hit.setInteractive(
+        new Phaser.Geom.Rectangle(0, 0, tileW, tileH),
+        Phaser.Geom.Rectangle.Contains
+      );
+      tile.hit.input.cursor = "pointer";
+    });
+  }
 
   initKeyboard() {
     this.input.keyboard.on("keydown", (e) => {
@@ -543,17 +576,21 @@ buildGrid() {
     const focusColor = hc ? 0xffffff : 0x22c55e;
 
     const prev = this.tiles[this.state.focusIndex];
-    if (prev?.focus) prev.focus.setStrokeStyle(4, focusColor, 0);
+    if (prev?.focus) {
+      prev.focus.setPosition(prev.cx, prev.cy);
+      prev.focus.setStrokeStyle(4, focusColor, 0);
+    }
 
     this.state.focusIndex = index;
 
     const tile = this.tiles[index];
     if (!tile) return;
 
+    tile.focus.setPosition(tile.cx, tile.cy);
     tile.focus.setStrokeStyle(4, focusColor, 1);
 
     if (!silent) {
-      speakIfEnabled(this, tile.label.text);
+      speakIfEnabled(this, tile.name);
     }
   }
 
@@ -592,45 +629,46 @@ buildGrid() {
   }
 
   playSequence() {
-  const hc = !!this.a11y.highContrast;
-  const activeFill = hc ? 0xffffff : 0x60a5fa;
+    const hc = !!this.a11y.highContrast;
+    const activeFill = hc ? 0xffffff : 0x60a5fa;
 
-  this.time.delayedCall(350, async () => {
-    for (let i = 0; i < this.state.sequence.length; i++) {
-      const { r, c } = this.state.sequence[i];
-      const tile = this.getTile(r, c);
-      if (!tile) continue;
+    this.time.delayedCall(350, async () => {
+      for (let i = 0; i < this.state.sequence.length; i++) {
+        const { r, c } = this.state.sequence[i];
+        const tile = this.getTile(r, c);
+        if (!tile) continue;
 
-      speakIfEnabled(this, tile.name);
+        speakIfEnabled(this, tile.name);
 
-      const oldFill = tile.bg.fillColor;
-      const oldAlpha = tile.bg.strokeAlpha;
+        const oldFill = tile.bg.fillColor;
+        const oldAlpha = tile.bg.strokeAlpha;
 
-      tile.bg.setFillStyle(activeFill, 1);
-      tile.bg.setStrokeStyle(5, 0xffffff, 1);
+        tile.bg.setFillStyle(activeFill, 1);
+        tile.bg.setStrokeStyle(5, 0xffffff, 1);
 
-      this.tweens.add({
-        targets: [tile.bg, tile.label, tile.focus],
-        scaleX: { from: 1, to: 1.05 },
-        scaleY: { from: 1, to: 1.05 },
-        yoyo: true,
-        duration: Math.max(180, this.speedMs * 0.35),
-      });
+        this.tweens.add({
+          targets: [tile.bg, tile.label, tile.focus],
+          scaleX: { from: 1, to: 1.05 },
+          scaleY: { from: 1, to: 1.05 },
+          yoyo: true,
+          duration: Math.max(180, this.speedMs * 0.35),
+        });
 
-      await new Promise((res) => this.time.delayedCall(this.speedMs, res));
+        await new Promise((res) => this.time.delayedCall(this.speedMs, res));
 
-      tile.bg.setFillStyle(oldFill, 1);
-      tile.bg.setStrokeStyle(3, 0xffffff, oldAlpha);
+        tile.bg.setFillStyle(oldFill, 1);
+        tile.bg.setStrokeStyle(3, 0xffffff, oldAlpha);
 
-      await new Promise((res) =>
-        this.time.delayedCall(Math.max(120, this.speedMs * 0.2), res)
-      );
-    }
+        await new Promise((res) =>
+          this.time.delayedCall(Math.max(120, this.speedMs * 0.2), res)
+        );
+      }
 
-    this.state.locked = false;
-    speakIfEnabled(this, "Tu turno. Repite la secuencia.");
-  });
-}
+      this.state.locked = false;
+      speakIfEnabled(this, "Tu turno. Repite la secuencia.");
+    });
+  }
+
   onTilePress(r, c) {
     if (this.state.locked) return;
 
@@ -644,7 +682,7 @@ buildGrid() {
     tile.bg.setFillStyle(pressFill, 1);
     this.time.delayedCall(160, () => tile.bg.setFillStyle(old, 1));
 
-    speakIfEnabled(this, tile.label.text);
+    speakIfEnabled(this, tile.name);
 
     const expected = this.state.sequence[this.state.inputIndex];
     const ok = expected && expected.r === r && expected.c === c;
@@ -661,41 +699,41 @@ buildGrid() {
     }
   }
 
-successFeedback() {
-  this.state.locked = true;
-  this.state.score += 1;
-  speakIfEnabled(this, "Correcto");
-  this.showOverlayIcon(true);
+  successFeedback() {
+    this.state.locked = true;
+    this.state.score += 1;
+    speakIfEnabled(this, "Correcto");
+    this.showOverlayIcon(true);
 
-  this.time.delayedCall(900, () => {
-    if (this.state.round >= this.roundsTotal) {
-      this.finishGame();
-    } else {
-      this.nextRound();
-    }
-  });
-}
+    this.time.delayedCall(900, () => {
+      if (this.state.round >= this.roundsTotal) {
+        this.finishGame();
+      } else {
+        this.nextRound();
+      }
+    });
+  }
 
-failFeedback() {
-  this.state.locked = true;
-  this.state.wrongRounds += 1;
-  speakIfEnabled(this, "Incorrecto");
-  this.showOverlayIcon(false);
+  failFeedback() {
+    this.state.locked = true;
+    this.state.wrongRounds += 1;
+    speakIfEnabled(this, "Incorrecto");
+    this.showOverlayIcon(false);
 
-  this.tweens.add({
-    targets: [this.title, this.sub, this.stats],
-    x: "+=8",
-    yoyo: true,
-    repeat: 3,
-    duration: 60,
-  });
+    this.tweens.add({
+      targets: [this.title, this.sub, this.stats],
+      x: "+=8",
+      yoyo: true,
+      repeat: 3,
+      duration: 60,
+    });
 
-  this.time.delayedCall(1000, () => {
-    this.state.inputIndex = 0;
-    speakIfEnabled(this, "Mira otra vez.");
-    this.playSequence();
-  });
-}
+    this.time.delayedCall(1000, () => {
+      this.state.inputIndex = 0;
+      speakIfEnabled(this, "Mira otra vez.");
+      this.playSequence();
+    });
+  }
 
   showOverlayIcon(ok) {
     const W = this.scale.width;
@@ -704,7 +742,8 @@ failFeedback() {
 
     const overlay = this.add.container(W / 2, 120).setDepth(3000);
 
-    const panel = this.add.rectangle(0, 0, Math.min(560, W * 0.9), 130, hc ? 0xffffff : 0x111827, 1)
+    const panel = this.add
+      .rectangle(0, 0, Math.min(560, W * 0.9), 130, hc ? 0xffffff : 0x111827, 1)
       .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.15);
 
     const icon = this.add.text(-140, 0, ok ? "✔" : "✖", {
@@ -733,113 +772,112 @@ failFeedback() {
   }
 
   finishGame() {
-  const durationMs = Date.now() - this.state.startTime;
+    const durationMs = Date.now() - this.state.startTime;
 
-  let level = "MEDIUM";
-  if (this.difficulty === "easy") level = "EASY";
-  if (this.difficulty === "medium") level = "MEDIUM";
-  if (this.difficulty === "hard") level = "HARD";
+    let level = "MEDIUM";
+    if (this.difficulty === "easy") level = "EASY";
+    if (this.difficulty === "medium") level = "MEDIUM";
+    if (this.difficulty === "hard") level = "HARD";
 
-  this.finalResult = {
-    game: "lights-sequence",
-    score: this.state.score,
-    moves: this.state.attempts,
-    durationMs,
-    level,
-    accuracy: this.state.score,
-    attempts: this.state.attempts,
-    metadata: {
-      steps: this.steps,
-      speedMs: this.speedMs,
-      roundsTotal: this.roundsTotal,
-      wrongRounds: this.state.wrongRounds,
-      difficulty: this.difficulty,
-    },
-  };
-
-  this._onFinish?.(this.finalResult);
-  this.showEndModal();
-}
-  
-showEndModal() {
-  if (this.endModal) return;
-
-  const W = this.scale.width;
-  const H = this.scale.height;
-  const hc = !!this.a11y.highContrast;
-  const ts = this.a11y.textScale || 1;
-  const durationMs = Date.now() - this.state.startTime;
-
-  const overlay = this.add.rectangle(0, 0, W, H, 0x000000, 0.55)
-    .setOrigin(0)
-    .setDepth(4000);
-
-  const box = this.add.rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x0f172a, 1)
-    .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
-    .setDepth(4001);
-
-  const title = this.add.text(W / 2, H / 2 - 70, "¡Terminaste!", {
-    fontFamily: "Arial",
-    fontSize: `${Math.round(38 * ts)}px`,
-    color: hc ? "#000000" : "#ffffff",
-  }).setOrigin(0.5).setDepth(4002);
-
-  const sub = this.add.text(
-    W / 2,
-    H / 2 - 18,
-    `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
-    {
-      fontFamily: "Arial",
-      fontSize: `${Math.round(20 * ts)}px`,
-      color: hc ? "#000000" : "#cbd5e1",
-    }
-  ).setOrigin(0.5).setDepth(4002);
-
-  const btnAgain = makeTopLeftButton(
-    this,
-    "Jugar otra vez",
-    () => {
-      this.hideEndModal();
-      this.scene.restart({
+    this.finalResult = {
+      game: "lights-sequence",
+      score: this.state.score,
+      moves: this.state.attempts,
+      durationMs,
+      level,
+      accuracy: this.state.score,
+      attempts: this.state.attempts,
+      metadata: {
         steps: this.steps,
         speedMs: this.speedMs,
         roundsTotal: this.roundsTotal,
+        wrongRounds: this.state.wrongRounds,
         difficulty: this.difficulty,
-      });
-    },
-    4003
-  );
+      },
+    };
 
-  const btnExit = makeTopLeftButton(
-    this,
-    "Salir",
-    () => {
-      this.hideEndModal();
-      stopSpeech();
-      this._onExit?.();
-    },
-    4003
-  );
+    this._onFinish?.(this.finalResult);
+    this.showEndModal();
+  }
 
-  btnAgain.setSize(210, 52);
-  btnAgain.setTheme({
-    fill: hc ? 0x000000 : 0x2563eb,
-    strokeAlpha: 1,
-    textColor: "#ffffff",
-    fontSize: Math.round(18 * ts),
-  });
+  showEndModal() {
+    if (this.endModal) return;
 
-  btnExit.setSize(170, 52);
-  btnExit.setTheme({
-    fill: hc ? 0x222222 : 0xdc2626,
-    strokeAlpha: 1,
-    textColor: "#ffffff",
-    fontSize: Math.round(18 * ts),
-  });
+    const W = this.scale.width;
+    const H = this.scale.height;
+    const hc = !!this.a11y.highContrast;
+    const ts = this.a11y.textScale || 1;
 
-  this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
-  this.layoutEndModal();
-}
+    const overlay = this.add.rectangle(0, 0, W, H, 0x000000, 0.55)
+      .setOrigin(0)
+      .setDepth(4000);
+
+    const box = this.add.rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x0f172a, 1)
+      .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
+      .setDepth(4001);
+
+    const title = this.add.text(W / 2, H / 2 - 70, "¡Terminaste!", {
+      fontFamily: "Arial",
+      fontSize: `${Math.round(38 * ts)}px`,
+      color: hc ? "#000000" : "#ffffff",
+    }).setOrigin(0.5).setDepth(4002);
+
+    const sub = this.add.text(
+      W / 2,
+      H / 2 - 18,
+      `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
+      {
+        fontFamily: "Arial",
+        fontSize: `${Math.round(20 * ts)}px`,
+        color: hc ? "#000000" : "#cbd5e1",
+      }
+    ).setOrigin(0.5).setDepth(4002);
+
+    const btnAgain = makeTopLeftButton(
+      this,
+      "Jugar otra vez",
+      () => {
+        this.hideEndModal();
+        this.scene.restart({
+          steps: this.steps,
+          speedMs: this.speedMs,
+          roundsTotal: this.roundsTotal,
+          difficulty: this.difficulty,
+        });
+      },
+      4003
+    );
+
+    const btnExit = makeTopLeftButton(
+      this,
+      "Salir",
+      () => {
+        this.hideEndModal();
+        stopSpeech();
+        this._onExit?.();
+      },
+      4003
+    );
+
+    btnAgain.setSize(210, 52);
+    btnAgain.setTheme({
+      fill: hc ? 0x000000 : 0x2563eb,
+      strokeAlpha: 1,
+      textColor: "#ffffff",
+      fontSize: Math.round(18 * ts),
+    });
+
+    btnExit.setSize(170, 52);
+    btnExit.setTheme({
+      fill: hc ? 0x222222 : 0xdc2626,
+      strokeAlpha: 1,
+      textColor: "#ffffff",
+      fontSize: Math.round(18 * ts),
+    });
+
+    this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
+    this.layoutEndModal();
+  }
 
   layoutEndModal() {
     if (!this.endModal) return;
@@ -911,6 +949,8 @@ export function createLightsSequenceGame(parentId, onFinish, onExit) {
 
   return () => {
     stopSpeech();
-    try { game.destroy(true); } catch {}
+    try {
+      game.destroy(true);
+    } catch {}
   };
 }
