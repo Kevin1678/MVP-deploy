@@ -13,20 +13,20 @@ export default function Game() {
   useEffect(() => {
     doneRef.current = false;
 
-    const gameMap = {
-      "/games/memorama": {
-        factory: createMemoramaGame,
-        fallbackGame: "memorama",
-      },
-      "/games/contar": {
-        factory: createCountPickGame,
-        fallbackGame: "countPick",
-      },
-      "/games/luces": {
-        factory: createLightsSequenceGame,
-        fallbackGame: "lights-sequence",
-      },
-    };
+const gameMap = {
+  "/games/memorama": {
+    factory: createMemoramaGame,
+    fallbackGame: "memorama",
+  },
+  "/games/contar": {
+    factory: createCountPickGame,
+    fallbackGame: "countPick",
+  },
+  "/games/lights": {
+    factory: createLightsSequenceGame,
+    fallbackGame: "lights-sequence",
+  },
+};
 
     const current = gameMap[location.pathname];
 
