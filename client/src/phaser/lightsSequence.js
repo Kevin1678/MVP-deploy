@@ -137,13 +137,8 @@ function makeGridTile(scene, r, c) {
     .setOrigin(0.5)
     .setStrokeStyle(4, 0x22c55e, 0);
 
-  // ✅ hit independiente, NO dentro de container
-  const hit = scene.add.zone(0, 0, 120, 110).setOrigin(0.5);
-  hit.setInteractive(
-    new Phaser.Geom.Rectangle(-60, -55, 120, 110),
-    Phaser.Geom.Rectangle.Contains
-  );
-  hit.input.cursor = "pointer";
+  // ✅ EL MISMO CUADRO visible es interactivo
+  bg.setInteractive({ useHandCursor: true });
 
   return {
     r,
@@ -152,7 +147,6 @@ function makeGridTile(scene, r, c) {
     bg,
     label,
     focus,
-    hit,
   };
 }
 
