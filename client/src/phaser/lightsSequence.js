@@ -137,8 +137,12 @@ function makeGridTile(scene, r, c) {
     .setOrigin(0.5)
     .setStrokeStyle(4, 0x22c55e, 0);
 
-  // ✅ EL MISMO CUADRO visible es interactivo
-  bg.setInteractive({ useHandCursor: true });
+  // ✅ El mismo cuadro visible es interactivo
+  bg.setInteractive(
+    new Phaser.Geom.Rectangle(-60, -55, 120, 110),
+    Phaser.Geom.Rectangle.Contains
+  );
+  bg.input.cursor = "pointer";
 
   return {
     r,
