@@ -10,8 +10,6 @@ import Admin from "./pages/Admin";
 import Game from "./pages/Game";
 import GamesMenu from "./pages/GamesMenu";
 import Protected from "./components/Protected";
-import GameCount from "./pages/GameCount";
-import GameLights from "./pages/GameLights";
 import Teacher from "./pages/Teacher";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherStudents from "./pages/TeacherStudents";
@@ -82,7 +80,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           path="/games/contar"
           element={
             <Protected role="STUDENT">
-              <GameCount />
+              <Game />
             </Protected>
           }
         />
@@ -91,7 +89,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           path="/games/lights"
           element={
             <Protected role="STUDENT">
-              <GameLights />
+              <Game />
             </Protected>
           }
         />
