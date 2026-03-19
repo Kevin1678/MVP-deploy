@@ -586,43 +586,45 @@ buildGrid() {
   }
 
   playSequence() {
-    const hc = !!this.a11y.highContrast;
-    const activeFill = hc ? 0xffffff : 0x60a5fa;
+  const hc = !!this.a11y.highContrast;
+  const activeFill = hc ? 0xffffff : 0x60a5fa;
 
-    this.time.delayedCall(350, async () => {
-      for (let i = 0; i < this.state.sequence.length; i++) {
-        const { r, c } = this.state.sequence[i];
-        const tile = this.getTile(r, c);
-        if (!tile) continue;
+  this.time.delayedCall(350, async () => {
+    for (let i = 0; i < this.state.sequence.length; i++) {
+      const { r, c } = this.state.sequence[i];
+      const tile = this.getTile(r, c);
+      if (!tile) continue;
 
-        speakIfEnabled(this, tile.label.text);
+      speakIfEnabled(this, tile.name);
 
-        const oldFill = tile.bg.fillColor;
-        const oldAlpha = tile.bg.strokeAlpha;
+      const oldFill = tile.bg.fillColor;
+      const oldAlpha = tile.bg.strokeAlpha;
 
-        tile.bg.setFillStyle(activeFill, 1);
-        tile.bg.setStrokeStyle(5, 0xffffff, 1);
+      tile.bg.setFillStyle(activeFill, 1);
+      tile.bg.setStrokeStyle(5, 0xffffff, 1);
 
-        this.tweens.add({
-          targets: [tile.bg, tile.label, tile.focus],
-          scale: { from: 1, to: 1.05 },
-          yoyo: true,
-          duration: Math.max(180, this.speedMs * 0.35),
-        });
+      this.tweens.add({
+        targets: [tile.bg, tile.label, tile.focus],
+        scaleX: { from: 1, to: 1.05 },
+        scaleY: { from: 1, to: 1.05 },
+        yoyo: true,
+        duration: Math.max(180, this.speedMs * 0.35),
+      });
 
-        await new Promise((res) => this.time.delayedCall(this.speedMs, res));
+      await new Promise((res) => this.time.delayedCall(this.speedMs, res));
 
-        tile.bg.setFillStyle(oldFill, 1);
-        tile.bg.setStrokeStyle(3, 0xffffff, oldAlpha);
+      tile.bg.setFillStyle(oldFill, 1);
+      tile.bg.setStrokeStyle(3, 0xffffff, oldAlpha);
 
-        await new Promise((res) => this.time.delayedCall(Math.max(120, this.speedMs * 0.2), res));
-      }
+      await new Promise((res) =>
+        this.time.delayedCall(Math.max(120, this.speedMs * 0.2), res)
+      );
+    }
 
-      this.state.locked = false;
-      speakIfEnabled(this, "Tu turno. Repite la secuencia.");
-    });
-  }
-
+    this.state.locked = false;
+    speakIfEnabled(this, "Tu turno. Repite la secuencia.");
+  });
+}
   onTilePress(r, c) {
     if (this.state.locked) return;
 
