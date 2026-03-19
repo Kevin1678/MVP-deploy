@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { createMemoramaGame } from "../phaser/memorama";
 import { createCountPickGame } from "../phaser/countPick";
+import { createLightsSequenceGame } from "../phaser/lightsSequence";
 
 export default function Game() {
   const navigate = useNavigate();
@@ -12,24 +13,40 @@ export default function Game() {
   useEffect(() => {
     doneRef.current = false;
 
-    const factory =
-      location.pathname === "/games/memorama"
-        ? createMemoramaGame
-        : location.pathname === "/games/contar"
-        ? createCountPickGame
-        : null;
+    const gameMap = {
+      "/games/memorama": {
+        factory: createMemoramaGame,
+        fallbackGame: "memorama",
+      },
+      "/games/contar": {
+        factory: createCountPickGame,
+        fallbackGame: "countPick",
+      },
+      "/games/luces": {
+        factory: createLightsSequenceGame,
+        fallbackGame: "lights-sequence",
+      },
+    };
 
-    if (!factory) {
+    const current = gameMap[location.pathname];
+
+    if (!current) {
       navigate("/games", { replace: true });
       return;
     }
 
-    const destroy = factory(
+    const destroy = current.factory(
       "phaser-root",
-      async ({ score, moves, durationMs, game, level, metadata, accuracy, attempts }) => {
-        const gameName =
-          game || (location.pathname === "/games/memorama" ? "memorama" : "countPick");
-
+      async ({
+        score = 0,
+        moves = 0,
+        durationMs = 0,
+        game,
+        level,
+        accuracy,
+        attempts,
+        metadata,
+      }) => {
         if (doneRef.current) return;
         doneRef.current = true;
 
@@ -38,21 +55,22 @@ export default function Game() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              game: gameName,
+              game: game || current.fallbackGame,
               score,
               moves,
               durationMs,
               level,
-              metadata,
               accuracy,
               attempts,
+              metadata,
             }),
           });
 
+          const data = await res.json().catch(() => null);
+
           if (!res.ok) {
-            const text = await res.text();
-            console.error("Error al guardar resultado:", res.status, text);
-            alert(`No se pudo guardar el resultado. Error ${res.status}`);
+            console.error("Error guardando resultado:", data);
+            alert(data?.message || "No se pudo guardar el resultado.");
             doneRef.current = false;
             return;
           }
@@ -72,9 +90,11 @@ export default function Game() {
       () => {
         if (doneRef.current) return;
         doneRef.current = true;
+
         try {
           window.speechSynthesis?.cancel();
         } catch {}
+
         navigate("/games", { replace: true });
       }
     );
@@ -83,6 +103,7 @@ export default function Game() {
       try {
         window.speechSynthesis?.cancel();
       } catch {}
+
       try {
         destroy?.();
       } catch {}
