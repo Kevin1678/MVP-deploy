@@ -116,25 +116,44 @@ function getTileName(r, c) {
 }
 
 function makeGridTile(scene, r, c) {
-  const bg = scene.add.rectangle(0, 0, 120, 110, 0x111827, 1).setOrigin(0.5);
-  const label = scene.add.text(0, 0, getTileName(r, c), {
-    fontFamily: "Arial",
-    fontSize: "20px",
-    color: "#ffffff",
-    align: "center",
-    wordWrap: { width: 90 },
-  }).setOrigin(0.5);
+  const name = getTileName(r, c);
 
-  const focus = scene.add.rectangle(0, 0, 132, 122, 0x000000, 0)
+  const bg = scene.add
+    .rectangle(0, 0, 120, 110, 0x111827, 1)
+    .setOrigin(0.5);
+
+  const label = scene.add
+    .text(0, 0, name, {
+      fontFamily: "Arial",
+      fontSize: "20px",
+      color: "#ffffff",
+      align: "center",
+      wordWrap: { width: 90 },
+    })
+    .setOrigin(0.5);
+
+  const focus = scene.add
+    .rectangle(0, 0, 132, 122, 0x000000, 0)
     .setOrigin(0.5)
     .setStrokeStyle(4, 0x22c55e, 0);
 
+  // ✅ hit independiente, NO dentro de container
   const hit = scene.add.zone(0, 0, 120, 110).setOrigin(0.5);
-  hit.setInteractive({ useHandCursor: true });
+  hit.setInteractive(
+    new Phaser.Geom.Rectangle(-60, -55, 120, 110),
+    Phaser.Geom.Rectangle.Contains
+  );
+  hit.input.cursor = "pointer";
 
-  const container = scene.add.container(0, 0, [bg, label, focus, hit]);
-
-  return { r, c, bg, label, focus, hit, container };
+  return {
+    r,
+    c,
+    name,
+    bg,
+    label,
+    focus,
+    hit,
+  };
 }
 
 /* ===================== MENU ===================== */
