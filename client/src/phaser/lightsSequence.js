@@ -457,7 +457,7 @@ buildGrid() {
   }
 }
   
-  layoutGrid() {
+ layoutGrid() {
   const W = this.scale.width;
   const H = this.scale.height;
   const left = contentLeft(this);
@@ -492,7 +492,7 @@ buildGrid() {
     tile.label.setFontSize(Math.round(20 * ts));
     tile.label.setWordWrapWidth(Math.round(tileW * 0.82));
 
-    // ✅ rehacer interactividad del MISMO rectángulo visible
+    // ✅ rehace la interactividad del mismo rectángulo visible
     tile.bg.removeInteractive();
     tile.bg.setInteractive(
       new Phaser.Geom.Rectangle(-tileW / 2, -tileH / 2, tileW, tileH),
