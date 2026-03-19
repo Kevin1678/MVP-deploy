@@ -431,17 +431,17 @@ this.state = {
     this.exitBtn.setPosition(W - 16, 16);
   }
 
- buildGrid() {
+buildGrid() {
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
       const tile = makeGridTile(this, r, c);
 
-      tile.hit.on("pointerover", () => {
+      tile.bg.on("pointerover", () => {
         this.applyFocus(r * 3 + c, true);
         speakIfEnabled(this, tile.name);
       });
 
-      tile.hit.on("pointerdown", () => {
+      tile.bg.on("pointerdown", () => {
         this.applyFocus(r * 3 + c, true);
         this.onTilePress(r, c);
       });
@@ -450,7 +450,7 @@ this.state = {
     }
   }
 }
-
+  
   layoutGrid() {
   const W = this.scale.width;
   const H = this.scale.height;
@@ -476,11 +476,9 @@ this.state = {
     const x = startX + tile.c * (tileW + gap);
     const y = startY + tile.r * (tileH + gap);
 
-    // ✅ todos directos en escena, mismo centro
     tile.bg.setPosition(x, y);
     tile.label.setPosition(x, y);
     tile.focus.setPosition(x, y);
-    tile.hit.setPosition(x, y);
 
     tile.bg.setSize(tileW, tileH);
     tile.focus.setSize(tileW + 12, tileH + 12);
@@ -488,14 +486,13 @@ this.state = {
     tile.label.setFontSize(Math.round(20 * ts));
     tile.label.setWordWrapWidth(Math.round(tileW * 0.82));
 
-    // ✅ rehacer hitbox centrada
-    tile.hit.removeInteractive();
-    tile.hit.setSize(tileW, tileH);
-    tile.hit.setInteractive(
+    // ✅ rehacer interactividad del MISMO rectángulo visible
+    tile.bg.removeInteractive();
+    tile.bg.setInteractive(
       new Phaser.Geom.Rectangle(-tileW / 2, -tileH / 2, tileW, tileH),
       Phaser.Geom.Rectangle.Contains
     );
-    tile.hit.input.cursor = "pointer";
+    tile.bg.input.cursor = "pointer";
   });
 }
 
