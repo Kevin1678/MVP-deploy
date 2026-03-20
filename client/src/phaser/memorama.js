@@ -446,9 +446,7 @@ class MemoryScene extends Phaser.Scene {
 
 createCard(idx, value) {
   const faceDown = this.add.image(0, 0, "cardBack")
-  .setOrigin(0, 0);
-    .setOrigin(0, 0)
-    .setStrokeStyle(2, 0xffffff, 0.12);
+    .setOrigin(0, 0);
 
   const faceUp = this.add
     .rectangle(0, 0, 110, 130, 0xf8fafc, 1)
@@ -456,13 +454,16 @@ createCard(idx, value) {
     .setStrokeStyle(2, 0x111827, 0.25);
 
   const txt = this.add
-    .text(0, 0, value, { fontFamily: "Arial", fontSize: "52px", color: "#0b1020" })
+    .text(0, 0, value, {
+      fontFamily: "Arial",
+      fontSize: "52px",
+      color: "#0b1020",
+    })
     .setOrigin(0.5);
 
-  // ✅ HITBOX dedicado (Zone) — esto sí cubre toda la carta siempre
   const hit = this.add.zone(0, 0, 110, 130).setOrigin(0, 0);
   hit.setInteractive({ useHandCursor: true });
-  hit.setDepth(10); // por si algo se empalma
+  hit.setDepth(10);
 
   const card = {
     idx,
@@ -501,7 +502,6 @@ createCard(idx, value) {
 
   return card;
 }
-
   setCardVisual(card, isFlipped) {
     card.flipped = isFlipped;
     card.faceDown.setVisible(!isFlipped);
