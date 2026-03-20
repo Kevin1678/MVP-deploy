@@ -445,8 +445,8 @@ class MemoryScene extends Phaser.Scene {
   }
 
 createCard(idx, value) {
-  const faceDown = this.add
-    .rectangle(0, 0, 110, 130, 0x111827, 1)
+  const faceDown = this.add.image(0, 0, "cardBack")
+  .setOrigin(0, 0);
     .setOrigin(0, 0)
     .setStrokeStyle(2, 0xffffff, 0.12);
 
