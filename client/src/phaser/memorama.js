@@ -99,13 +99,18 @@ class BootScene extends Phaser.Scene {
     });
   }
 
-  create() {
-    console.log("BootScene create");
-    console.log("cardBack existe:", this.textures.exists("cardBack"));
-    this.scene.start("MenuScene");
-  }
-}
+create() {
+  console.log("BootScene create");
+  console.log("cardBack existe:", this.textures.exists("cardBack"));
 
+  const test = this.add.image(200, 200, "cardBack").setOrigin(0.5);
+  test.setDisplaySize(120, 120);
+  test.setDepth(9999);
+
+  this.time.delayedCall(1200, () => {
+    this.scene.start("MenuScene");
+  });
+}
 /* ======================= MenuScene ======================= */
 class MenuScene extends Phaser.Scene {
   constructor(onExit) {
