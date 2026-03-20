@@ -870,10 +870,10 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
     parent: parentId,
     backgroundColor: "#0b1020",
     scene: [
-  new BootScene(),
-  new MenuScene(onExit),
-  new MemoryScene(onFinish, onExit),
-],
+      new BootScene(),
+      new MenuScene(onExit),
+      new MemoryScene(onFinish, onExit),
+    ],
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.NO_CENTER,
