@@ -528,7 +528,12 @@ class MemoryScene extends Phaser.Scene {
     card.focusOutline.setPosition(card.cx, card.cy);
     card.focusOutline.setSize(card.w + 14, card.h + 14);
 
-    if (!silent) this.say(`Carta ${index + 1}`);
+    if (!silent) {
+  const cols = this.gridCols || 4;
+  const row = Math.floor(index / cols) + 1;
+  const col = (index % cols) + 1;
+  const status = card.matched ? "emparejada" : card.flipped ? `volteada, ${card.label}` : "oculta";
+  this.say(`Carta fila ${row}, columna ${col}, ${status}`);
   }
 
   createCard(idx, item) {
