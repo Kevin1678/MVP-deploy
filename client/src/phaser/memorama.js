@@ -840,8 +840,13 @@ createCard(idx, value) {
       card.w = w;
       card.h = h;
 
-      card.faceDown.setPosition(x0, y0);
-      card.faceDown.setDisplaySize(w, h);
+card.faceDown.setPosition(x0, y0);
+
+if (card.hasTexture) {
+  card.faceDown.setDisplaySize(w, h);
+} else {
+  card.faceDown.setSize(w, h);
+}
 
       card.backBorder.setPosition(x0, y0).setSize(w, h);
       card.faceUp.setPosition(x0, y0).setSize(w, h);
