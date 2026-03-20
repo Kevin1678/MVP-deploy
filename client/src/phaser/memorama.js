@@ -226,6 +226,10 @@ class MemoryScene extends Phaser.Scene {
     this._onExit = onExit;
   }
 
+  preload() {
+  this.load.image("cardBack", "assets/card-back.png");
+}
+
   init(data) {
     this.pairs = data?.pairs ?? 8;
     this.state = {
