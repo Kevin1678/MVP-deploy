@@ -111,13 +111,7 @@ class BootScene extends Phaser.Scene {
 
         console.log("cardBack registrada manualmente:", this.textures.exists("cardBack"));
 
-        const test = this.add.image(200, 200, "cardBack").setOrigin(0.5);
-        test.setDisplaySize(120, 120);
-        test.setDepth(9999);
-
-        this.time.delayedCall(1200, () => {
-          this.scene.start("MenuScene");
-        });
+        this.scene.start("MenuScene");
       } catch (err) {
         console.error("Error registrando cardBack:", err);
         this.scene.start("MenuScene");
