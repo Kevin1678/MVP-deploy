@@ -235,8 +235,10 @@ class MemoryScene extends Phaser.Scene {
   }
 
 preload() {
-  console.log("Usando textura:", cardBackUrl);
-  this.load.image("cardBack", cardBackUrl);
+  const url = new URL("./assets/card-back.png", import.meta.url).href;
+  console.log("cardBack URL:", url);
+
+  this.load.image("cardBack", url);
 
   this.load.on("filecomplete-image-cardBack", () => {
     console.log("cardBack cargada correctamente");
