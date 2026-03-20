@@ -777,7 +777,7 @@ card.x0 = x0; card.y0 = y0;
 card.cx = cx; card.cy = cy;
 card.w = w;   card.h = h;
 
-card.faceDown.setPosition(x0, y0).setSize(w, h);
+card.faceDown.setDisplaySize(w, h);
 card.faceUp.setPosition(x0, y0).setSize(w, h);
 
 // ✅ el hitbox real (Zone) debe moverse y redimensionarse igual que la carta
