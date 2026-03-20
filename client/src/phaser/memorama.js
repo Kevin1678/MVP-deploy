@@ -85,6 +85,7 @@ function makeMenuButton(scene, label, onClick) {
   };
 }
 
+/* ======================= BootScene ======================= */
 class BootScene extends Phaser.Scene {
   constructor() {
     super("BootScene");
@@ -101,8 +102,6 @@ class BootScene extends Phaser.Scene {
   create() {
     console.log("BootScene create");
     console.log("cardBack existe:", this.textures.exists("cardBack"));
-
-    // Arranca siempre el menú, aunque la textura falle
     this.scene.start("MenuScene");
   }
 }
@@ -115,11 +114,6 @@ class MenuScene extends Phaser.Scene {
   }
 
   create() {
-      console.log("Existe texture cardBack:", this.textures.exists("cardBack"));
-
-  const tex = this.textures.get("cardBack");
-  console.log("Texture cardBack:", tex);
-    
     this.bg = this.add
       .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
       .setOrigin(0);
@@ -226,9 +220,6 @@ class MenuScene extends Phaser.Scene {
       b.setSize(w, h);
       b.setTheme({ fill, strokeAlpha, textColor, fontSize });
     });
-
-    this._btnW = w;
-    this._btnH = h;
   }
 
   layout() {
@@ -259,7 +250,37 @@ class MemoryScene extends Phaser.Scene {
     this._onExit = onExit;
   }
 
+  init(data) {
+    console.log("MemoryScene init data:", data);
+
+    const pairs =
+      typeof data?.pairs === "number" && !Number.isNaN(data.pairs)
+        ? data.pairs
+        : 8;
+
+    this.pairs = pairs;
+
+    this.state = {
+      first: null,
+      locked: false,
+      attempts: 0,
+      flips: 0,
+      matchedPairs: 0,
+      startTime: Date.now(),
+    };
+
+    this.a11y = this.a11y || {};
+    this.focusIndex = 0;
+  }
+
   create() {
+    console.log("MemoryScene create, pairs =", this.pairs);
+
+    if (![4, 6, 8].includes(this.pairs)) {
+      console.warn("pairs inválido, usando 8 por defecto:", this.pairs);
+      this.pairs = 8;
+    }
+
     this.bg = this.add
       .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
       .setOrigin(0);
@@ -394,20 +415,20 @@ class MemoryScene extends Phaser.Scene {
     this.exitBtn.setFontSize(Math.round(16 * ts));
 
     this.cards.forEach((card) => {
-  if (card.hasTexture) {
-    card.faceDown.clearTint();
-    if (hc) card.faceDown.setTint(0xffffff);
-  } else {
-    card.faceDown.setFillStyle(hc ? 0x000000 : 0x111827, 1);
-  }
+      if (card.hasTexture) {
+        card.faceDown.clearTint();
+        if (hc) card.faceDown.setTint(0xffffff);
+      } else {
+        card.faceDown.setFillStyle(hc ? 0x000000 : 0x111827, 1);
+      }
 
-  card.backBorder.setStrokeStyle(2, 0xffffff, hc ? 1 : 0.12);
+      card.backBorder.setStrokeStyle(2, 0xffffff, hc ? 1 : 0.12);
 
-  card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
-  card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
+      card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
+      card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
 
-  card.txt.setColor(hc ? "#000000" : "#0b1020");
-});
+      card.txt.setColor(hc ? "#000000" : "#0b1020");
+    });
   }
 
   layoutTopUI() {
@@ -481,74 +502,74 @@ class MemoryScene extends Phaser.Scene {
     if (!silent) this.say(`Carta ${index + 1}`);
   }
 
-createCard(idx, value) {
-  const hasTexture = this.textures.exists("cardBack");
+  createCard(idx, value) {
+    const hasTexture = this.textures.exists("cardBack");
 
-  const faceDown = hasTexture
-    ? this.add.image(0, 0, "cardBack").setOrigin(0, 0)
-    : this.add.rectangle(0, 0, 110, 130, 0x111827, 1).setOrigin(0, 0);
+    const faceDown = hasTexture
+      ? this.add.image(0, 0, "cardBack").setOrigin(0, 0)
+      : this.add.rectangle(0, 0, 110, 130, 0x111827, 1).setOrigin(0, 0);
 
-  const backBorder = this.add
-    .rectangle(0, 0, 110, 130, 0x000000, 0)
-    .setOrigin(0, 0)
-    .setStrokeStyle(2, 0xffffff, 0.12);
+    const backBorder = this.add
+      .rectangle(0, 0, 110, 130, 0x000000, 0)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0xffffff, 0.12);
 
-  const faceUp = this.add
-    .rectangle(0, 0, 110, 130, 0xf8fafc, 1)
-    .setOrigin(0, 0)
-    .setStrokeStyle(2, 0x111827, 0.25);
+    const faceUp = this.add
+      .rectangle(0, 0, 110, 130, 0xf8fafc, 1)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0x111827, 0.25);
 
-  const txt = this.add
-    .text(0, 0, value, {
-      fontFamily: "Arial",
-      fontSize: "52px",
-      color: "#0b1020",
-    })
-    .setOrigin(0.5);
+    const txt = this.add
+      .text(0, 0, value, {
+        fontFamily: "Arial",
+        fontSize: "52px",
+        color: "#0b1020",
+      })
+      .setOrigin(0.5);
 
-  const hit = this.add.zone(0, 0, 110, 130).setOrigin(0, 0);
-  hit.setInteractive({ useHandCursor: true });
-  hit.setDepth(10);
+    const hit = this.add.zone(0, 0, 110, 130).setOrigin(0, 0);
+    hit.setInteractive({ useHandCursor: true });
+    hit.setDepth(10);
 
-  const card = {
-    idx,
-    value,
-    faceDown,
-    backBorder,
-    faceUp,
-    txt,
-    hit,
-    flipped: false,
-    matched: false,
-    focusOutline: null,
-    x0: 0,
-    y0: 0,
-    cx: 0,
-    cy: 0,
-    w: 110,
-    h: 130,
-    hasTexture,
-  };
+    const card = {
+      idx,
+      value,
+      faceDown,
+      backBorder,
+      faceUp,
+      txt,
+      hit,
+      flipped: false,
+      matched: false,
+      focusOutline: null,
+      x0: 0,
+      y0: 0,
+      cx: 0,
+      cy: 0,
+      w: 110,
+      h: 130,
+      hasTexture,
+    };
 
-  this.setCardVisual(card, false);
+    this.setCardVisual(card, false);
 
-  hit.on("pointerover", () => {
-    if (card.matched || card.flipped) return;
-    const cols = this.gridCols || 4;
-    const row = Math.floor(idx / cols) + 1;
-    const col = (idx % cols) + 1;
-    this.say(`Carta fila ${row}, columna ${col}`);
-  });
+    hit.on("pointerover", () => {
+      if (card.matched || card.flipped) return;
+      const cols = this.gridCols || 4;
+      const row = Math.floor(idx / cols) + 1;
+      const col = (idx % cols) + 1;
+      this.say(`Carta fila ${row}, columna ${col}`);
+    });
 
-  hit.on("pointerdown", () => {
-    if (this.state.locked || card.matched || card.flipped) return;
-    this.focusIndex = idx;
-    this.applyFocus(idx, true);
-    this.onCardClick(card);
-  });
+    hit.on("pointerdown", () => {
+      if (this.state.locked || card.matched || card.flipped) return;
+      this.focusIndex = idx;
+      this.applyFocus(idx, true);
+      this.onCardClick(card);
+    });
 
-  return card;
-}
+    return card;
+  }
 
   setCardVisual(card, isFlipped) {
     card.flipped = isFlipped;
@@ -840,13 +861,12 @@ createCard(idx, value) {
       card.w = w;
       card.h = h;
 
-card.faceDown.setPosition(x0, y0);
-
-if (card.hasTexture) {
-  card.faceDown.setDisplaySize(w, h);
-} else {
-  card.faceDown.setSize(w, h);
-}
+      card.faceDown.setPosition(x0, y0);
+      if (card.hasTexture) {
+        card.faceDown.setDisplaySize(w, h);
+      } else {
+        card.faceDown.setSize(w, h);
+      }
 
       card.backBorder.setPosition(x0, y0).setSize(w, h);
       card.faceUp.setPosition(x0, y0).setSize(w, h);
