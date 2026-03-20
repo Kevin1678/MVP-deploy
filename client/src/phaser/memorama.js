@@ -92,14 +92,17 @@ class BootScene extends Phaser.Scene {
 
   preload() {
     this.load.image("cardBack", "/assets/card-back.png");
+
+    this.load.on("loaderror", (file) => {
+      console.error("Error cargando asset:", file?.src || file);
+    });
   }
 
   create() {
-    if (!this.textures.exists("cardBack")) {
-      console.error("No se registró la textura cardBack");
-      return;
-    }
+    console.log("BootScene create");
+    console.log("cardBack existe:", this.textures.exists("cardBack"));
 
+    // Arranca siempre el menú, aunque la textura falle
     this.scene.start("MenuScene");
   }
 }
