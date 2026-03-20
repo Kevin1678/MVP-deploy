@@ -85,6 +85,25 @@ function makeMenuButton(scene, label, onClick) {
   };
 }
 
+class BootScene extends Phaser.Scene {
+  constructor() {
+    super("BootScene");
+  }
+
+  preload() {
+    this.load.image("cardBack", "/assets/card-back.png");
+  }
+
+  create() {
+    if (!this.textures.exists("cardBack")) {
+      console.error("No se registró la textura cardBack");
+      return;
+    }
+
+    this.scene.start("MenuScene");
+  }
+}
+
 /* ======================= MenuScene ======================= */
 class MenuScene extends Phaser.Scene {
   constructor(onExit) {
@@ -235,24 +254,6 @@ class MemoryScene extends Phaser.Scene {
     super("MemoryScene");
     this._onFinish = onFinish;
     this._onExit = onExit;
-  }
-
-preload() {
-  this.load.image("cardBack", "/assets/card-back.png");
-}
-  
-  init(data) {
-    this.pairs = data?.pairs ?? 8;
-    this.state = {
-      first: null,
-      locked: false,
-      attempts: 0,
-      flips: 0,
-      matchedPairs: 0,
-      startTime: Date.now(),
-    };
-    this.a11y = this.a11y || {};
-    this.focusIndex = 0;
   }
 
   create() {
