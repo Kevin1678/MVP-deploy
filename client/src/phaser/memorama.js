@@ -531,70 +531,72 @@ class MemoryScene extends Phaser.Scene {
     if (!silent) this.say(`Carta ${index + 1}`);
   }
 
-  createCard(idx, value) {
-    const faceDown = this.add.image(0, 0, "cardBack").setOrigin(0, 0);
+  createCard(idx, item) {
+  const faceDown = this.add.image(0, 0, "cardBack").setOrigin(0, 0);
 
-    const backBorder = this.add
-      .rectangle(0, 0, 110, 130, 0x000000, 0)
-      .setOrigin(0, 0)
-      .setStrokeStyle(2, 0xffffff, 0.12);
+  const backBorder = this.add
+    .rectangle(0, 0, 110, 130, 0x000000, 0)
+    .setOrigin(0, 0)
+    .setStrokeStyle(2, 0xffffff, 0.12);
 
-    const faceUp = this.add
-      .rectangle(0, 0, 110, 130, 0xf8fafc, 1)
-      .setOrigin(0, 0)
-      .setStrokeStyle(2, 0x111827, 0.25);
+  const faceUp = this.add
+    .rectangle(0, 0, 110, 130, 0xf8fafc, 1)
+    .setOrigin(0, 0)
+    .setStrokeStyle(2, 0x111827, 0.25);
 
-    const txt = this.add
-      .text(0, 0, value, {
-        fontFamily: "Arial",
-        fontSize: "52px",
-        color: "#0b1020",
-      })
-      .setOrigin(0.5);
+  const txt = this.add
+    .text(0, 0, item.symbol, {
+      fontFamily: "Arial",
+      fontSize: "52px",
+      color: "#0b1020",
+    })
+    .setOrigin(0.5);
 
-    const hit = this.add.zone(0, 0, 110, 130).setOrigin(0, 0);
-    hit.setInteractive({ useHandCursor: true });
-    hit.setDepth(10);
+  const hit = this.add.zone(0, 0, 110, 130).setOrigin(0, 0);
+  hit.setInteractive({ useHandCursor: true });
+  hit.setDepth(10);
 
-    const card = {
-      idx,
-      value,
-      faceDown,
-      backBorder,
-      faceUp,
-      txt,
-      hit,
-      flipped: false,
-      matched: false,
-      focusOutline: null,
-      x0: 0,
-      y0: 0,
-      cx: 0,
-      cy: 0,
-      w: 110,
-      h: 130,
-    };
+  const card = {
+    idx,
+    value: item.symbol,
+    label: item.label,
+    matchKey: item.label,
+    faceDown,
+    backBorder,
+    faceUp,
+    txt,
+    hit,
+    flipped: false,
+    matched: false,
+    focusOutline: null,
+    x0: 0,
+    y0: 0,
+    cx: 0,
+    cy: 0,
+    w: 110,
+    h: 130,
+  };
 
-    this.setCardVisual(card, false);
+  this.setCardVisual(card, false);
 
-    hit.on("pointerover", () => {
-      if (card.matched || card.flipped) return;
-      const cols = this.gridCols || 4;
-      const row = Math.floor(idx / cols) + 1;
-      const col = (idx % cols) + 1;
-      this.say(`Carta fila ${row}, columna ${col}`);
-    });
+  hit.on("pointerover", () => {
+    if (card.matched || card.flipped) return;
+    const cols = this.gridCols || 4;
+    const row = Math.floor(idx / cols) + 1;
+    const col = (idx % cols) + 1;
+    this.say(`Carta fila ${row}, columna ${col}`);
+  });
 
-    hit.on("pointerdown", () => {
-      if (this.state.locked || card.matched || card.flipped) return;
-      this.focusIndex = idx;
-      this.applyFocus(idx, true);
-      this.onCardClick(card);
-    });
+  hit.on("pointerdown", () => {
+    if (this.state.locked || card.matched || card.flipped) return;
+    this.focusIndex = idx;
+    this.applyFocus(idx, true);
+    this.onCardClick(card);
+  });
 
-    return card;
-  }
-
+  return card;
+}
+ 
   setCardVisual(card, isFlipped) {
     card.flipped = isFlipped;
 
