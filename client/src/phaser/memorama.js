@@ -415,12 +415,8 @@ class MemoryScene extends Phaser.Scene {
     this.exitBtn.setFontSize(Math.round(16 * ts));
 
     this.cards.forEach((card) => {
-      if (card.hasTexture) {
-        card.faceDown.clearTint();
-        if (hc) card.faceDown.setTint(0xffffff);
-      } else {
-        card.faceDown.setFillStyle(hc ? 0x000000 : 0x111827, 1);
-      }
+      card.faceDown.clearTint();
+      if (hc) card.faceDown.setTint(0xffffff);
 
       card.backBorder.setStrokeStyle(2, 0xffffff, hc ? 1 : 0.12);
 
@@ -503,11 +499,7 @@ class MemoryScene extends Phaser.Scene {
   }
 
   createCard(idx, value) {
-    const hasTexture = this.textures.exists("cardBack");
-
-    const faceDown = hasTexture
-      ? this.add.image(0, 0, "cardBack").setOrigin(0, 0)
-      : this.add.rectangle(0, 0, 110, 130, 0x111827, 1).setOrigin(0, 0);
+    const faceDown = this.add.image(0, 0, "cardBack").setOrigin(0, 0);
 
     const backBorder = this.add
       .rectangle(0, 0, 110, 130, 0x000000, 0)
@@ -548,7 +540,6 @@ class MemoryScene extends Phaser.Scene {
       cy: 0,
       w: 110,
       h: 130,
-      hasTexture,
     };
 
     this.setCardVisual(card, false);
@@ -862,11 +853,7 @@ class MemoryScene extends Phaser.Scene {
       card.h = h;
 
       card.faceDown.setPosition(x0, y0);
-      if (card.hasTexture) {
-        card.faceDown.setDisplaySize(w, h);
-      } else {
-        card.faceDown.setSize(w, h);
-      }
+      card.faceDown.setDisplaySize(w, h);
 
       card.backBorder.setPosition(x0, y0).setSize(w, h);
       card.faceUp.setPosition(x0, y0).setSize(w, h);
