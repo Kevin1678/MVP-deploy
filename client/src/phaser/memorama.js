@@ -92,24 +92,44 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image("cardBack", "/assets/card-back.png");
-
-    this.load.on("loaderror", (file) => {
-      console.error("Error cargando asset:", file?.src || file);
-    });
+    // No usamos Phaser Loader para cardBack aquí
   }
 
   create() {
     console.log("BootScene create");
-    console.log("cardBack existe:", this.textures.exists("cardBack"));
 
-    const test = this.add.image(200, 200, "cardBack").setOrigin(0.5);
-    test.setDisplaySize(120, 120);
-    test.setDepth(9999);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
 
-    this.time.delayedCall(1200, () => {
+    img.onload = () => {
+      try {
+        if (this.textures.exists("cardBack")) {
+          this.textures.remove("cardBack");
+        }
+
+        this.textures.addImage("cardBack", img);
+
+        console.log("cardBack registrada manualmente:", this.textures.exists("cardBack"));
+
+        const test = this.add.image(200, 200, "cardBack").setOrigin(0.5);
+        test.setDisplaySize(120, 120);
+        test.setDepth(9999);
+
+        this.time.delayedCall(1200, () => {
+          this.scene.start("MenuScene");
+        });
+      } catch (err) {
+        console.error("Error registrando cardBack:", err);
+        this.scene.start("MenuScene");
+      }
+    };
+
+    img.onerror = (err) => {
+      console.error("No se pudo cargar /assets/card-back.png", err);
       this.scene.start("MenuScene");
-    });
+    };
+
+    img.src = `/assets/card-back.png?v=${Date.now()}`;
   }
 }
 /* ======================= MenuScene ======================= */
