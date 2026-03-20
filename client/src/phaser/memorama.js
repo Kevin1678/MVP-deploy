@@ -394,18 +394,20 @@ class MemoryScene extends Phaser.Scene {
     this.exitBtn.setFontSize(Math.round(16 * ts));
 
     this.cards.forEach((card) => {
-      card.faceDown.clearTint();
-      if (hc) {
-        card.faceDown.setTint(0xffffff);
-      }
+  if (card.hasTexture) {
+    card.faceDown.clearTint();
+    if (hc) card.faceDown.setTint(0xffffff);
+  } else {
+    card.faceDown.setFillStyle(hc ? 0x000000 : 0x111827, 1);
+  }
 
-      card.backBorder.setStrokeStyle(2, 0xffffff, hc ? 1 : 0.12);
+  card.backBorder.setStrokeStyle(2, 0xffffff, hc ? 1 : 0.12);
 
-      card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
-      card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
+  card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
+  card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
 
-      card.txt.setColor(hc ? "#000000" : "#0b1020");
-    });
+  card.txt.setColor(hc ? "#000000" : "#0b1020");
+});
   }
 
   layoutTopUI() {
