@@ -7,6 +7,8 @@ import {
   PANEL_GAP,
 } from "./a11yPanel";
 
+import cardBackUrl from "./assets/card-back-stone.png";
+
 const SYMBOLS = ["★", "●", "▲", "■", "◆", "❤", "☀", "☂", "☘", "♫", "✿", "☕"];
 
 function shuffle(arr) {
@@ -233,8 +235,16 @@ class MemoryScene extends Phaser.Scene {
   }
 
 preload() {
-  const url = new URL("./assets/card-back-stone.png", import.meta.url).href;
-  this.load.image("cardBack", url);
+  console.log("Usando textura:", cardBackUrl);
+  this.load.image("cardBack", cardBackUrl);
+
+  this.load.on("filecomplete-image-cardBack", () => {
+    console.log("cardBack cargada correctamente");
+  });
+
+  this.load.on("loaderror", (file) => {
+    console.error("Error cargando asset:", file);
+  });
 }
   
   init(data) {
