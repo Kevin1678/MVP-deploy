@@ -615,49 +615,59 @@ class MemoryScene extends Phaser.Scene {
   }
 
   onCardClick(card) {
-    if (this.state.locked || card.matched || card.flipped) return;
+  if (this.state.locked || card.matched || card.flipped) return;
 
-    this.state.flips += 1;
+  this.state.flips += 1;
+  this.setCardVisual(card, true);
 
-    this.setCardVisual(card, true);
-    this.say(`Figura ${card.value}`);
+  // Narración controlada
+  this.say(`Figura ${card.label}`);
 
-    if (!this.state.first) {
-      this.state.first = card;
-      return;
-    }
+  if (!this.state.first) {
+    this.state.first = card;
+    return;
+  }
 
-    this.state.locked = true;
-    this.state.attempts += 1;
-    this.attemptsText.setText(`Intentos: ${this.state.attempts}`);
+  this.state.locked = true;
+  this.state.attempts += 1;
+  this.attemptsText.setText(`Intentos: ${this.state.attempts}`);
 
-    const a = this.state.first;
-    const b = card;
+  const a = this.state.first;
+  const b = card;
 
-    if (a.matchKey === b.matchKey) {
-      this.time.delayedCall(250, () => {
-        a.matched = true;
-        b.matched = true;
-        this.setCardVisual(a, true);
-        this.setCardVisual(b, true);
+  // Delay mayor para que sí se alcance a oír la segunda figura
+  const revealDelay = 1100;
 
-        this.say("Correcto");
-        this.state.matchedPairs += 1;
-        this.state.first = null;
-        this.state.locked = false;
+  if (a.matchKey === b.matchKey) {
+    this.time.delayedCall(revealDelay, () => {
+      a.matched = true;
+      b.matched = true;
+      this.setCardVisual(a, true);
+      this.setCardVisual(b, true);
 
-        if (this.state.matchedPairs === this.pairs) this.onWin();
-      });
-    } else {
-      this.time.delayedCall(650, () => {
-        this.say("Incorrecto");
+      this.say(`Correcto. Pareja de ${b.label}`);
+
+      this.state.matchedPairs += 1;
+      this.state.first = null;
+      this.state.locked = false;
+
+      if (this.state.matchedPairs === this.pairs) {
+        this.onWin();
+      }
+    });
+  } else {
+    this.time.delayedCall(revealDelay, () => {
+      this.say(`Incorrecto. Era ${a.label} y ${b.label}`);
+
+      this.time.delayedCall(700, () => {
         this.setCardVisual(a, false);
         this.setCardVisual(b, false);
         this.state.first = null;
         this.state.locked = false;
       });
-    }
+    });
   }
+}
 
   onWin() {
     this.state.locked = true;
