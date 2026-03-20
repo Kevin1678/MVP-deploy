@@ -7,7 +7,7 @@ import {
   PANEL_GAP,
 } from "./a11yPanel";
 
-import cardBackUrl from "./assets/card-back-stone.png";
+import cardBackUrl from "./card-back-stone.png";
 
 const SYMBOLS = ["★", "●", "▲", "■", "◆", "❤", "☀", "☂", "☘", "♫", "✿", "☕"];
 
