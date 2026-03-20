@@ -232,9 +232,12 @@ class MemoryScene extends Phaser.Scene {
     this._onExit = onExit;
   }
 
-  preload() {
-    this.load.image("cardBack", "assets/card-back.png");
-  }
+preload() {
+  this.load.image(
+    "cardBack",
+    new URL("./assets/card-back.png", import.meta.url).href
+  );
+}
 
   init(data) {
     this.pairs = data?.pairs ?? 8;
