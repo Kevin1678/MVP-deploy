@@ -634,7 +634,7 @@ class MemoryScene extends Phaser.Scene {
     const a = this.state.first;
     const b = card;
 
-    if (a.value === b.value) {
+    if (a.matchKey === b.matchKey) {
       this.time.delayedCall(250, () => {
         a.matched = true;
         b.matched = true;
