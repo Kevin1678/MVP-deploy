@@ -123,7 +123,7 @@ class BootScene extends Phaser.Scene {
       this.scene.start("MenuScene");
     };
 
-    img.src = `/assets/card-back.png?v=${Date.now()}`;
+    img.src = "/assets/card-back.png";
   }
 }
 /* ======================= MenuScene ======================= */
