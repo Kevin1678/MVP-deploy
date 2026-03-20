@@ -6,7 +6,6 @@ import {
   stopSpeech,
   PANEL_GAP,
 } from "./a11yPanel";
-import cardBackUrl from "./assets/card-back.png";
 
 const SYMBOLS = ["★", "●", "▲", "■", "◆", "❤", "☀", "☂", "☘", "♫", "✿", "☕"];
 
@@ -234,9 +233,10 @@ class MemoryScene extends Phaser.Scene {
   }
 
 preload() {
-  this.load.image("cardBack", "assets/card-back.png");
+  const url = new URL("./assets/card-back-stone.png", import.meta.url).href;
+  this.load.image("cardBack", url);
 }
-
+  
   init(data) {
     this.pairs = data?.pairs ?? 8;
     this.state = {
