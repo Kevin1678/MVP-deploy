@@ -95,6 +95,11 @@ class MenuScene extends Phaser.Scene {
   }
 
   create() {
+      console.log("Existe texture cardBack:", this.textures.exists("cardBack"));
+
+  const tex = this.textures.get("cardBack");
+  console.log("Texture cardBack:", tex);
+    
     this.bg = this.add
       .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
       .setOrigin(0);
