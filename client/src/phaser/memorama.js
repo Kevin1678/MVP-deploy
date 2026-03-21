@@ -987,12 +987,12 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
       new MenuScene(onExit),
       new MemoryScene(onFinish, onExit),
     ],
-    scale: {
-      mode: Phaser.Scale.RESIZE,
-      autoCenter: Phaser.Scale.NO_CENTER,
-      width: w0,
-      height: h0,
-    },
+scale: {
+  mode: Phaser.Scale.FIT,
+  autoCenter: Phaser.Scale.CENTER_BOTH,
+  width: 1280,
+  height: 720,
+},
   });
 
   const canvas = game.canvas;
