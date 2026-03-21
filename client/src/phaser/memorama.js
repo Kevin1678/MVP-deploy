@@ -202,13 +202,6 @@ class MenuScene extends Phaser.Scene {
     this.applyTheme();
     this.layout();
 
-    this.scale.on("resize", () => {
-      if (!this.bg) return;
-      this.bg.setSize(this.scale.width, this.scale.height);
-      this.applyTheme();
-      this.layout();
-    });
-
     this.events.once("shutdown", () => stopSpeech());
   }
 
@@ -368,18 +361,6 @@ class MemoryScene extends Phaser.Scene {
     this.layoutCards();
     this.applyFocus(0, true);
 
-    this.scale.on("resize", (gameSize) => {
-      const { width, height } = gameSize;
-      this.bg.setSize(width, height);
-      this.layoutTopUI();
-      this.layoutCards();
-      this.applyFocus(this.focusIndex, true);
-
-      if (this.endModal) {
-        this.relayoutEndModal();
-      }
-    });
-
     this.events.once("shutdown", () => {
       stopSpeech();
     });
@@ -399,12 +380,9 @@ class MemoryScene extends Phaser.Scene {
     const ts = this.a11y.textScale || 1;
 
     this.bg.setFillStyle(hc ? 0x000000 : 0x9eb7e5, 1);
-
     this.title.setFontSize(Math.round(24 * ts));
     this.attemptsText.setFontSize(Math.round(18 * ts));
     this.timeText.setFontSize(Math.round(18 * ts));
-
-    this.title.setColor("#ffffff");
     this.attemptsText.setColor(hc ? "#ffffff" : "#334155");
     this.timeText.setColor(hc ? "#ffffff" : "#334155");
 
@@ -420,16 +398,11 @@ class MemoryScene extends Phaser.Scene {
 
     this.cards.forEach((card) => {
       card.backBorder.setStrokeStyle(2, 0xffffff, hc ? 1 : 0.12);
-
       card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
       card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
-
       card.txt.setColor(hc ? "#000000" : "#0b1020");
-
       card.faceDown.clearTint();
-      if (hc) {
-        card.faceDown.setTint(0xffffff);
-      }
+      if (hc) card.faceDown.setTint(0xffffff);
     });
   }
 
@@ -562,9 +535,6 @@ class MemoryScene extends Phaser.Scene {
       flipped: false,
       matched: false,
       focusOutline: null,
-      scale: 1,
-      x: 0,
-      y: 0,
     };
 
     this.setCardVisual(card, false);
@@ -624,7 +594,6 @@ class MemoryScene extends Phaser.Scene {
         b.matched = true;
         this.setCardVisual(a, true);
         this.setCardVisual(b, true);
-
         this.say(`Correcto. Pareja de ${b.label}`);
 
         this.state.matchedPairs += 1;
@@ -744,30 +713,7 @@ class MemoryScene extends Phaser.Scene {
     });
     btnMenu.container.setDepth(1003);
 
-    this.endModal = {
-      overlay,
-      box,
-      t1,
-      t2,
-      btnAgain,
-      btnMenu,
-      boxH,
-    };
-  }
-
-  relayoutEndModal() {
-    if (!this.endModal) return;
-
-    const { overlay, box, t1, t2, btnAgain, btnMenu, boxH } = this.endModal;
-    const W = this.scale.width;
-    const H = this.scale.height;
-
-    overlay.setSize(W, H);
-    box.setPosition(W / 2, H / 2).setSize(Math.min(560, W * 0.85), boxH);
-    t1.setPosition(W / 2, H / 2 - 70);
-    t2.setPosition(W / 2, H / 2 - 15);
-    btnAgain.container.setPosition(W / 2 - 120, H / 2 + 65);
-    btnMenu.container.setPosition(W / 2 + 120, H / 2 + 65);
+    this.endModal = { overlay, box, t1, t2, btnAgain, btnMenu };
   }
 
   hideEndModal() {
@@ -803,6 +749,7 @@ class MemoryScene extends Phaser.Scene {
     let cols = 4;
     if (totalCards >= 12) cols = 6;
     if (totalCards >= 16) cols = 8;
+
     this.gridCols = cols;
 
     const rows = Math.ceil(totalCards / cols);
@@ -821,10 +768,6 @@ class MemoryScene extends Phaser.Scene {
       const scaleX = cardW / 110;
       const scaleY = cardH / 130;
       const s = Math.min(scaleX, scaleY);
-
-      card.x = x;
-      card.y = y;
-      card.scale = s;
 
       card.container.setPosition(x, y);
       card.container.setScale(s);
