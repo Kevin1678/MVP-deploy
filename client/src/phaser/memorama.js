@@ -148,7 +148,7 @@ class MenuScene extends Phaser.Scene {
 
   create() {
     this.bg = this.add
-      .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
       .setOrigin(0);
 
     this.title = this.add
@@ -229,7 +229,7 @@ class MenuScene extends Phaser.Scene {
     const ui = this.a11y.uiScale || 1;
     const ts = this.a11y.textScale || 1;
 
-    this.bg.setFillStyle(hc ? 0x000000 : 0x0b1020, 1);
+    this.bg.setFillStyle(hc ? 0x000000 : 0x9eb7e5, 1);
 
     this.title.setFontSize(Math.round(54 * ts));
     this.subtitle.setFontSize(Math.round(24 * ts));
@@ -424,7 +424,7 @@ class MemoryScene extends Phaser.Scene {
     const hc = !!this.a11y.highContrast;
     const ts = this.a11y.textScale || 1;
 
-    this.bg.setFillStyle(hc ? 0x000000 : 0x0b1020, 1);
+    this.bg.setFillStyle(hc ? 0x000000 : 0x9eb7e5, 1);
 
     this.title.setFontSize(Math.round(24 * ts));
     this.attemptsText.setFontSize(Math.round(18 * ts));
