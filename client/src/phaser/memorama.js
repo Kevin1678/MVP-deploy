@@ -50,7 +50,7 @@ function makeMenuButton(scene, label, onClick) {
 
   const text = scene.add
     .text(x0 + w / 2, y0 + h / 2, label, {
-      fontFamily: "Arial",
+      fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", Arial',
       fontSize: "26px",
       color: "#ffffff",
     })
