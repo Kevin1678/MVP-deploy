@@ -25,6 +25,7 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
   let h = 60;
   let x0 = 0;
   let y0 = 0;
+  let enabled = true;
 
   const box = scene.add
     .rectangle(x0, y0, w, h, 0x111827, 1)
@@ -42,14 +43,17 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
     .setDepth(depth + 1);
 
   const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0).setDepth(depth + 2);
-  hit.setInteractive(
-    new Phaser.Geom.Rectangle(0, 0, w, h),
-    Phaser.Geom.Rectangle.Contains
-  );
-  hit.input.cursor = "pointer";
+  hit.setInteractive({ useHandCursor: true });
 
-  hit.on("pointerover", () => speakIfEnabled(scene, `Botón ${label}`));
-  hit.on("pointerdown", onClick);
+  hit.on("pointerover", () => {
+    if (!enabled) return;
+    speakIfEnabled(scene, `Botón ${label}`);
+  });
+
+  hit.on("pointerdown", () => {
+    if (!enabled) return;
+    onClick?.();
+  });
 
   return {
     box,
@@ -84,12 +88,9 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
       box.setSize(w, h);
       hit.setSize(w, h);
 
-      hit.removeInteractive();
-      hit.setInteractive(
-        new Phaser.Geom.Rectangle(0, 0, w, h),
-        Phaser.Geom.Rectangle.Contains
-      );
-      hit.input.cursor = "pointer";
+      if (hit.input?.hitArea?.setTo) {
+        hit.input.hitArea.setTo(0, 0, w, h);
+      }
 
       text.setPosition(x0 + w / 2, y0 + h / 2);
     },
@@ -99,6 +100,17 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
       box.setStrokeStyle(2, 0xffffff, strokeAlpha);
       text.setColor(textColor);
       if (fontSize) text.setFontSize(fontSize);
+    },
+
+    setEnabled(v) {
+      enabled = !!v;
+      if (enabled) {
+        if (!hit.input) hit.setInteractive({ useHandCursor: true });
+      } else {
+        hit.disableInteractive();
+      }
+      box.setAlpha(enabled ? 1 : 0.55);
+      text.setAlpha(enabled ? 1 : 0.55);
     },
 
     destroy() {
@@ -170,30 +182,40 @@ class LightsMenuScene extends Phaser.Scene {
   constructor(onExit) {
     super("LightsMenuScene");
     this._onExit = onExit;
+    this._resizeHandler = null;
   }
 
   create() {
-    this.bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020).setOrigin(0);
+    this.bg = this.add
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
+      .setOrigin(0);
 
-    this.title = this.add.text(0, 0, "Secuencia de luces", {
-      fontFamily: "Arial",
-      fontSize: "48px",
-      color: "#ffffff",
-    }).setOrigin(0.5);
+    this.title = this.add
+      .text(0, 0, "Secuencia de luces", {
+        fontFamily: "Arial",
+        fontSize: "48px",
+        color: "#ffffff",
+      })
+      .setOrigin(0.5);
 
-    this.subtitle = this.add.text(0, 0, "Elige dificultad", {
-      fontFamily: "Arial",
-      fontSize: "24px",
-      color: "#cbd5e1",
-    }).setOrigin(0.5);
+    this.subtitle = this.add
+      .text(0, 0, "Elige dificultad", {
+        fontFamily: "Arial",
+        fontSize: "24px",
+        color: "#cbd5e1",
+      })
+      .setOrigin(0.5);
 
-    this.exitBtn = this.add.text(0, 0, "Salir", {
-      fontFamily: "Arial",
-      fontSize: "16px",
-      color: "#ffffff",
-      backgroundColor: "#111827",
-      padding: { left: 10, right: 10, top: 8, bottom: 8 },
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    this.exitBtn = this.add
+      .text(0, 0, "Salir", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        backgroundColor: "#111827",
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
 
     this.exitBtn.on("pointerdown", () => {
       stopSpeech();
@@ -240,15 +262,45 @@ class LightsMenuScene extends Phaser.Scene {
 
     this.applyTheme();
     this.layout();
+    this.handleResize({ width: this.scale.width, height: this.scale.height });
 
-    this.scale.on("resize", () => {
-      if (!this.bg) return;
-      this.bg.setSize(this.scale.width, this.scale.height);
-      this.applyTheme();
-      this.layout();
-    });
+    this._resizeHandler = (gameSize) => this.handleResize(gameSize);
+    this.scale.on("resize", this._resizeHandler);
 
-    this.events.once("shutdown", () => stopSpeech());
+    this.events.once("shutdown", () => this.cleanupScene());
+    this.events.once("destroy", () => this.cleanupScene());
+  }
+
+  cleanupScene() {
+    if (this._resizeHandler) {
+      this.scale.off("resize", this._resizeHandler);
+      this._resizeHandler = null;
+    }
+    stopSpeech();
+  }
+
+  handleResize(gameSize) {
+    const width = Math.max(
+      320,
+      Math.floor(gameSize?.width ?? this.scale.gameSize?.width ?? this.scale.width ?? window.innerWidth)
+    );
+    const height = Math.max(
+      480,
+      Math.floor(gameSize?.height ?? this.scale.gameSize?.height ?? this.scale.height ?? window.innerHeight)
+    );
+
+    this.cameras.resize(width, height);
+    this.cameras.main.setViewport(0, 0, width, height);
+    this.cameras.main.setScroll(0, 0);
+    this.cameras.main.setBackgroundColor(0x0b1020);
+
+    if (this.bg) {
+      this.bg.setPosition(0, 0);
+      this.bg.setSize(width, height);
+    }
+
+    this.applyTheme();
+    this.layout();
   }
 
   applyTheme() {
@@ -309,6 +361,8 @@ class LightsGameScene extends Phaser.Scene {
     super("LightsGameScene");
     this._onFinish = onFinish;
     this._onExit = onExit;
+    this._resizeHandler = null;
+    this._keyHandler = null;
   }
 
   init(data) {
@@ -332,49 +386,71 @@ class LightsGameScene extends Phaser.Scene {
     };
 
     this.endModal = null;
+    this.finalResult = null;
+    this.gameEnded = false;
+    this.pendingTimers = [];
+    this.sequenceRunId = 0;
 
-    this.bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020).setOrigin(0);
+    this.bg = this.add
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
+      .setOrigin(0);
 
-    this.title = this.add.text(0, 0, "Secuencia de luces", {
-      fontFamily: "Arial",
-      fontSize: "28px",
-      color: "#ffffff",
-    }).setOrigin(0, 0);
+    this.title = this.add
+      .text(0, 0, "Secuencia de luces", {
+        fontFamily: "Arial",
+        fontSize: "28px",
+        color: "#ffffff",
+      })
+      .setOrigin(0, 0);
 
-    this.sub = this.add.text(0, 0, "Observa la secuencia y repítela", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#cbd5e1",
-    }).setOrigin(0, 0);
+    this.sub = this.add
+      .text(0, 0, "Observa la secuencia y repítela", {
+        fontFamily: "Arial",
+        fontSize: "18px",
+        color: "#cbd5e1",
+      })
+      .setOrigin(0, 0);
 
-    this.stats = this.add.text(0, 0, "Puntos: 0 • Intentos: 0 • Ronda: 0/0", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#cbd5e1",
-    }).setOrigin(0, 0);
+    this.stats = this.add
+      .text(0, 0, "Puntos: 0 • Intentos: 0 • Ronda: 0/0", {
+        fontFamily: "Arial",
+        fontSize: "18px",
+        color: "#cbd5e1",
+      })
+      .setOrigin(0, 0);
 
-    this.menuBtn = this.add.text(0, 0, "Menú", {
-      fontFamily: "Arial",
-      fontSize: "16px",
-      color: "#ffffff",
-      backgroundColor: "#111827",
-      padding: { left: 10, right: 10, top: 8, bottom: 8 },
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    this.menuBtn = this.add
+      .text(0, 0, "Menú", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        backgroundColor: "#111827",
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
 
-    this.exitBtn = this.add.text(0, 0, "Salir", {
-      fontFamily: "Arial",
-      fontSize: "16px",
-      color: "#ffffff",
-      backgroundColor: "#111827",
-      padding: { left: 10, right: 10, top: 8, bottom: 8 },
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    this.exitBtn = this.add
+      .text(0, 0, "Salir", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        backgroundColor: "#111827",
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
 
     this.menuBtn.on("pointerdown", () => {
+      if (this.gameEnded && this.endModal) return;
+      this.cleanupTransientState();
       stopSpeech();
       this.scene.start("LightsMenuScene");
     });
 
     this.exitBtn.on("pointerdown", () => {
+      if (this.gameEnded && this.endModal) return;
+      this.cleanupTransientState();
       stopSpeech();
       this._onExit?.();
     });
@@ -400,18 +476,95 @@ class LightsGameScene extends Phaser.Scene {
     this.layoutGrid();
     this.applyFocus(0, true);
     this.nextRound(true);
+    this.handleResize({ width: this.scale.width, height: this.scale.height });
 
-    this.scale.on("resize", () => {
-      if (!this.bg) return;
-      this.bg.setSize(this.scale.width, this.scale.height);
-      this.applyTheme();
-      this.layout();
-      this.layoutGrid();
-      this.layoutEndModal();
-      this.applyFocus(this.state.focusIndex, true);
+    this._resizeHandler = (gameSize) => this.handleResize(gameSize);
+    this.scale.on("resize", this._resizeHandler);
+
+    this.events.once("shutdown", () => this.cleanupScene());
+    this.events.once("destroy", () => this.cleanupScene());
+  }
+
+  cleanupTransientState() {
+    this.cancelPendingTimers();
+    this.sequenceRunId += 1;
+    this.hideEndModal();
+  }
+
+  cleanupScene() {
+    this.cleanupTransientState();
+
+    if (this._resizeHandler) {
+      this.scale.off("resize", this._resizeHandler);
+      this._resizeHandler = null;
+    }
+
+    if (this._keyHandler && this.input?.keyboard) {
+      this.input.keyboard.off("keydown", this._keyHandler);
+      this._keyHandler = null;
+    }
+
+    stopSpeech();
+  }
+
+  schedule(delay, callback) {
+    const timer = this.time.delayedCall(delay, () => {
+      this.pendingTimers = this.pendingTimers.filter((t) => t !== timer);
+      callback?.();
+    });
+    this.pendingTimers.push(timer);
+    return timer;
+  }
+
+  wait(delay, runId) {
+    return new Promise((resolve) => {
+      this.schedule(delay, () => {
+        if (!this.scene.isActive() || runId !== this.sequenceRunId) {
+          resolve(false);
+          return;
+        }
+        resolve(true);
+      });
+    });
+  }
+
+  cancelPendingTimers() {
+    if (!this.pendingTimers?.length) return;
+
+    this.pendingTimers.forEach((timer) => {
+      try {
+        timer.remove(false);
+      } catch {}
     });
 
-    this.events.once("shutdown", () => stopSpeech());
+    this.pendingTimers = [];
+  }
+
+  handleResize(gameSize) {
+    const width = Math.max(
+      320,
+      Math.floor(gameSize?.width ?? this.scale.gameSize?.width ?? this.scale.width ?? window.innerWidth)
+    );
+    const height = Math.max(
+      480,
+      Math.floor(gameSize?.height ?? this.scale.gameSize?.height ?? this.scale.height ?? window.innerHeight)
+    );
+
+    this.cameras.resize(width, height);
+    this.cameras.main.setViewport(0, 0, width, height);
+    this.cameras.main.setScroll(0, 0);
+    this.cameras.main.setBackgroundColor(0x0b1020);
+
+    if (this.bg) {
+      this.bg.setPosition(0, 0);
+      this.bg.setSize(width, height);
+    }
+
+    this.applyTheme();
+    this.layout();
+    this.layoutGrid();
+    this.layoutEndModal();
+    this.applyFocus(this.state.focusIndex, true);
   }
 
   applyTheme() {
@@ -447,6 +600,37 @@ class LightsGameScene extends Phaser.Scene {
       tile.label.setColor("#ffffff");
       tile.focus.setStrokeStyle(4, hc ? 0xffffff : 0x22c55e, 0);
     });
+
+    if (this.endModal) {
+      this.endModal.box.setFillStyle(hc ? 0xffffff : 0x0f172a, 1);
+      this.endModal.box.setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16);
+
+      this.endModal.title.setStyle({
+        fontFamily: "Arial",
+        fontSize: `${Math.round(38 * ts)}px`,
+        color: hc ? "#000000" : "#ffffff",
+      });
+
+      this.endModal.sub.setStyle({
+        fontFamily: "Arial",
+        fontSize: `${Math.round(20 * ts)}px`,
+        color: hc ? "#000000" : "#cbd5e1",
+      });
+
+      this.endModal.btnAgain.setTheme({
+        fill: hc ? 0x000000 : 0x2563eb,
+        strokeAlpha: 1,
+        textColor: "#ffffff",
+        fontSize: Math.round(18 * ts),
+      });
+
+      this.endModal.btnExit.setTheme({
+        fill: hc ? 0x222222 : 0xdc2626,
+        strokeAlpha: 1,
+        textColor: "#ffffff",
+        fontSize: Math.round(18 * ts),
+      });
+    }
   }
 
   layout() {
@@ -469,11 +653,13 @@ class LightsGameScene extends Phaser.Scene {
         const tile = makeGridTile(this, r, c);
 
         tile.hit.on("pointerover", () => {
+          if (this.gameEnded) return;
           this.applyFocus(r * 3 + c, true);
           speakIfEnabled(this, tile.name);
         });
 
         tile.hit.on("pointerdown", () => {
+          if (this.gameEnded) return;
           this.applyFocus(r * 3 + c, true);
           this.onTilePress(r, c);
         });
@@ -526,24 +712,25 @@ class LightsGameScene extends Phaser.Scene {
 
       tile.hit.setPosition(x0, y0);
       tile.hit.setSize(tileW, tileH);
-      tile.hit.removeInteractive();
-      tile.hit.setInteractive(
-        new Phaser.Geom.Rectangle(0, 0, tileW, tileH),
-        Phaser.Geom.Rectangle.Contains
-      );
-      tile.hit.input.cursor = "pointer";
+      if (tile.hit.input?.hitArea?.setTo) {
+        tile.hit.input.hitArea.setTo(0, 0, tileW, tileH);
+      }
     });
   }
 
   initKeyboard() {
-    this.input.keyboard.on("keydown", (e) => {
+    if (!this.input?.keyboard) return;
+
+    this._keyHandler = (e) => {
       if (e.code === "Escape") {
+        if (this.gameEnded && this.endModal) return;
+        this.cleanupTransientState();
         stopSpeech();
         this._onExit?.();
         return;
       }
 
-      if (this.state.locked) return;
+      if (this.state.locked || this.gameEnded) return;
 
       const idx = this.state.focusIndex;
       const r = Math.floor(idx / 3);
@@ -568,7 +755,9 @@ class LightsGameScene extends Phaser.Scene {
         const tile = this.tiles[this.state.focusIndex];
         if (tile) this.onTilePress(tile.r, tile.c);
       }
-    });
+    };
+
+    this.input.keyboard.on("keydown", this._keyHandler);
   }
 
   applyFocus(index, silent = false) {
@@ -589,12 +778,31 @@ class LightsGameScene extends Phaser.Scene {
     tile.focus.setPosition(tile.cx, tile.cy);
     tile.focus.setStrokeStyle(4, focusColor, 1);
 
-    if (!silent) {
-      speakIfEnabled(this, tile.name);
-    }
+    if (!silent) speakIfEnabled(this, tile.name);
+  }
+
+  setTilesEnabled(enabled) {
+    this.tiles.forEach((tile) => {
+      if (enabled) {
+        if (!tile.hit.input) {
+          tile.hit.setInteractive(
+            new Phaser.Geom.Rectangle(0, 0, tile.w, tile.h),
+            Phaser.Geom.Rectangle.Contains
+          );
+          tile.hit.input.cursor = "pointer";
+        }
+      } else {
+        tile.hit.disableInteractive();
+      }
+    });
   }
 
   nextRound(isFirst = false) {
+    if (this.gameEnded) return;
+
+    this.cancelPendingTimers();
+    this.sequenceRunId += 1;
+
     this.state.round += 1;
     this.state.attempts += 1;
     this.state.locked = true;
@@ -621,56 +829,61 @@ class LightsGameScene extends Phaser.Scene {
     speakIfEnabled(this, `Ronda ${this.state.round}. Observa la secuencia.`);
     if (isFirst) speakIfEnabled(this, "Usa flechas y Enter si no quieres usar mouse.");
 
-    this.playSequence();
+    this.playSequence(this.sequenceRunId);
   }
 
   getTile(r, c) {
     return this.tiles.find((t) => t.r === r && t.c === c);
   }
 
-  playSequence() {
+  async playSequence(runId) {
     const hc = !!this.a11y.highContrast;
     const activeFill = hc ? 0xffffff : 0x60a5fa;
 
-    this.time.delayedCall(350, async () => {
-      for (let i = 0; i < this.state.sequence.length; i++) {
-        const { r, c } = this.state.sequence[i];
-        const tile = this.getTile(r, c);
-        if (!tile) continue;
+    const okStart = await this.wait(350, runId);
+    if (!okStart || this.gameEnded) return;
 
-        speakIfEnabled(this, tile.name);
+    for (let i = 0; i < this.state.sequence.length; i++) {
+      if (!this.scene.isActive() || this.gameEnded || runId !== this.sequenceRunId) return;
 
-        const oldFill = tile.bg.fillColor;
-        const oldAlpha = tile.bg.strokeAlpha;
+      const { r, c } = this.state.sequence[i];
+      const tile = this.getTile(r, c);
+      if (!tile) continue;
 
-        tile.bg.setFillStyle(activeFill, 1);
-        tile.bg.setStrokeStyle(5, 0xffffff, 1);
+      speakIfEnabled(this, tile.name);
 
-        this.tweens.add({
-          targets: [tile.bg, tile.label, tile.focus],
-          scaleX: { from: 1, to: 1.05 },
-          scaleY: { from: 1, to: 1.05 },
-          yoyo: true,
-          duration: Math.max(180, this.speedMs * 0.35),
-        });
+      const oldFill = tile.bg.fillColor;
+      const oldAlpha = tile.bg.strokeAlpha;
 
-        await new Promise((res) => this.time.delayedCall(this.speedMs, res));
+      tile.bg.setFillStyle(activeFill, 1);
+      tile.bg.setStrokeStyle(5, 0xffffff, 1);
 
-        tile.bg.setFillStyle(oldFill, 1);
-        tile.bg.setStrokeStyle(3, 0xffffff, oldAlpha);
+      this.tweens.add({
+        targets: [tile.bg, tile.label, tile.focus],
+        scaleX: { from: 1, to: 1.05 },
+        scaleY: { from: 1, to: 1.05 },
+        yoyo: true,
+        duration: Math.max(180, this.speedMs * 0.35),
+      });
 
-        await new Promise((res) =>
-          this.time.delayedCall(Math.max(120, this.speedMs * 0.2), res)
-        );
-      }
+      const okOn = await this.wait(this.speedMs, runId);
+      if (!okOn || this.gameEnded) return;
 
-      this.state.locked = false;
-      speakIfEnabled(this, "Tu turno. Repite la secuencia.");
-    });
+      tile.bg.setFillStyle(oldFill, 1);
+      tile.bg.setStrokeStyle(3, 0xffffff, oldAlpha);
+
+      const okOff = await this.wait(Math.max(120, this.speedMs * 0.2), runId);
+      if (!okOff || this.gameEnded) return;
+    }
+
+    if (!this.scene.isActive() || this.gameEnded || runId !== this.sequenceRunId) return;
+
+    this.state.locked = false;
+    speakIfEnabled(this, "Tu turno. Repite la secuencia.");
   }
 
   onTilePress(r, c) {
-    if (this.state.locked) return;
+    if (this.state.locked || this.gameEnded) return;
 
     const tile = this.getTile(r, c);
     if (!tile) return;
@@ -680,7 +893,10 @@ class LightsGameScene extends Phaser.Scene {
     const old = tile.bg.fillColor;
 
     tile.bg.setFillStyle(pressFill, 1);
-    this.time.delayedCall(160, () => tile.bg.setFillStyle(old, 1));
+    this.schedule(160, () => {
+      if (!this.scene.isActive()) return;
+      tile.bg.setFillStyle(old, 1);
+    });
 
     speakIfEnabled(this, tile.name);
 
@@ -700,12 +916,16 @@ class LightsGameScene extends Phaser.Scene {
   }
 
   successFeedback() {
+    if (this.gameEnded) return;
+
     this.state.locked = true;
     this.state.score += 1;
     speakIfEnabled(this, "Correcto");
     this.showOverlayIcon(true);
 
-    this.time.delayedCall(900, () => {
+    this.schedule(900, () => {
+      if (!this.scene.isActive() || this.gameEnded) return;
+
       if (this.state.round >= this.roundsTotal) {
         this.finishGame();
       } else {
@@ -715,6 +935,8 @@ class LightsGameScene extends Phaser.Scene {
   }
 
   failFeedback() {
+    if (this.gameEnded) return;
+
     this.state.locked = true;
     this.state.wrongRounds += 1;
     speakIfEnabled(this, "Incorrecto");
@@ -728,10 +950,12 @@ class LightsGameScene extends Phaser.Scene {
       duration: 60,
     });
 
-    this.time.delayedCall(1000, () => {
+    this.schedule(1000, () => {
+      if (!this.scene.isActive() || this.gameEnded) return;
       this.state.inputIndex = 0;
       speakIfEnabled(this, "Mira otra vez.");
-      this.playSequence();
+      this.sequenceRunId += 1;
+      this.playSequence(this.sequenceRunId);
     });
   }
 
@@ -746,17 +970,21 @@ class LightsGameScene extends Phaser.Scene {
       .rectangle(0, 0, Math.min(560, W * 0.9), 130, hc ? 0xffffff : 0x111827, 1)
       .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.15);
 
-    const icon = this.add.text(-140, 0, ok ? "✔" : "✖", {
-      fontFamily: "Arial",
-      fontSize: `${Math.round(68 * ts)}px`,
-      color: hc ? "#000000" : "#ffffff",
-    }).setOrigin(0.5);
+    const icon = this.add
+      .text(-140, 0, ok ? "✔" : "✖", {
+        fontFamily: "Arial",
+        fontSize: `${Math.round(68 * ts)}px`,
+        color: hc ? "#000000" : "#ffffff",
+      })
+      .setOrigin(0.5);
 
-    const text = this.add.text(40, 0, ok ? "¡Bien!" : "Intenta otra vez", {
-      fontFamily: "Arial",
-      fontSize: `${Math.round((ok ? 38 : 32) * ts)}px`,
-      color: hc ? "#000000" : "#ffffff",
-    }).setOrigin(0.5);
+    const text = this.add
+      .text(40, 0, ok ? "¡Bien!" : "Intenta otra vez", {
+        fontFamily: "Arial",
+        fontSize: `${Math.round((ok ? 38 : 32) * ts)}px`,
+        color: hc ? "#000000" : "#ffffff",
+      })
+      .setOrigin(0.5);
 
     overlay.add([panel, icon, text]);
     overlay.setAlpha(0);
@@ -771,7 +999,19 @@ class LightsGameScene extends Phaser.Scene {
     });
   }
 
-  finishGame() {
+  async finishGame() {
+    if (this.gameEnded) return;
+
+    this.gameEnded = true;
+    this.state.locked = true;
+
+    this.cancelPendingTimers();
+    this.sequenceRunId += 1;
+    this.setTilesEnabled(false);
+
+    this.menuBtn.disableInteractive();
+    this.exitBtn.disableInteractive();
+
     const durationMs = Date.now() - this.state.startTime;
 
     let level = "MEDIUM";
@@ -796,8 +1036,14 @@ class LightsGameScene extends Phaser.Scene {
       },
     };
 
-    this._onFinish?.(this.finalResult);
+    try {
+      await this._onFinish?.(this.finalResult);
+    } catch (err) {
+      console.error("Error guardando resultado:", err);
+    }
+
     this.showEndModal();
+    speakIfEnabled(this, "Juego terminado. Selecciona Jugar otra vez o Salir.");
   }
 
   showEndModal() {
@@ -808,43 +1054,53 @@ class LightsGameScene extends Phaser.Scene {
     const hc = !!this.a11y.highContrast;
     const ts = this.a11y.textScale || 1;
 
-    const overlay = this.add.rectangle(0, 0, W, H, 0x000000, 0.55)
+    const overlay = this.add
+      .rectangle(0, 0, W, H, 0x000000, 0.55)
       .setOrigin(0)
-      .setDepth(4000);
+      .setDepth(4000)
+      .setInteractive();
 
-    const box = this.add.rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x0f172a, 1)
+    overlay.on("pointerdown", (pointer, localX, localY, event) => {
+      event?.stopPropagation?.();
+    });
+
+    const box = this.add
+      .rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x0f172a, 1)
       .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
-      .setDepth(4001);
+      .setDepth(4001)
+      .setInteractive();
 
-    const title = this.add.text(W / 2, H / 2 - 70, "¡Terminaste!", {
-      fontFamily: "Arial",
-      fontSize: `${Math.round(38 * ts)}px`,
-      color: hc ? "#000000" : "#ffffff",
-    }).setOrigin(0.5).setDepth(4002);
+    box.on("pointerdown", (pointer, localX, localY, event) => {
+      event?.stopPropagation?.();
+    });
 
-    const sub = this.add.text(
-      W / 2,
-      H / 2 - 18,
-      `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
-      {
+    const title = this.add
+      .text(W / 2, H / 2 - 70, "¡Terminaste!", {
         fontFamily: "Arial",
-        fontSize: `${Math.round(20 * ts)}px`,
-        color: hc ? "#000000" : "#cbd5e1",
-      }
-    ).setOrigin(0.5).setDepth(4002);
+        fontSize: `${Math.round(38 * ts)}px`,
+        color: hc ? "#000000" : "#ffffff",
+      })
+      .setOrigin(0.5)
+      .setDepth(4002);
+
+    const sub = this.add
+      .text(
+        W / 2,
+        H / 2 - 18,
+        `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
+        {
+          fontFamily: "Arial",
+          fontSize: `${Math.round(20 * ts)}px`,
+          color: hc ? "#000000" : "#cbd5e1",
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(4002);
 
     const btnAgain = makeTopLeftButton(
       this,
       "Jugar otra vez",
-      () => {
-        this.hideEndModal();
-        this.scene.restart({
-          steps: this.steps,
-          speedMs: this.speedMs,
-          roundsTotal: this.roundsTotal,
-          difficulty: this.difficulty,
-        });
-      },
+      () => this.restartGame(),
       4003
     );
 
@@ -860,22 +1116,11 @@ class LightsGameScene extends Phaser.Scene {
     );
 
     btnAgain.setSize(210, 52);
-    btnAgain.setTheme({
-      fill: hc ? 0x000000 : 0x2563eb,
-      strokeAlpha: 1,
-      textColor: "#ffffff",
-      fontSize: Math.round(18 * ts),
-    });
-
     btnExit.setSize(170, 52);
-    btnExit.setTheme({
-      fill: hc ? 0x222222 : 0xdc2626,
-      strokeAlpha: 1,
-      textColor: "#ffffff",
-      fontSize: Math.round(18 * ts),
-    });
 
     this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
+
+    this.applyTheme();
     this.layoutEndModal();
   }
 
@@ -896,6 +1141,7 @@ class LightsGameScene extends Phaser.Scene {
 
   hideEndModal() {
     if (!this.endModal) return;
+
     const m = this.endModal;
     m.overlay.destroy();
     m.box.destroy();
@@ -905,6 +1151,20 @@ class LightsGameScene extends Phaser.Scene {
     m.btnExit.destroy();
     this.endModal = null;
   }
+
+  restartGame() {
+    this.cleanupTransientState();
+    stopSpeech();
+    this.finalResult = null;
+    this.gameEnded = false;
+
+    this.scene.restart({
+      steps: this.steps,
+      speedMs: this.speedMs,
+      roundsTotal: this.roundsTotal,
+      difficulty: this.difficulty,
+    });
+  }
 }
 
 export function createLightsSequenceGame(parentId, onFinish, onExit) {
@@ -913,9 +1173,20 @@ export function createLightsSequenceGame(parentId, onFinish, onExit) {
 
   parentEl.style.position = "relative";
   parentEl.style.overflow = "hidden";
+  parentEl.style.width = "100%";
+  parentEl.style.height = "100%";
+  parentEl.style.minWidth = "320px";
+  parentEl.style.minHeight = "480px";
 
-  const w0 = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
-  const h0 = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
+  const getSize = () => {
+    const rect = parentEl.getBoundingClientRect();
+    return {
+      width: Math.max(320, Math.floor(rect.width || window.innerWidth || 900)),
+      height: Math.max(480, Math.floor(rect.height || window.innerHeight || 650)),
+    };
+  };
+
+  const initial = getSize();
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -925,8 +1196,8 @@ export function createLightsSequenceGame(parentId, onFinish, onExit) {
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.NO_CENTER,
-      width: w0,
-      height: h0,
+      width: initial.width,
+      height: initial.height,
     },
   });
 
@@ -936,19 +1207,55 @@ export function createLightsSequenceGame(parentId, onFinish, onExit) {
     canvas.style.position = "absolute";
     canvas.style.left = "0";
     canvas.style.top = "0";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
   }
 
-  setTimeout(() => {
-    const w = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
-    const h = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
-    try {
-      game.scale.resize(w, h);
-      game.scale.refresh();
-    } catch {}
-  }, 0);
+  let resizeRaf = 0;
+
+  const syncSize = () => {
+    resizeRaf = 0;
+
+    if (!game || !game.scale) return;
+
+    const { width, height } = getSize();
+
+    if (game.scale.width !== width || game.scale.height !== height) {
+      try {
+        game.scale.resize(width, height);
+      } catch (err) {
+        console.error("Error al redimensionar el juego:", err);
+      }
+    }
+  };
+
+  const requestSyncSize = () => {
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(syncSize);
+  };
+
+  let ro = null;
+  if (typeof ResizeObserver !== "undefined") {
+    ro = new ResizeObserver(() => {
+      requestSyncSize();
+    });
+    ro.observe(parentEl);
+  }
+
+  window.addEventListener("resize", requestSyncSize);
+  setTimeout(requestSyncSize, 0);
 
   return () => {
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+
+    window.removeEventListener("resize", requestSyncSize);
+
+    try {
+      ro?.disconnect();
+    } catch {}
+
     stopSpeech();
+
     try {
       game.destroy(true);
     } catch {}
