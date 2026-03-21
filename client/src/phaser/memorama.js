@@ -121,7 +121,6 @@ class BootScene extends Phaser.Scene {
         if (this.textures.exists("cardBack")) {
           this.textures.remove("cardBack");
         }
-
         this.textures.addImage("cardBack", img);
         this.scene.start("MenuScene");
       } catch (err) {
@@ -163,7 +162,7 @@ class MenuScene extends Phaser.Scene {
       .text(0, 0, "Elige dificultad", {
         fontFamily: "Arial",
         fontSize: "24px",
-        color: "#cbd5e1",
+        color: "#334155",
       })
       .setOrigin(0.5);
 
@@ -209,31 +208,12 @@ class MenuScene extends Phaser.Scene {
     this.applyTheme();
     this.layout();
 
-this._resizeTimer = null;
-
-this.scale.on("resize", () => {
-  if (!this.bg || !this.cards) return;
-
-  if (this._resizeTimer) {
-    clearTimeout(this._resizeTimer);
-  }
-
-  this._resizeTimer = setTimeout(() => {
-    const W = this.scale.width;
-    const H = this.scale.height;
-
-    if (W < 320 || H < 480) return;
-
-    this.bg.setSize(W, H);
-
-    this.applyTheme();
-    this.layoutTopUI();
-    this.layoutCards();
-
-    // temporalmente NO recalcular focus durante resize
-    // this.applyFocus(this.focusIndex, true);
-  }, 120);
-});
+    this.scale.on("resize", () => {
+      if (!this.bg) return;
+      this.bg.setSize(this.scale.width, this.scale.height);
+      this.applyTheme();
+      this.layout();
+    });
 
     this.events.once("shutdown", () => stopSpeech());
   }
@@ -252,7 +232,7 @@ this.scale.on("resize", () => {
 
     this.title.setFontSize(Math.round(54 * ts));
     this.subtitle.setFontSize(Math.round(24 * ts));
-    this.subtitle.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.subtitle.setColor(hc ? "#ffffff" : "#334155");
 
     this.exitBtn.setStyle({
       color: hc ? "#000000" : "#ffffff",
@@ -277,7 +257,7 @@ this.scale.on("resize", () => {
   layout() {
     const W = this.scale.width;
     if (W < 320) return;
-    
+
     const left = contentLeft(this);
     const right = 16;
     const cx = left + (W - left - right) / 2;
@@ -326,133 +306,78 @@ class MemoryScene extends Phaser.Scene {
   }
 
   create() {
-  if (![4, 6, 8].includes(this.pairs)) {
-    this.pairs = 8;
-  }
-
-  this.bg = this.add
-    .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
-    .setOrigin(0);
-
-  this.title = this.add
-    .text(0, 0, `Memorama - ${this.pairs} pares`, {
-      fontFamily: "Arial",
-      fontSize: "24px",
-      color: "#ffffff",
-    })
-    .setOrigin(0, 0);
-
-  this.attemptsText = this.add
-    .text(0, 0, "Intentos: 0", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#cbd5e1",
-    })
-    .setOrigin(0, 0);
-
-  this.timeText = this.add
-    .text(0, 0, "Tiempo: 0s", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#cbd5e1",
-    })
-    .setOrigin(0, 0);
-
-  this.menuBtn = this.add
-    .text(0, 0, "Menú", {
-      fontFamily: "Arial",
-      fontSize: "16px",
-      color: "#ffffff",
-      backgroundColor: "#111827",
-      padding: { left: 10, right: 10, top: 8, bottom: 8 },
-    })
-    .setOrigin(1, 0)
-    .setInteractive({ useHandCursor: true });
-
-  this.exitBtn = this.add
-    .text(0, 0, "Salir", {
-      fontFamily: "Arial",
-      fontSize: "16px",
-      color: "#ffffff",
-      backgroundColor: "#111827",
-      padding: { left: 10, right: 10, top: 8, bottom: 8 },
-    })
-    .setOrigin(1, 0)
-    .setInteractive({ useHandCursor: true });
-
-  this.menuBtn.on("pointerdown", () => {
-    stopSpeech();
-    this.scene.start("MenuScene");
-  });
-
-  this.exitBtn.on("pointerdown", () => {
-    stopSpeech();
-    this._onExit?.();
-  });
-
-  this.time.addEvent({
-    delay: 250,
-    loop: true,
-    callback: () => {
-      const sec = Math.floor((Date.now() - this.state.startTime) / 1000);
-      this.timeText.setText(`Tiempo: ${sec}s`);
-    },
-  });
-
-  const chosen = shuffle(SYMBOLS).slice(0, this.pairs);
-  const values = shuffle([...chosen, ...chosen]);
-  this.cards = values.map((item, idx) => this.createCard(idx, item));
-
-  this.a11yPanel = createA11yPanel(this, {
-    anchor: "left",
-    onChange: () => {
-      this.applyTheme();
-      this.layoutTopUI();
-      this.layoutCards();
-      this.applyFocus(this.focusIndex, true);
-    },
-  });
-
-  this.initKeyboard();
-
-  this.applyTheme();
-  this.layoutTopUI();
-  this.layoutCards();
-  this.applyFocus(0, true);
-
-  this._resizeTimer = null;
-
-  this.scale.on("resize", () => {
-    if (!this.bg || !this.cards) return;
-
-    if (this._resizeTimer) {
-      clearTimeout(this._resizeTimer);
+    if (![4, 6, 8].includes(this.pairs)) {
+      this.pairs = 8;
     }
 
-    this._resizeTimer = setTimeout(() => {
-      const W = this.scale.width;
-      const H = this.scale.height;
+    this.bg = this.add
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
+      .setOrigin(0);
 
-      if (W < 320 || H < 480) return;
+    this.title = this.add
+      .text(0, 0, `Memorama - ${this.pairs} pares`, {
+        fontFamily: "Arial",
+        fontSize: "24px",
+        color: "#ffffff",
+      })
+      .setOrigin(0, 0);
 
-      this.bg.setSize(W, H);
-      this.applyTheme();
-      this.layoutTopUI();
-      this.layoutCards();
+    this.attemptsText = this.add
+      .text(0, 0, "Intentos: 0", {
+        fontFamily: "Arial",
+        fontSize: "18px",
+        color: "#334155",
+      })
+      .setOrigin(0, 0);
 
-      // Prueba: no recalcular focus durante resize
-      // this.applyFocus(this.focusIndex, true);
-    }, 120);
-  });
+    this.timeText = this.add
+      .text(0, 0, "Tiempo: 0s", {
+        fontFamily: "Arial",
+        fontSize: "18px",
+        color: "#334155",
+      })
+      .setOrigin(0, 0);
 
-  this.events.once("shutdown", () => {
-    stopSpeech();
-    if (this._resizeTimer) {
-      clearTimeout(this._resizeTimer);
-      this._resizeTimer = null;
-    }
-  });
-}
+    this.menuBtn = this.add
+      .text(0, 0, "Menú", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        backgroundColor: "#111827",
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
+
+    this.exitBtn = this.add
+      .text(0, 0, "Salir", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        backgroundColor: "#111827",
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
+
+    this.menuBtn.on("pointerdown", () => {
+      stopSpeech();
+      this.scene.start("MenuScene");
+    });
+
+    this.exitBtn.on("pointerdown", () => {
+      stopSpeech();
+      this._onExit?.();
+    });
+
+    this.time.addEvent({
+      delay: 250,
+      loop: true,
+      callback: () => {
+        const sec = Math.floor((Date.now() - this.state.startTime) / 1000);
+        this.timeText.setText(`Tiempo: ${sec}s`);
+      },
+    });
 
     const chosen = shuffle(SYMBOLS).slice(0, this.pairs);
     const values = shuffle([...chosen, ...chosen]);
@@ -475,16 +400,33 @@ class MemoryScene extends Phaser.Scene {
     this.layoutCards();
     this.applyFocus(0, true);
 
+    this._resizeTimer = null;
+
     this.scale.on("resize", () => {
       if (!this.bg || !this.cards) return;
-      this.bg.setSize(this.scale.width, this.scale.height);
-      this.applyTheme();
-      this.layoutTopUI();
-      this.layoutCards();
-      this.applyFocus(this.focusIndex, true);
+
+      if (this._resizeTimer) clearTimeout(this._resizeTimer);
+
+      this._resizeTimer = setTimeout(() => {
+        const W = this.scale.width;
+        const H = this.scale.height;
+
+        if (W < 320 || H < 480) return;
+
+        this.bg.setSize(W, H);
+        this.applyTheme();
+        this.layoutTopUI();
+        this.layoutCards();
+      }, 120);
     });
 
-    this.events.once("shutdown", () => stopSpeech());
+    this.events.once("shutdown", () => {
+      stopSpeech();
+      if (this._resizeTimer) {
+        clearTimeout(this._resizeTimer);
+        this._resizeTimer = null;
+      }
+    });
   }
 
   say(text) {
@@ -506,8 +448,8 @@ class MemoryScene extends Phaser.Scene {
     this.attemptsText.setFontSize(Math.round(18 * ts));
     this.timeText.setFontSize(Math.round(18 * ts));
 
-    this.attemptsText.setColor(hc ? "#ffffff" : "#cbd5e1");
-    this.timeText.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.attemptsText.setColor(hc ? "#ffffff" : "#334155");
+    this.timeText.setColor(hc ? "#ffffff" : "#334155");
 
     const btnStyle = {
       color: hc ? "#000000" : "#ffffff",
@@ -534,7 +476,7 @@ class MemoryScene extends Phaser.Scene {
   layoutTopUI() {
     const W = this.scale.width;
     if (W < 320) return;
-    
+
     const left = contentLeft(this);
 
     this.title.setPosition(left, 16);
@@ -584,38 +526,38 @@ class MemoryScene extends Phaser.Scene {
     });
   }
 
-applyFocus(index, silent = false) {
-  if (!this.cards || !this.cards.length) return;
+  applyFocus(index, silent = false) {
+    if (!this.cards || !this.cards.length) return;
 
-  const card = this.cards[index];
-  if (!card || !Number.isFinite(card.cx) || !Number.isFinite(card.cy)) return;
+    const card = this.cards[index];
+    if (!card || !Number.isFinite(card.cx) || !Number.isFinite(card.cy)) return;
 
-  this.cards.forEach((c) => c.focusOutline?.setVisible(false));
+    this.cards.forEach((c) => c.focusOutline?.setVisible(false));
 
-  if (!card.focusOutline) {
-    card.focusOutline = this.add
-      .rectangle(card.cx, card.cy, 120, 140, 0x000000, 0)
-      .setOrigin(0.5)
-      .setStrokeStyle(4, 0x22c55e, 1);
-    card.focusOutline.setVisible(false);
+    if (!card.focusOutline) {
+      card.focusOutline = this.add
+        .rectangle(card.cx, card.cy, 120, 140, 0x000000, 0)
+        .setOrigin(0.5)
+        .setStrokeStyle(4, 0x22c55e, 1);
+      card.focusOutline.setVisible(false);
+    }
+
+    card.focusOutline.setVisible(true);
+    card.focusOutline.setPosition(card.cx, card.cy);
+    card.focusOutline.setSize(card.w + 14, card.h + 14);
+
+    if (!silent) {
+      const cols = this.gridCols || 4;
+      const row = Math.floor(index / cols) + 1;
+      const col = (index % cols) + 1;
+      const status = card.matched
+        ? "emparejada"
+        : card.flipped
+          ? `volteada, ${card.label}`
+          : "oculta";
+      this.say(`Carta fila ${row}, columna ${col}, ${status}`);
+    }
   }
-
-  card.focusOutline.setVisible(true);
-  card.focusOutline.setPosition(card.cx, card.cy);
-  card.focusOutline.setSize(card.w + 14, card.h + 14);
-
-  if (!silent) {
-    const cols = this.gridCols || 4;
-    const row = Math.floor(index / cols) + 1;
-    const col = (index % cols) + 1;
-    const status = card.matched
-      ? "emparejada"
-      : card.flipped
-        ? `volteada, ${card.label}`
-        : "oculta";
-    this.say(`Carta fila ${row}, columna ${col}, ${status}`);
-  }
-}
 
   createCard(idx, item) {
     const faceDown = this.add.image(0, 0, "cardBack").setOrigin(0, 0);
@@ -632,7 +574,7 @@ applyFocus(index, silent = false) {
 
     const txt = this.add
       .text(0, 0, item.symbol, {
-        fontFamily: "Arial",
+        fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", Arial',
         fontSize: "52px",
         color: "#0b1020",
       })
@@ -928,95 +870,95 @@ applyFocus(index, silent = false) {
     }
   }
 
-layoutCards() {
-  const W = this.scale.width;
-  const H = this.scale.height;
+  layoutCards() {
+    const W = this.scale.width;
+    const H = this.scale.height;
 
-  if (W < 320 || H < 480) return;
+    if (W < 320 || H < 480) return;
 
-  const leftPad = contentLeft(this);
-  const rightPad = 16;
-  const topPad = 120;
-  const bottomPad = 16;
+    const leftPad = contentLeft(this);
+    const rightPad = 16;
+    const topPad = 120;
+    const bottomPad = 16;
 
-  const areaW = W - leftPad - rightPad;
-  const areaH = H - topPad - bottomPad;
+    const areaW = W - leftPad - rightPad;
+    const areaH = H - topPad - bottomPad;
 
-  if (areaW < 220 || areaH < 220) return;
+    if (areaW < 220 || areaH < 220) return;
 
-  const total = this.pairs * 2;
-  const cols = 4;
-  const rows = Math.ceil(total / cols);
-  this.gridCols = cols;
+    const total = this.pairs * 2;
+    const cols = 4;
+    const rows = Math.ceil(total / cols);
+    this.gridCols = cols;
 
-  const gap = 18;
+    const gap = 18;
 
-  const rawCellW = Math.floor((areaW - gap * (cols - 1)) / cols);
-  const rawCellH = Math.floor((areaH - gap * (rows - 1)) / rows);
+    const rawCellW = Math.floor((areaW - gap * (cols - 1)) / cols);
+    const rawCellH = Math.floor((areaH - gap * (rows - 1)) / rows);
 
-  const cellW = Math.max(50, rawCellW);
-  const cellH = Math.max(60, rawCellH);
+    const cellW = Math.max(50, rawCellW);
+    const cellH = Math.max(60, rawCellH);
 
-  const ui = this.a11y.uiScale || 1;
-  const ts = this.a11y.textScale || 1;
+    const ui = this.a11y.uiScale || 1;
+    const ts = this.a11y.textScale || 1;
 
-  let w = Math.floor(cellW * 0.92 * ui);
-  let h = Math.floor(cellH * 0.92 * ui);
+    let w = Math.floor(cellW * 0.92 * ui);
+    let h = Math.floor(cellH * 0.92 * ui);
 
-  w = Math.min(w, cellW);
-  h = Math.min(h, cellH);
+    w = Math.min(w, cellW);
+    h = Math.min(h, cellH);
 
-  w = Math.max(w, 50);
-  h = Math.max(h, 60);
+    w = Math.max(w, 50);
+    h = Math.max(h, 60);
 
-  this.cards.forEach((card, i) => {
-    const r = Math.floor(i / cols);
-    const c = i % cols;
+    this.cards.forEach((card, i) => {
+      const r = Math.floor(i / cols);
+      const c = i % cols;
 
-    const cx = leftPad + c * (cellW + gap) + cellW / 2;
-    const cy = topPad + r * (cellH + gap) + cellH / 2;
+      const cx = leftPad + c * (cellW + gap) + cellW / 2;
+      const cy = topPad + r * (cellH + gap) + cellH / 2;
 
-    const x0 = cx - w / 2;
-    const y0 = cy - h / 2;
+      const x0 = cx - w / 2;
+      const y0 = cy - h / 2;
 
-    const sizeChanged = card.w !== w || card.h !== h;
+      const sizeChanged = card.w !== w || card.h !== h;
 
-    card.x0 = x0;
-    card.y0 = y0;
-    card.cx = cx;
-    card.cy = cy;
+      card.x0 = x0;
+      card.y0 = y0;
+      card.cx = cx;
+      card.cy = cy;
 
-    card.faceDown.setPosition(x0, y0);
-    card.backBorder.setPosition(x0, y0);
-    card.faceUp.setPosition(x0, y0);
+      card.faceDown.setPosition(x0, y0);
+      card.backBorder.setPosition(x0, y0);
+      card.faceUp.setPosition(x0, y0);
 
-    if (sizeChanged) {
-      card.faceDown.setDisplaySize(w, h);
-      card.backBorder.setSize(w, h);
-      card.faceUp.setSize(w, h);
-    }
+      if (sizeChanged) {
+        card.faceDown.setDisplaySize(w, h);
+        card.backBorder.setSize(w, h);
+        card.faceUp.setSize(w, h);
+      }
 
-    card.w = w;
-    card.h = h;
+      card.w = w;
+      card.h = h;
 
-    card.hit.setPosition(x0, y0);
-    card.hit.setSize(w, h);
+      card.hit.setPosition(x0, y0);
+      card.hit.setSize(w, h);
 
-    if (card.hit.input?.hitArea?.setTo) {
-      card.hit.input.hitArea.setTo(0, 0, w, h);
-    }
+      if (card.hit.input?.hitArea?.setTo) {
+        card.hit.input.hitArea.setTo(0, 0, w, h);
+      }
 
-    card.txt.setPosition(cx, cy);
-    card.txt.setFontSize(
-      Math.max(22, Math.floor(Math.min(w, h) * 0.42 * ts))
-    );
+      card.txt.setPosition(cx, cy);
+      card.txt.setFontSize(
+        Math.max(22, Math.floor(Math.min(w, h) * 0.42 * ts))
+      );
 
-    if (card.focusOutline) {
-      card.focusOutline.setPosition(cx, cy);
-      card.focusOutline.setSize(w + 14, h + 14);
-    }
-  });
-}
+      if (card.focusOutline) {
+        card.focusOutline.setPosition(cx, cy);
+        card.focusOutline.setSize(w + 14, h + 14);
+      }
+    });
+  }
 }
 
 /* ======================= createMemoramaGame ======================= */
@@ -1083,7 +1025,6 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
   };
 
   window.addEventListener("resize", handleResize);
-
   setTimeout(handleResize, 0);
 
   return () => {
