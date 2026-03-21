@@ -530,34 +530,37 @@ class MemoryScene extends Phaser.Scene {
   }
 
   applyFocus(index, silent = false) {
-    this.cards.forEach((c) => c.focusOutline?.setVisible(false));
-    const card = this.cards[index];
-    if (!card) return;
+  if (!this.cards || !this.cards.length) return;
 
-    if (!card.focusOutline) {
-      card.focusOutline = this.add
-        .rectangle(card.cx, card.cy, 120, 140, 0x000000, 0)
-        .setOrigin(0.5)
-        .setStrokeStyle(4, 0x22c55e, 1);
-      card.focusOutline.setVisible(false);
-    }
+  const card = this.cards[index];
+  if (!card || !Number.isFinite(card.cx) || !Number.isFinite(card.cy)) return;
 
-    card.focusOutline.setVisible(true);
-    card.focusOutline.setPosition(card.cx, card.cy);
-    card.focusOutline.setSize(card.w + 14, card.h + 14);
+  this.cards.forEach((c) => c.focusOutline?.setVisible(false));
 
-    if (!silent) {
-      const cols = this.gridCols || 4;
-      const row = Math.floor(index / cols) + 1;
-      const col = (index % cols) + 1;
-      const status = card.matched
-        ? "emparejada"
-        : card.flipped
-          ? `volteada, ${card.label}`
-          : "oculta";
-      this.say(`Carta fila ${row}, columna ${col}, ${status}`);
-    }
+  if (!card.focusOutline) {
+    card.focusOutline = this.add
+      .rectangle(card.cx, card.cy, 120, 140, 0x000000, 0)
+      .setOrigin(0.5)
+      .setStrokeStyle(4, 0x22c55e, 1);
+    card.focusOutline.setVisible(false);
   }
+
+  card.focusOutline.setVisible(true);
+  card.focusOutline.setPosition(card.cx, card.cy);
+  card.focusOutline.setSize(card.w + 14, card.h + 14);
+
+  if (!silent) {
+    const cols = this.gridCols || 4;
+    const row = Math.floor(index / cols) + 1;
+    const col = (index % cols) + 1;
+    const status = card.matched
+      ? "emparejada"
+      : card.flipped
+        ? `volteada, ${card.label}`
+        : "oculta";
+    this.say(`Carta fila ${row}, columna ${col}, ${status}`);
+  }
+}
 
   createCard(idx, item) {
     const faceDown = this.add.image(0, 0, "cardBack").setOrigin(0, 0);
