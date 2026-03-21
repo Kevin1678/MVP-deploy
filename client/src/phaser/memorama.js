@@ -326,78 +326,133 @@ class MemoryScene extends Phaser.Scene {
   }
 
   create() {
-    if (![4, 6, 8].includes(this.pairs)) {
-      this.pairs = 8;
+  if (![4, 6, 8].includes(this.pairs)) {
+    this.pairs = 8;
+  }
+
+  this.bg = this.add
+    .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
+    .setOrigin(0);
+
+  this.title = this.add
+    .text(0, 0, `Memorama - ${this.pairs} pares`, {
+      fontFamily: "Arial",
+      fontSize: "24px",
+      color: "#ffffff",
+    })
+    .setOrigin(0, 0);
+
+  this.attemptsText = this.add
+    .text(0, 0, "Intentos: 0", {
+      fontFamily: "Arial",
+      fontSize: "18px",
+      color: "#cbd5e1",
+    })
+    .setOrigin(0, 0);
+
+  this.timeText = this.add
+    .text(0, 0, "Tiempo: 0s", {
+      fontFamily: "Arial",
+      fontSize: "18px",
+      color: "#cbd5e1",
+    })
+    .setOrigin(0, 0);
+
+  this.menuBtn = this.add
+    .text(0, 0, "Menú", {
+      fontFamily: "Arial",
+      fontSize: "16px",
+      color: "#ffffff",
+      backgroundColor: "#111827",
+      padding: { left: 10, right: 10, top: 8, bottom: 8 },
+    })
+    .setOrigin(1, 0)
+    .setInteractive({ useHandCursor: true });
+
+  this.exitBtn = this.add
+    .text(0, 0, "Salir", {
+      fontFamily: "Arial",
+      fontSize: "16px",
+      color: "#ffffff",
+      backgroundColor: "#111827",
+      padding: { left: 10, right: 10, top: 8, bottom: 8 },
+    })
+    .setOrigin(1, 0)
+    .setInteractive({ useHandCursor: true });
+
+  this.menuBtn.on("pointerdown", () => {
+    stopSpeech();
+    this.scene.start("MenuScene");
+  });
+
+  this.exitBtn.on("pointerdown", () => {
+    stopSpeech();
+    this._onExit?.();
+  });
+
+  this.time.addEvent({
+    delay: 250,
+    loop: true,
+    callback: () => {
+      const sec = Math.floor((Date.now() - this.state.startTime) / 1000);
+      this.timeText.setText(`Tiempo: ${sec}s`);
+    },
+  });
+
+  const chosen = shuffle(SYMBOLS).slice(0, this.pairs);
+  const values = shuffle([...chosen, ...chosen]);
+  this.cards = values.map((item, idx) => this.createCard(idx, item));
+
+  this.a11yPanel = createA11yPanel(this, {
+    anchor: "left",
+    onChange: () => {
+      this.applyTheme();
+      this.layoutTopUI();
+      this.layoutCards();
+      this.applyFocus(this.focusIndex, true);
+    },
+  });
+
+  this.initKeyboard();
+
+  this.applyTheme();
+  this.layoutTopUI();
+  this.layoutCards();
+  this.applyFocus(0, true);
+
+  this._resizeTimer = null;
+
+  this.scale.on("resize", () => {
+    if (!this.bg || !this.cards) return;
+
+    if (this._resizeTimer) {
+      clearTimeout(this._resizeTimer);
     }
 
-    this.bg = this.add
-      .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
-      .setOrigin(0);
+    this._resizeTimer = setTimeout(() => {
+      const W = this.scale.width;
+      const H = this.scale.height;
 
-    this.title = this.add
-      .text(0, 0, `Memorama - ${this.pairs} pares`, {
-        fontFamily: "Arial",
-        fontSize: "24px",
-        color: "#ffffff",
-      })
-      .setOrigin(0, 0);
+      if (W < 320 || H < 480) return;
 
-    this.attemptsText = this.add
-      .text(0, 0, "Intentos: 0", {
-        fontFamily: "Arial",
-        fontSize: "18px",
-        color: "#cbd5e1",
-      })
-      .setOrigin(0, 0);
+      this.bg.setSize(W, H);
+      this.applyTheme();
+      this.layoutTopUI();
+      this.layoutCards();
 
-    this.timeText = this.add
-      .text(0, 0, "Tiempo: 0s", {
-        fontFamily: "Arial",
-        fontSize: "18px",
-        color: "#cbd5e1",
-      })
-      .setOrigin(0, 0);
+      // Prueba: no recalcular focus durante resize
+      // this.applyFocus(this.focusIndex, true);
+    }, 120);
+  });
 
-    this.menuBtn = this.add
-      .text(0, 0, "Menú", {
-        fontFamily: "Arial",
-        fontSize: "16px",
-        color: "#ffffff",
-        backgroundColor: "#111827",
-        padding: { left: 10, right: 10, top: 8, bottom: 8 },
-      })
-      .setOrigin(1, 0)
-      .setInteractive({ useHandCursor: true });
-
-    this.exitBtn = this.add
-      .text(0, 0, "Salir", {
-        fontFamily: "Arial",
-        fontSize: "16px",
-        color: "#ffffff",
-        backgroundColor: "#111827",
-        padding: { left: 10, right: 10, top: 8, bottom: 8 },
-      })
-      .setOrigin(1, 0)
-      .setInteractive({ useHandCursor: true });
-
-    this.menuBtn.on("pointerdown", () => {
-      stopSpeech();
-      this.scene.start("MenuScene");
-    });
-
-    this.exitBtn.on("pointerdown", () => {
-      stopSpeech();
-      this._onExit?.();
-    });
-
-    this.time.addEvent({
-      delay: 250,
-      loop: true,
-      callback: () => {
-        const sec = Math.floor((Date.now() - this.state.startTime) / 1000);
-        this.timeText.setText(`Tiempo: ${sec}s`);
-      },
-    });
+  this.events.once("shutdown", () => {
+    stopSpeech();
+    if (this._resizeTimer) {
+      clearTimeout(this._resizeTimer);
+      this._resizeTimer = null;
+    }
+  });
+}
 
     const chosen = shuffle(SYMBOLS).slice(0, this.pairs);
     const values = shuffle([...chosen, ...chosen]);
