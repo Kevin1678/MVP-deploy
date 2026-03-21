@@ -641,7 +641,7 @@ class MemoryScene extends Phaser.Scene {
   const b = card;
 
   // Delay mayor para que sí se alcance a oír la segunda figura
-  const revealDelay = 1100;
+  const revealDelay = 1400;
 
   if (a.matchKey === b.matchKey) {
     this.time.delayedCall(revealDelay, () => {
