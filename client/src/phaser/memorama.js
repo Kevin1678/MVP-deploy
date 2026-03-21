@@ -956,6 +956,8 @@ layoutCards() {
     }
   });
 }
+}
+
 /* ======================= createMemoramaGame ======================= */
 export function createMemoramaGame(parentId, onFinish, onExit) {
   const parentEl = document.getElementById(parentId);
