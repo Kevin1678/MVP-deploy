@@ -36,16 +36,18 @@ function contentLeft(scene) {
   return 16 + panelW + (PANEL_GAP ?? 16);
 }
 
-function makeMenuButton(scene, label, onClick) {
+function makeButton(scene, label, onClick, depth = 10) {
   let w = 520;
   let h = 60;
   let x0 = 0;
   let y0 = 0;
+  let enabled = true;
 
   const box = scene.add
     .rectangle(x0, y0, w, h, 0x111827, 1)
     .setOrigin(0, 0)
-    .setStrokeStyle(2, 0xffffff, 0.14);
+    .setStrokeStyle(2, 0xffffff, 0.14)
+    .setDepth(depth);
 
   const text = scene.add
     .text(x0 + w / 2, y0 + h / 2, label, {
@@ -53,33 +55,46 @@ function makeMenuButton(scene, label, onClick) {
       fontSize: "26px",
       color: "#ffffff",
     })
-    .setOrigin(0.5);
+    .setOrigin(0.5)
+    .setDepth(depth + 1);
 
-  const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0);
-  hit.setInteractive(
-    new Phaser.Geom.Rectangle(0, 0, w, h),
-    Phaser.Geom.Rectangle.Contains
-  );
-  hit.setDepth(1000);
+  const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0).setDepth(depth + 2);
+  hit.setInteractive({ useHandCursor: true });
 
-  hit.on("pointerover", () => speakIfEnabled(scene, label));
-  hit.on("pointerdown", onClick);
+  hit.on("pointerover", () => {
+    if (!enabled) return;
+    speakIfEnabled(scene, label);
+  });
 
-  function refreshHit() {
-    hit.disableInteractive();
-    hit.setInteractive(
-      new Phaser.Geom.Rectangle(0, 0, w, h),
-      Phaser.Geom.Rectangle.Contains
-    );
-  }
+  hit.on("pointerdown", () => {
+    if (!enabled) return;
+    onClick?.();
+  });
 
   return {
+    box,
+    text,
+    hit,
+
+    setLabel(next) {
+      label = next;
+      text.setText(next);
+    },
+
     setCenter(cx, cy) {
       x0 = cx - w / 2;
       y0 = cy - h / 2;
       box.setPosition(x0, y0);
-      text.setPosition(cx, cy);
       hit.setPosition(x0, y0);
+      text.setPosition(cx, cy);
+    },
+
+    setTL(nx, ny) {
+      x0 = nx;
+      y0 = ny;
+      box.setPosition(x0, y0);
+      hit.setPosition(x0, y0);
+      text.setPosition(x0 + w / 2, y0 + h / 2);
     },
 
     setSize(newW, newH) {
@@ -87,7 +102,9 @@ function makeMenuButton(scene, label, onClick) {
       h = newH;
       box.setSize(w, h);
       hit.setSize(w, h);
-      refreshHit();
+      if (hit.input?.hitArea?.setTo) {
+        hit.input.hitArea.setTo(0, 0, w, h);
+      }
       text.setPosition(x0 + w / 2, y0 + h / 2);
     },
 
@@ -96,6 +113,23 @@ function makeMenuButton(scene, label, onClick) {
       box.setStrokeStyle(2, 0xffffff, strokeAlpha);
       text.setColor(textColor);
       if (fontSize) text.setFontSize(fontSize);
+    },
+
+    setEnabled(v) {
+      enabled = !!v;
+      if (enabled) {
+        if (!hit.input) hit.setInteractive({ useHandCursor: true });
+      } else {
+        hit.disableInteractive();
+      }
+      box.setAlpha(enabled ? 1 : 0.55);
+      text.setAlpha(enabled ? 1 : 0.55);
+    },
+
+    destroy() {
+      box.destroy();
+      text.destroy();
+      hit.destroy();
     },
   };
 }
@@ -116,6 +150,7 @@ class BootScene extends Phaser.Scene {
         if (this.textures.exists("cardBack")) {
           this.textures.remove("cardBack");
         }
+
         this.textures.addImage("cardBack", img);
         this.scene.start("MenuScene");
       } catch (err) {
@@ -137,6 +172,7 @@ class MenuScene extends Phaser.Scene {
   constructor(onExit) {
     super("MenuScene");
     this._onExit = onExit;
+    this._resizeHandler = null;
   }
 
   create() {
@@ -156,7 +192,7 @@ class MenuScene extends Phaser.Scene {
       .text(0, 0, "Elige dificultad", {
         fontFamily: "Arial",
         fontSize: "24px",
-        color: "#334155",
+        color: "#cbd5e1",
       })
       .setOrigin(0.5);
 
@@ -176,17 +212,17 @@ class MenuScene extends Phaser.Scene {
       this._onExit?.();
     });
 
-    this.btnEasy = makeMenuButton(this, "Fácil (4 pares)", () => {
+    this.btnEasy = makeButton(this, "Fácil (4 pares)", () => {
       stopSpeech();
       this.scene.start("MemoryScene", { pairs: 4 });
     });
 
-    this.btnMed = makeMenuButton(this, "Medio (6 pares)", () => {
+    this.btnMed = makeButton(this, "Medio (6 pares)", () => {
       stopSpeech();
       this.scene.start("MemoryScene", { pairs: 6 });
     });
 
-    this.btnHard = makeMenuButton(this, "Difícil (8 pares)", () => {
+    this.btnHard = makeButton(this, "Difícil (8 pares)", () => {
       stopSpeech();
       this.scene.start("MemoryScene", { pairs: 8 });
     });
@@ -201,24 +237,60 @@ class MenuScene extends Phaser.Scene {
 
     this.applyTheme();
     this.layout();
+    this.handleResize({ width: this.scale.width, height: this.scale.height });
 
-    this.events.once("shutdown", () => stopSpeech());
+    this._resizeHandler = (gameSize) => this.handleResize(gameSize);
+    this.scale.on("resize", this._resizeHandler);
+
+    this.events.once("shutdown", () => this.cleanupScene());
+    this.events.once("destroy", () => this.cleanupScene());
+  }
+
+  cleanupScene() {
+    if (this._resizeHandler) {
+      this.scale.off("resize", this._resizeHandler);
+      this._resizeHandler = null;
+    }
+    stopSpeech();
+  }
+
+  handleResize(gameSize) {
+    const width = Math.max(
+      320,
+      Math.floor(gameSize?.width ?? this.scale.gameSize?.width ?? this.scale.width ?? window.innerWidth)
+    );
+    const height = Math.max(
+      480,
+      Math.floor(gameSize?.height ?? this.scale.gameSize?.height ?? this.scale.height ?? window.innerHeight)
+    );
+
+    this.cameras.resize(width, height);
+    this.cameras.main.setViewport(0, 0, width, height);
+    this.cameras.main.setScroll(0, 0);
+    this.cameras.main.setBackgroundColor(0x9eb7e5);
+
+    if (this.bg) {
+      this.bg.setPosition(0, 0);
+      this.bg.setSize(width, height);
+    }
+
+    this.applyTheme();
+    this.layout();
   }
 
   applyTheme() {
     if (!this.a11y) return;
-    try {
-      applyA11yToScene(this, this.a11y);
-    } catch {}
+    applyA11yToScene(this, this.a11y);
 
     const hc = !!this.a11y.highContrast;
     const ui = this.a11y.uiScale || 1;
     const ts = this.a11y.textScale || 1;
 
     this.bg.setFillStyle(hc ? 0x000000 : 0x9eb7e5, 1);
+
     this.title.setFontSize(Math.round(54 * ts));
     this.subtitle.setFontSize(Math.round(24 * ts));
-    this.subtitle.setColor(hc ? "#ffffff" : "#334155");
+    this.subtitle.setColor(hc ? "#ffffff" : "#cbd5e1");
 
     this.exitBtn.setStyle({
       color: hc ? "#000000" : "#ffffff",
@@ -228,6 +300,7 @@ class MenuScene extends Phaser.Scene {
 
     const w = Math.round(520 * ui);
     const h = Math.round(60 * ui);
+
     const fill = hc ? 0xffffff : 0x111827;
     const strokeAlpha = hc ? 1 : 0.14;
     const textColor = hc ? "#000000" : "#ffffff";
@@ -241,21 +314,20 @@ class MenuScene extends Phaser.Scene {
 
   layout() {
     const W = this.scale.width;
-    if (W < 320) return;
-
     const left = contentLeft(this);
     const right = 16;
     const cx = left + (W - left - right) / 2;
 
     this.exitBtn.setPosition(W - 16, 16);
+
     this.title.setPosition(cx, 90);
     this.subtitle.setPosition(cx, 150);
 
     const startY = 260;
     const gap = 92;
 
-    this.btnEasy.setCenter(cx, startY);
-    this.btnMed.setCenter(cx, startY + gap);
+    this.btnEasy.setCenter(cx, startY + gap * 0);
+    this.btnMed.setCenter(cx, startY + gap * 1);
     this.btnHard.setCenter(cx, startY + gap * 2);
   }
 }
@@ -265,17 +337,20 @@ class MemoryScene extends Phaser.Scene {
     super("MemoryScene");
     this._onFinish = onFinish;
     this._onExit = onExit;
+    this._resizeHandler = null;
+    this._keyHandler = null;
   }
 
   init(data) {
-    this.pairs =
+    const pairs =
       typeof data?.pairs === "number" && !Number.isNaN(data.pairs)
         ? data.pairs
-        : 4;
+        : 8;
+
+    this.pairs = [4, 6, 8].includes(pairs) ? pairs : 8;
 
     this.state = {
       first: null,
-      second: null,
       locked: false,
       attempts: 0,
       flips: 0,
@@ -283,20 +358,21 @@ class MemoryScene extends Phaser.Scene {
       startTime: Date.now(),
     };
 
-    this.a11y = this.a11y || {};
     this.focusIndex = 0;
-    this.gridCols = 4;
   }
 
   create() {
-    if (![4, 6, 8].includes(this.pairs)) this.pairs = 4;
+    this.pendingTimers = [];
+    this.endModal = null;
+    this.finalResult = null;
+    this.gameEnded = false;
 
     this.bg = this.add
       .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
       .setOrigin(0);
 
     this.title = this.add
-      .text(24, 18, `Memorama - ${this.pairs} pares`, {
+      .text(0, 0, `Memorama - ${this.pairs} pares`, {
         fontFamily: "Arial",
         fontSize: "24px",
         color: "#ffffff",
@@ -304,34 +380,58 @@ class MemoryScene extends Phaser.Scene {
       .setOrigin(0, 0);
 
     this.attemptsText = this.add
-      .text(24, 48, "Intentos: 0", {
+      .text(0, 0, "Intentos: 0", {
         fontFamily: "Arial",
         fontSize: "18px",
-        color: "#334155",
+        color: "#cbd5e1",
       })
       .setOrigin(0, 0);
 
     this.timeText = this.add
-      .text(24, 72, "Tiempo: 0s", {
+      .text(0, 0, "Tiempo: 0s", {
         fontFamily: "Arial",
         fontSize: "18px",
-        color: "#334155",
+        color: "#cbd5e1",
       })
       .setOrigin(0, 0);
 
-    this.menuBtn = this.makeButton(this.scale.width - 140, 40, 110, 44, "Menú", () => {
+    this.menuBtn = this.add
+      .text(0, 0, "Menú", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        backgroundColor: "#111827",
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
+
+    this.exitBtn = this.add
+      .text(0, 0, "Salir", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        backgroundColor: "#111827",
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
+
+    this.menuBtn.on("pointerdown", () => {
+      if (this.gameEnded && this.endModal) return;
+      this.cleanupTransientState();
       stopSpeech();
       this.scene.start("MenuScene");
     });
-    this.menuBtn.container.setDepth(50);
 
-    this.exitBtn = this.makeButton(this.scale.width - 40, 40, 110, 44, "Salir", () => {
+    this.exitBtn.on("pointerdown", () => {
+      if (this.gameEnded && this.endModal) return;
+      this.cleanupTransientState();
       stopSpeech();
       this._onExit?.();
     });
-    this.exitBtn.container.setDepth(50);
 
-    this.time.addEvent({
+    this.clockEvent = this.time.addEvent({
       delay: 250,
       loop: true,
       callback: () => {
@@ -340,7 +440,7 @@ class MemoryScene extends Phaser.Scene {
       },
     });
 
-    const chosen = shuffle([...SYMBOLS]).slice(0, this.pairs);
+    const chosen = shuffle(SYMBOLS).slice(0, this.pairs);
     const values = shuffle([...chosen, ...chosen]);
     this.cards = values.map((item, idx) => this.createCard(idx, item));
 
@@ -350,6 +450,7 @@ class MemoryScene extends Phaser.Scene {
         this.applyTheme();
         this.layoutTopUI();
         this.layoutCards();
+        this.layoutEndModal();
         this.applyFocus(this.focusIndex, true);
       },
     });
@@ -359,11 +460,92 @@ class MemoryScene extends Phaser.Scene {
     this.applyTheme();
     this.layoutTopUI();
     this.layoutCards();
+    this.layoutEndModal();
     this.applyFocus(0, true);
+    this.handleResize({ width: this.scale.width, height: this.scale.height });
 
-    this.events.once("shutdown", () => {
-      stopSpeech();
+    this._resizeHandler = (gameSize) => this.handleResize(gameSize);
+    this.scale.on("resize", this._resizeHandler);
+
+    this.events.once("shutdown", () => this.cleanupScene());
+    this.events.once("destroy", () => this.cleanupScene());
+  }
+
+  cleanupTransientState() {
+    this.cancelPendingTimers();
+    this.hideEndModal();
+  }
+
+  cleanupScene() {
+    this.cancelPendingTimers();
+    this.hideEndModal();
+
+    if (this.clockEvent) {
+      try {
+        this.clockEvent.remove(false);
+      } catch {}
+      this.clockEvent = null;
+    }
+
+    if (this._resizeHandler) {
+      this.scale.off("resize", this._resizeHandler);
+      this._resizeHandler = null;
+    }
+
+    if (this._keyHandler && this.input?.keyboard) {
+      this.input.keyboard.off("keydown", this._keyHandler);
+      this._keyHandler = null;
+    }
+
+    stopSpeech();
+  }
+
+  cancelPendingTimers() {
+    if (!this.pendingTimers?.length) return;
+
+    this.pendingTimers.forEach((timer) => {
+      try {
+        timer.remove(false);
+      } catch {}
     });
+
+    this.pendingTimers = [];
+  }
+
+  schedule(delay, callback) {
+    const timer = this.time.delayedCall(delay, () => {
+      this.pendingTimers = this.pendingTimers.filter((t) => t !== timer);
+      callback?.();
+    });
+    this.pendingTimers.push(timer);
+    return timer;
+  }
+
+  handleResize(gameSize) {
+    const width = Math.max(
+      320,
+      Math.floor(gameSize?.width ?? this.scale.gameSize?.width ?? this.scale.width ?? window.innerWidth)
+    );
+    const height = Math.max(
+      480,
+      Math.floor(gameSize?.height ?? this.scale.gameSize?.height ?? this.scale.height ?? window.innerHeight)
+    );
+
+    this.cameras.resize(width, height);
+    this.cameras.main.setViewport(0, 0, width, height);
+    this.cameras.main.setScroll(0, 0);
+    this.cameras.main.setBackgroundColor(0x9eb7e5);
+
+    if (this.bg) {
+      this.bg.setPosition(0, 0);
+      this.bg.setSize(width, height);
+    }
+
+    this.applyTheme();
+    this.layoutTopUI();
+    this.layoutCards();
+    this.layoutEndModal();
+    this.applyFocus(this.focusIndex, true);
   }
 
   say(text) {
@@ -372,38 +554,75 @@ class MemoryScene extends Phaser.Scene {
 
   applyTheme() {
     if (!this.a11y) return;
-    try {
-      applyA11yToScene(this, this.a11y);
-    } catch {}
+    applyA11yToScene(this, this.a11y);
 
     const hc = !!this.a11y.highContrast;
     const ts = this.a11y.textScale || 1;
 
     this.bg.setFillStyle(hc ? 0x000000 : 0x9eb7e5, 1);
+
     this.title.setFontSize(Math.round(24 * ts));
     this.attemptsText.setFontSize(Math.round(18 * ts));
     this.timeText.setFontSize(Math.round(18 * ts));
-    this.attemptsText.setColor(hc ? "#ffffff" : "#334155");
-    this.timeText.setColor(hc ? "#ffffff" : "#334155");
+
+    this.attemptsText.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.timeText.setColor(hc ? "#ffffff" : "#cbd5e1");
 
     const btnStyle = {
-      fill: hc ? 0xffffff : 0x111827,
-      strokeAlpha: hc ? 1 : 0.12,
-      textColor: hc ? "#000000" : "#ffffff",
-      fontSize: Math.round(18 * ts),
+      color: hc ? "#000000" : "#ffffff",
+      backgroundColor: hc ? "#ffffff" : "#111827",
     };
+    this.menuBtn.setStyle(btnStyle);
+    this.exitBtn.setStyle(btnStyle);
+    this.menuBtn.setFontSize(Math.round(16 * ts));
+    this.exitBtn.setFontSize(Math.round(16 * ts));
 
-    this.menuBtn.setTheme(btnStyle);
-    this.exitBtn.setTheme(btnStyle);
+    this.cards?.forEach((card) => {
+      card.faceDown.clearTint();
+      if (hc) card.faceDown.setTint(0xffffff);
 
-    this.cards.forEach((card) => {
       card.backBorder.setStrokeStyle(2, 0xffffff, hc ? 1 : 0.12);
       card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
       card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
       card.txt.setColor(hc ? "#000000" : "#0b1020");
-      card.faceDown.clearTint();
-      if (hc) card.faceDown.setTint(0xffffff);
     });
+
+    if (this.endModal) {
+      const panelFill = hc ? 0xffffff : 0x111827;
+      const panelStroke = hc ? 0x000000 : 0xffffff;
+      const textColor = hc ? "#000000" : "#ffffff";
+      const subColor = hc ? "#000000" : "#cbd5e1";
+
+      this.endModal.box.setFillStyle(panelFill, 1);
+      this.endModal.box.setStrokeStyle(2, panelStroke, hc ? 1 : 0.16);
+      this.endModal.t1.setStyle({
+        fontFamily: "Arial",
+        fontSize: Math.round(40 * ts),
+        color: textColor,
+      });
+      this.endModal.t2.setStyle({
+        fontFamily: "Arial",
+        fontSize: Math.round(20 * ts),
+        color: subColor,
+      });
+
+      const btnFill = hc ? 0x000000 : 0x0b1220;
+      this.endModal.btnAgain.btnBg.setFillStyle(btnFill, 1);
+      this.endModal.btnAgain.btnBg.setStrokeStyle(2, panelStroke, hc ? 1 : 0.16);
+      this.endModal.btnAgain.btnTx.setStyle({
+        fontFamily: "Arial",
+        fontSize: Math.round(18 * ts),
+        color: textColor,
+      });
+
+      this.endModal.btnExit.btnBg.setFillStyle(btnFill, 1);
+      this.endModal.btnExit.btnBg.setStrokeStyle(2, panelStroke, hc ? 1 : 0.16);
+      this.endModal.btnExit.btnTx.setStyle({
+        fontFamily: "Arial",
+        fontSize: Math.round(18 * ts),
+        color: textColor,
+      });
+    }
   }
 
   layoutTopUI() {
@@ -414,70 +633,70 @@ class MemoryScene extends Phaser.Scene {
     this.attemptsText.setPosition(left, 48);
     this.timeText.setPosition(left, 72);
 
-    this.menuBtn.container.setPosition(W - 140, 40);
-    this.exitBtn.container.setPosition(W - 40, 40);
+    this.menuBtn.setPosition(W - 120, 16);
+    this.exitBtn.setPosition(W - 16, 16);
   }
 
   initKeyboard() {
-    this.input.keyboard.on("keydown", (e) => {
+    if (!this.input?.keyboard) return;
+
+    this._keyHandler = (e) => {
       if (e.code === "Escape") {
         stopSpeech();
         this.scene.start("MenuScene");
         return;
       }
 
-      if (this.state.locked) return;
+      if (this.state.locked || this.gameEnded) return;
 
-      if (e.code === "ArrowLeft") return this.moveFocus(-1, 0);
-      if (e.code === "ArrowRight") return this.moveFocus(1, 0);
-      if (e.code === "ArrowUp") return this.moveFocus(0, -1);
-      if (e.code === "ArrowDown") return this.moveFocus(0, 1);
+      const cols = this.gridCols || 4;
+      const total = this.cards.length;
+
+      const r = Math.floor(this.focusIndex / cols);
+      const c = this.focusIndex % cols;
+
+      let nr = r;
+      let nc = c;
+
+      if (e.code === "ArrowLeft") nc = Math.max(0, c - 1);
+      if (e.code === "ArrowRight") nc = Math.min(cols - 1, c + 1);
+      if (e.code === "ArrowUp") nr = Math.max(0, r - 1);
+      if (e.code === "ArrowDown") nr = nr + 1;
+
+      let next = nr * cols + nc;
+      if (next >= total) next = total - 1;
+
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.code)) {
+        this.focusIndex = next;
+        this.applyFocus(this.focusIndex);
+        return;
+      }
 
       if (e.code === "Enter" || e.code === "Space") {
         const card = this.cards[this.focusIndex];
         if (card) this.onCardClick(card);
       }
-    });
-  }
+    };
 
-  moveFocus(dx, dy) {
-    const total = this.cards.length;
-    if (!total) return;
-
-    const cols = this.gridCols || 4;
-    const rows = Math.ceil(total / cols);
-
-    const idx = this.focusIndex;
-    const r = Math.floor(idx / cols);
-    const c = idx % cols;
-
-    let nr = Phaser.Math.Clamp(r + dy, 0, rows - 1);
-    let nc = Phaser.Math.Clamp(c + dx, 0, cols - 1);
-
-    let next = nr * cols + nc;
-    if (next >= total) next = total - 1;
-
-    this.applyFocus(next);
+    this.input.keyboard.on("keydown", this._keyHandler);
   }
 
   applyFocus(index, silent = false) {
-    const prev = this.cards[this.focusIndex];
-    if (prev?.focusOutline) prev.focusOutline.setVisible(false);
-
-    this.focusIndex = index;
+    this.cards.forEach((c) => c.focusOutline?.setVisible(false));
     const card = this.cards[index];
     if (!card) return;
 
     if (!card.focusOutline) {
       card.focusOutline = this.add
-        .rectangle(0, 0, 120, 140, 0x000000, 0)
+        .rectangle(card.cx, card.cy, 120, 140, 0x000000, 0)
+        .setOrigin(0.5)
         .setStrokeStyle(4, 0x22c55e, 1);
       card.focusOutline.setVisible(false);
-      card.container.add(card.focusOutline);
-      card.container.sendToBack(card.focusOutline);
     }
 
     card.focusOutline.setVisible(true);
+    card.focusOutline.setPosition(card.cx, card.cy);
+    card.focusOutline.setSize(card.w + 14, card.h + 14);
 
     if (!silent) {
       const cols = this.gridCols || 4;
@@ -493,64 +712,66 @@ class MemoryScene extends Phaser.Scene {
   }
 
   createCard(idx, item) {
-    const container = this.add.container(0, 0);
-
-    const baseW = 110;
-    const baseH = 130;
-
-    const hit = this.add.zone(0, 0, baseW, baseH).setOrigin(0.5);
-    hit.setInteractive({ useHandCursor: true });
-
-    const faceDown = this.add.image(0, 0, "cardBack").setDisplaySize(baseW, baseH);
+    const faceDown = this.add.image(0, 0, "cardBack").setOrigin(0, 0);
 
     const backBorder = this.add
-      .rectangle(0, 0, baseW, baseH, 0x000000, 0)
+      .rectangle(0, 0, 110, 130, 0x000000, 0)
+      .setOrigin(0, 0)
       .setStrokeStyle(2, 0xffffff, 0.12);
 
     const faceUp = this.add
-      .rectangle(0, 0, baseW, baseH, 0xf8fafc, 1)
+      .rectangle(0, 0, 110, 130, 0xf8fafc, 1)
+      .setOrigin(0, 0)
       .setStrokeStyle(2, 0x111827, 0.25);
 
     const txt = this.add
       .text(0, 0, item.symbol, {
-        fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", Arial',
+        fontFamily: "Arial",
         fontSize: "52px",
         color: "#0b1020",
       })
       .setOrigin(0.5);
 
-    container.add([hit, faceDown, backBorder, faceUp, txt]);
+    const hit = this.add.zone(0, 0, 110, 130).setOrigin(0, 0);
+    hit.setInteractive({ useHandCursor: true });
+    hit.setDepth(10);
 
     const card = {
       idx,
       value: item.symbol,
       label: item.label,
       matchKey: item.label,
-      container,
-      hit,
       faceDown,
       backBorder,
       faceUp,
       txt,
+      hit,
       flipped: false,
       matched: false,
       focusOutline: null,
+      x0: 0,
+      y0: 0,
+      cx: 0,
+      cy: 0,
+      w: 110,
+      h: 130,
     };
 
     this.setCardVisual(card, false);
 
-    hit.on("pointerdown", () => {
-      if (this.state.locked || card.matched || card.flipped) return;
-      this.applyFocus(idx, true);
-      this.onCardClick(card);
-    });
-
     hit.on("pointerover", () => {
-      if (card.matched || card.flipped) return;
+      if (card.matched || card.flipped || this.gameEnded) return;
       const cols = this.gridCols || 4;
       const row = Math.floor(idx / cols) + 1;
       const col = (idx % cols) + 1;
       this.say(`Carta fila ${row}, columna ${col}`);
+    });
+
+    hit.on("pointerdown", () => {
+      if (this.state.locked || card.matched || card.flipped || this.gameEnded) return;
+      this.focusIndex = idx;
+      this.applyFocus(idx, true);
+      this.onCardClick(card);
     });
 
     return card;
@@ -558,15 +779,23 @@ class MemoryScene extends Phaser.Scene {
 
   setCardVisual(card, isFlipped) {
     card.flipped = isFlipped;
+
     card.faceDown.setVisible(!isFlipped);
     card.backBorder.setVisible(!isFlipped);
     card.faceUp.setVisible(isFlipped);
     card.txt.setVisible(isFlipped);
-    card.container.setAlpha(card.matched ? 0.55 : 1);
+
+    const alpha = card.matched ? 0.55 : 1;
+    card.faceDown.setAlpha(alpha);
+    card.backBorder.setAlpha(alpha);
+    card.faceUp.setAlpha(alpha);
+    card.txt.setAlpha(alpha);
+    card.hit.setAlpha(1);
+    card.focusOutline?.setAlpha(alpha);
   }
 
   onCardClick(card) {
-    if (this.state.locked || card.matched || card.flipped) return;
+    if (this.state.locked || card.matched || card.flipped || this.gameEnded) return;
 
     this.state.flips += 1;
     this.setCardVisual(card, true);
@@ -577,57 +806,62 @@ class MemoryScene extends Phaser.Scene {
       return;
     }
 
-    this.state.second = card;
     this.state.locked = true;
     this.state.attempts += 1;
     this.attemptsText.setText(`Intentos: ${this.state.attempts}`);
 
     const a = this.state.first;
-    const b = this.state.second;
+    const b = card;
 
     const revealDelay = 1400;
     const hideDelay = 900;
 
     if (a.matchKey === b.matchKey) {
-      this.time.delayedCall(revealDelay, () => {
+      this.schedule(revealDelay, () => {
+        if (!this.scene.isActive()) return;
+
         a.matched = true;
         b.matched = true;
         this.setCardVisual(a, true);
         this.setCardVisual(b, true);
+
         this.say(`Correcto. Pareja de ${b.label}`);
 
         this.state.matchedPairs += 1;
-        this.resetTurn();
+        this.state.first = null;
+        this.state.locked = false;
 
         if (this.state.matchedPairs === this.pairs) {
           this.onWin();
         }
       });
     } else {
-      this.time.delayedCall(revealDelay, () => {
+      this.schedule(revealDelay, () => {
+        if (!this.scene.isActive()) return;
         this.say(`Incorrecto. Era ${a.label} y ${b.label}`);
 
-        this.time.delayedCall(hideDelay, () => {
+        this.schedule(hideDelay, () => {
+          if (!this.scene.isActive()) return;
           this.setCardVisual(a, false);
           this.setCardVisual(b, false);
-          this.resetTurn();
+          this.state.first = null;
+          this.state.locked = false;
+          this.applyFocus(this.focusIndex, true);
         });
       });
     }
   }
 
-  resetTurn() {
-    this.state.first = null;
-    this.state.second = null;
-    this.state.locked = false;
-  }
+  async onWin() {
+    if (this.gameEnded) return;
 
-  onWin() {
+    this.gameEnded = true;
     this.state.locked = true;
     this.cards.forEach((c) => c.hit.disableInteractive());
+    this.menuBtn.disableInteractive();
+    this.exitBtn.disableInteractive();
 
     const durationMs = Date.now() - this.state.startTime;
-    const sec = Math.floor(durationMs / 1000);
 
     let level = "MEDIUM";
     if (this.pairs === 4) level = "EASY";
@@ -649,11 +883,14 @@ class MemoryScene extends Phaser.Scene {
       },
     };
 
-    this.say(`Ganaste. Tiempo ${sec} segundos. Intentos ${this.state.attempts}`);
-    stopSpeech();
+    try {
+      await this._onFinish?.(this.finalResult);
+    } catch (err) {
+      console.error("Error guardando resultado:", err);
+    }
 
-    this._onFinish?.(this.finalResult);
     this.showEndModal(this.finalResult);
+    this.say("Ganaste. Selecciona jugar otra vez o salir.");
   }
 
   showEndModal({ durationMs, moves }) {
@@ -667,10 +904,15 @@ class MemoryScene extends Phaser.Scene {
     const overlay = this.add
       .rectangle(0, 0, W, H, 0x000000, 0.55)
       .setOrigin(0)
-      .setDepth(1000);
+      .setDepth(2000)
+      .setInteractive();
 
-    const boxW = Math.min(560, W * 0.85);
-    const boxH = 240;
+    overlay.on("pointerdown", (pointer, localX, localY, event) => {
+      event?.stopPropagation?.();
+    });
+
+    const boxW = Math.min(560, W * 0.9);
+    const boxH = 260;
 
     const panelFill = hc ? 0xffffff : 0x111827;
     const panelStroke = hc ? 0x000000 : 0xffffff;
@@ -680,56 +922,122 @@ class MemoryScene extends Phaser.Scene {
     const box = this.add
       .rectangle(W / 2, H / 2, boxW, boxH, panelFill, 1)
       .setStrokeStyle(2, panelStroke, hc ? 1 : 0.16)
-      .setDepth(1001);
+      .setDepth(2001)
+      .setInteractive();
+
+    box.on("pointerdown", (pointer, localX, localY, event) => {
+      event?.stopPropagation?.();
+    });
 
     const t1 = this.add
-      .text(W / 2, H / 2 - 70, "¡Excelente!", {
+      .text(W / 2, H / 2 - 80, "¡Excelente!", {
         fontFamily: "Arial",
         fontSize: Math.round(40 * ts),
         color: textColor,
       })
       .setOrigin(0.5)
-      .setDepth(1002);
+      .setDepth(2002);
 
     const sec = Math.floor(durationMs / 1000);
     const t2 = this.add
-      .text(W / 2, H / 2 - 15, `Tiempo: ${sec}s  •  Intentos: ${moves}`, {
+      .text(W / 2, H / 2 - 25, `Tiempo: ${sec}s   •   Intentos: ${moves}`, {
         fontFamily: "Arial",
         fontSize: Math.round(20 * ts),
         color: subColor,
       })
       .setOrigin(0.5)
-      .setDepth(1002);
+      .setDepth(2002);
 
-    const btnAgain = this.makeButton(W / 2 - 120, H / 2 + 65, 210, 48, "Jugar otra vez", () => {
+    const createModalBtn = (label, onClick) => {
+      const bw = 220;
+      const bh = 52;
+
+      const btnBg = this.add
+        .rectangle(0, 0, bw, bh, hc ? 0x000000 : 0x0b1220, 1)
+        .setOrigin(0, 0)
+        .setStrokeStyle(2, panelStroke, hc ? 1 : 0.16)
+        .setDepth(2003);
+
+      const btnTx = this.add
+        .text(0, 0, label, {
+          fontFamily: "Arial",
+          fontSize: Math.round(18 * ts),
+          color: textColor,
+        })
+        .setOrigin(0.5)
+        .setDepth(2004);
+
+      const hit = this.add.zone(0, 0, bw, bh).setOrigin(0, 0).setDepth(2005);
+      hit.setInteractive({ useHandCursor: true });
+      hit.on("pointerdown", onClick);
+
+      return { btnBg, btnTx, hit, bw, bh };
+    };
+
+    const btnAgain = createModalBtn("Jugar otra vez", () => this.restartGame());
+    const btnExit = createModalBtn("Salir", () => {
       this.hideEndModal();
-      this.scene.restart({ pairs: this.pairs });
+      stopSpeech();
+      this._onExit?.();
     });
-    btnAgain.container.setDepth(1003);
 
-    const btnMenu = this.makeButton(W / 2 + 120, H / 2 + 65, 170, 48, "Menú", () => {
-      this.hideEndModal();
-      this.scene.start("MenuScene");
-    });
-    btnMenu.container.setDepth(1003);
+    this.endModal = { overlay, box, t1, t2, btnAgain, btnExit };
+    this.layoutEndModal();
+  }
 
-    this.endModal = { overlay, box, t1, t2, btnAgain, btnMenu };
+  layoutEndModal() {
+    if (!this.endModal) return;
+
+    const W = this.scale.width;
+    const H = this.scale.height;
+
+    this.endModal.overlay.setSize(W, H);
+    this.endModal.box.setPosition(W / 2, H / 2);
+    this.endModal.t1.setPosition(W / 2, H / 2 - 80);
+    this.endModal.t2.setPosition(W / 2, H / 2 - 25);
+
+    const placeBtn = (btn, cx, cy) => {
+      btn.btnBg.setPosition(cx - btn.bw / 2, cy - btn.bh / 2);
+      btn.btnTx.setPosition(cx, cy);
+      btn.hit.setPosition(cx - btn.bw / 2, cy - btn.bh / 2);
+      btn.hit.setSize(btn.bw, btn.bh);
+      if (btn.hit.input?.hitArea?.setTo) {
+        btn.hit.input.hitArea.setTo(0, 0, btn.bw, btn.bh);
+      }
+    };
+
+    placeBtn(this.endModal.btnAgain, W / 2 - 130, H / 2 + 70);
+    placeBtn(this.endModal.btnExit, W / 2 + 130, H / 2 + 70);
   }
 
   hideEndModal() {
     if (!this.endModal) return;
-    const { overlay, box, t1, t2, btnAgain, btnMenu } = this.endModal;
+
+    const { overlay, box, t1, t2, btnAgain, btnExit } = this.endModal;
 
     try {
       overlay.destroy();
       box.destroy();
       t1.destroy();
       t2.destroy();
-      btnAgain.container.destroy();
-      btnMenu.container.destroy();
+      btnAgain.btnBg.destroy();
+      btnAgain.btnTx.destroy();
+      btnAgain.hit.destroy();
+      btnExit.btnBg.destroy();
+      btnExit.btnTx.destroy();
+      btnExit.hit.destroy();
     } catch {}
 
     this.endModal = null;
+  }
+
+  restartGame() {
+    this.cancelPendingTimers();
+    stopSpeech();
+    this.hideEndModal();
+    this.finalResult = null;
+    this.gameEnded = false;
+    this.scene.restart({ pairs: this.pairs });
   }
 
   layoutCards() {
@@ -737,77 +1045,75 @@ class MemoryScene extends Phaser.Scene {
     const H = this.scale.height;
 
     const leftPad = contentLeft(this);
-    const rightPad = 24;
+    const rightPad = 16;
     const topPad = 120;
-    const bottomPad = 24;
+    const bottomPad = 16;
 
-    const areaW = W - leftPad - rightPad;
-    const areaH = H - topPad - bottomPad;
+    const areaW = Math.max(220, W - leftPad - rightPad);
+    const areaH = Math.max(220, H - topPad - bottomPad);
 
-    const totalCards = this.pairs * 2;
-
-    let cols = 4;
-    if (totalCards >= 12) cols = 6;
-    if (totalCards >= 16) cols = 8;
-
+    const total = this.pairs * 2;
+    const cols = 4;
+    const rows = Math.ceil(total / cols);
     this.gridCols = cols;
 
-    const rows = Math.ceil(totalCards / cols);
     const gap = 18;
 
-    const cardW = Math.floor((areaW - gap * (cols - 1)) / cols);
-    const cardH = Math.floor((areaH - gap * (rows - 1)) / rows);
+    const rawCellW = Math.floor((areaW - gap * (cols - 1)) / cols);
+    const rawCellH = Math.floor((areaH - gap * (rows - 1)) / rows);
+
+    const cellW = Math.max(50, rawCellW);
+    const cellH = Math.max(60, rawCellH);
+
+    const ui = this.a11y.uiScale || 1;
+    const ts = this.a11y.textScale || 1;
+
+    let w = Math.floor(cellW * 0.92 * ui);
+    let h = Math.floor(cellH * 0.92 * ui);
+
+    w = Math.min(w, cellW);
+    h = Math.min(h, cellH);
+
+    w = Math.max(w, 50);
+    h = Math.max(h, 60);
 
     this.cards.forEach((card, i) => {
       const r = Math.floor(i / cols);
       const c = i % cols;
 
-      const x = leftPad + c * (cardW + gap) + cardW / 2;
-      const y = topPad + r * (cardH + gap) + cardH / 2;
+      const cx = leftPad + c * (cellW + gap) + cellW / 2;
+      const cy = topPad + r * (cellH + gap) + cellH / 2;
 
-      const scaleX = cardW / 110;
-      const scaleY = cardH / 130;
-      const s = Math.min(scaleX, scaleY);
+      const x0 = cx - w / 2;
+      const y0 = cy - h / 2;
 
-      card.container.setPosition(x, y);
-      card.container.setScale(s);
-      card.container.setDepth(10);
+      card.x0 = x0;
+      card.y0 = y0;
+      card.cx = cx;
+      card.cy = cy;
+      card.w = w;
+      card.h = h;
+
+      card.faceDown.setPosition(x0, y0);
+      card.faceDown.setDisplaySize(w, h);
+
+      card.backBorder.setPosition(x0, y0).setSize(w, h);
+      card.faceUp.setPosition(x0, y0).setSize(w, h);
+
+      card.hit.setPosition(x0, y0);
+      card.hit.setSize(w, h);
+      if (card.hit.input?.hitArea?.setTo) {
+        card.hit.input.hitArea.setTo(0, 0, w, h);
+      }
+
+      card.txt.setPosition(cx, cy);
+      card.txt.setFontSize(Math.max(22, Math.floor(Math.min(w, h) * 0.42 * ts)));
+
+      if (card.focusOutline) {
+        card.focusOutline.setPosition(cx, cy);
+        card.focusOutline.setSize(w + 14, h + 14);
+      }
     });
-  }
-
-  makeButton(x, y, w, h, label, onClick) {
-    const container = this.add.container(x, y);
-
-    const hit = this.add.zone(0, 0, w, h).setOrigin(0.5);
-    hit.setInteractive({ useHandCursor: true });
-
-    const bg = this.add
-      .rectangle(0, 0, w, h, 0x111827)
-      .setStrokeStyle(2, 0xffffff, 0.12);
-
-    const txt = this.add
-      .text(0, 0, label, {
-        fontFamily: "Arial",
-        fontSize: "18px",
-        color: "#ffffff",
-      })
-      .setOrigin(0.5);
-
-    container.add([hit, bg, txt]);
-
-    hit.on("pointerdown", onClick);
-    hit.on("pointerover", () => bg.setFillStyle(0x1f2937));
-    hit.on("pointerout", () => bg.setFillStyle(0x111827));
-
-    return {
-      container,
-      setTheme: ({ fill, strokeAlpha, textColor, fontSize }) => {
-        bg.setFillStyle(fill, 1);
-        bg.setStrokeStyle(2, 0xffffff, strokeAlpha);
-        txt.setColor(textColor);
-        if (fontSize) txt.setFontSize(fontSize);
-      },
-    };
   }
 }
 
@@ -817,32 +1123,88 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
 
   parentEl.style.position = "relative";
   parentEl.style.overflow = "hidden";
+  parentEl.style.width = "100%";
+  parentEl.style.height = "100%";
+  parentEl.style.minWidth = "320px";
   parentEl.style.minHeight = "480px";
+
+  const getSize = () => {
+    const rect = parentEl.getBoundingClientRect();
+    return {
+      width: Math.max(320, Math.floor(rect.width || window.innerWidth || 900)),
+      height: Math.max(480, Math.floor(rect.height || window.innerHeight || 650)),
+    };
+  };
+
+  const initial = getSize();
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: parentId,
-    backgroundColor: "#9eb7e5",
-    scene: [
-      new BootScene(),
-      new MenuScene(onExit),
-      new MemoryScene(onFinish, onExit),
-    ],
+    backgroundColor: "#0b1020",
+    scene: [new BootScene(), new MenuScene(onExit), new MemoryScene(onFinish, onExit)],
     scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
-      width: 1280,
-      height: 720,
+      mode: Phaser.Scale.RESIZE,
+      autoCenter: Phaser.Scale.NO_CENTER,
+      width: initial.width,
+      height: initial.height,
     },
   });
 
   const canvas = game.canvas;
   if (canvas) {
     canvas.style.display = "block";
+    canvas.style.position = "absolute";
+    canvas.style.left = "0";
+    canvas.style.top = "0";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
   }
 
+  let resizeRaf = 0;
+
+  const syncSize = () => {
+    resizeRaf = 0;
+    if (!game || !game.scale) return;
+
+    const { width, height } = getSize();
+
+    if (game.scale.width !== width || game.scale.height !== height) {
+      try {
+        game.scale.resize(width, height);
+      } catch (err) {
+        console.error("Error al redimensionar el juego:", err);
+      }
+    }
+  };
+
+  const requestSyncSize = () => {
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(syncSize);
+  };
+
+  let ro = null;
+  if (typeof ResizeObserver !== "undefined") {
+    ro = new ResizeObserver(() => {
+      requestSyncSize();
+    });
+    ro.observe(parentEl);
+  }
+
+  window.addEventListener("resize", requestSyncSize);
+  setTimeout(requestSyncSize, 0);
+
   return () => {
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+
+    window.removeEventListener("resize", requestSyncSize);
+
+    try {
+      ro?.disconnect();
+    } catch {}
+
     stopSpeech();
+
     try {
       game.destroy(true);
     } catch {}
