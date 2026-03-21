@@ -275,14 +275,14 @@ class MemoryScene extends Phaser.Scene {
   }
 
   init(data) {
-    const pairs =
+    this.pairs =
       typeof data?.pairs === "number" && !Number.isNaN(data.pairs)
         ? data.pairs
-        : 8;
+        : 4;
 
-    this.pairs = pairs;
     this.state = {
       first: null,
+      second: null,
       locked: false,
       attempts: 0,
       flips: 0,
@@ -292,19 +292,18 @@ class MemoryScene extends Phaser.Scene {
 
     this.a11y = this.a11y || {};
     this.focusIndex = 0;
+    this.gridCols = 4;
   }
 
   create() {
-    if (![4, 6, 8].includes(this.pairs)) {
-      this.pairs = 8;
-    }
+    if (![4, 6, 8].includes(this.pairs)) this.pairs = 4;
 
     this.bg = this.add
       .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
       .setOrigin(0);
 
     this.title = this.add
-      .text(0, 0, `Memorama - ${this.pairs} pares`, {
+      .text(24, 18, `Memorama - ${this.pairs} pares`, {
         fontFamily: "Arial",
         fontSize: "24px",
         color: "#ffffff",
@@ -312,7 +311,7 @@ class MemoryScene extends Phaser.Scene {
       .setOrigin(0, 0);
 
     this.attemptsText = this.add
-      .text(0, 0, "Intentos: 0", {
+      .text(24, 48, "Intentos: 0", {
         fontFamily: "Arial",
         fontSize: "18px",
         color: "#334155",
@@ -320,44 +319,24 @@ class MemoryScene extends Phaser.Scene {
       .setOrigin(0, 0);
 
     this.timeText = this.add
-      .text(0, 0, "Tiempo: 0s", {
+      .text(24, 72, "Tiempo: 0s", {
         fontFamily: "Arial",
         fontSize: "18px",
         color: "#334155",
       })
       .setOrigin(0, 0);
 
-    this.menuBtn = this.add
-      .text(0, 0, "Menú", {
-        fontFamily: "Arial",
-        fontSize: "16px",
-        color: "#ffffff",
-        backgroundColor: "#111827",
-        padding: { left: 10, right: 10, top: 8, bottom: 8 },
-      })
-      .setOrigin(1, 0)
-      .setInteractive({ useHandCursor: true });
-
-    this.exitBtn = this.add
-      .text(0, 0, "Salir", {
-        fontFamily: "Arial",
-        fontSize: "16px",
-        color: "#ffffff",
-        backgroundColor: "#111827",
-        padding: { left: 10, right: 10, top: 8, bottom: 8 },
-      })
-      .setOrigin(1, 0)
-      .setInteractive({ useHandCursor: true });
-
-    this.menuBtn.on("pointerdown", () => {
+    this.menuBtn = this.makeButton(this.scale.width - 140, 40, 110, 44, "Menú", () => {
       stopSpeech();
       this.scene.start("MenuScene");
     });
+    this.menuBtn.container.setDepth(50);
 
-    this.exitBtn.on("pointerdown", () => {
+    this.exitBtn = this.makeButton(this.scale.width - 40, 40, 110, 44, "Salir", () => {
       stopSpeech();
       this._onExit?.();
     });
+    this.exitBtn.container.setDepth(50);
 
     this.time.addEvent({
       delay: 250,
@@ -368,7 +347,7 @@ class MemoryScene extends Phaser.Scene {
       },
     });
 
-    const chosen = shuffle(SYMBOLS).slice(0, this.pairs);
+    const chosen = shuffle([...SYMBOLS]).slice(0, this.pairs);
     const values = shuffle([...chosen, ...chosen]);
     this.cards = values.map((item, idx) => this.createCard(idx, item));
 
@@ -389,12 +368,16 @@ class MemoryScene extends Phaser.Scene {
     this.layoutCards();
     this.applyFocus(0, true);
 
-    this.scale.on("resize", () => {
-      if (!this.bg || !this.cards) return;
-      this.bg.setSize(this.scale.width, this.scale.height);
-      this.applyTheme();
+    this.scale.on("resize", (gameSize) => {
+      const { width, height } = gameSize;
+      this.bg.setSize(width, height);
       this.layoutTopUI();
       this.layoutCards();
+      this.applyFocus(this.focusIndex, true);
+
+      if (this.endModal) {
+        this.relayoutEndModal();
+      }
     });
 
     this.events.once("shutdown", () => {
@@ -416,41 +399,50 @@ class MemoryScene extends Phaser.Scene {
     const ts = this.a11y.textScale || 1;
 
     this.bg.setFillStyle(hc ? 0x000000 : 0x9eb7e5, 1);
+
     this.title.setFontSize(Math.round(24 * ts));
     this.attemptsText.setFontSize(Math.round(18 * ts));
     this.timeText.setFontSize(Math.round(18 * ts));
+
+    this.title.setColor("#ffffff");
     this.attemptsText.setColor(hc ? "#ffffff" : "#334155");
     this.timeText.setColor(hc ? "#ffffff" : "#334155");
 
     const btnStyle = {
-      color: hc ? "#000000" : "#ffffff",
-      backgroundColor: hc ? "#ffffff" : "#111827",
+      fill: hc ? 0xffffff : 0x111827,
+      strokeAlpha: hc ? 1 : 0.12,
+      textColor: hc ? "#000000" : "#ffffff",
+      fontSize: Math.round(18 * ts),
     };
-    this.menuBtn.setStyle(btnStyle);
-    this.exitBtn.setStyle(btnStyle);
-    this.menuBtn.setFontSize(Math.round(16 * ts));
-    this.exitBtn.setFontSize(Math.round(16 * ts));
+
+    this.menuBtn.setTheme(btnStyle);
+    this.exitBtn.setTheme(btnStyle);
 
     this.cards.forEach((card) => {
-      card.faceDown.clearTint();
-      if (hc) card.faceDown.setTint(0xffffff);
       card.backBorder.setStrokeStyle(2, 0xffffff, hc ? 1 : 0.12);
+
       card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
       card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
+
       card.txt.setColor(hc ? "#000000" : "#0b1020");
+
+      card.faceDown.clearTint();
+      if (hc) {
+        card.faceDown.setTint(0xffffff);
+      }
     });
   }
 
   layoutTopUI() {
     const W = this.scale.width;
-    if (W < 320) return;
-
     const left = contentLeft(this);
+
     this.title.setPosition(left, 16);
     this.attemptsText.setPosition(left, 48);
     this.timeText.setPosition(left, 72);
-    this.menuBtn.setPosition(W - 120, 16);
-    this.exitBtn.setPosition(W - 16, 16);
+
+    this.menuBtn.container.setPosition(W - 140, 40);
+    this.exitBtn.container.setPosition(W - 40, 40);
   }
 
   initKeyboard() {
@@ -460,29 +452,13 @@ class MemoryScene extends Phaser.Scene {
         this.scene.start("MenuScene");
         return;
       }
+
       if (this.state.locked) return;
 
-      const cols = this.gridCols || 4;
-      const total = this.cards.length;
-      const r = Math.floor(this.focusIndex / cols);
-      const c = this.focusIndex % cols;
-
-      let nr = r;
-      let nc = c;
-
-      if (e.code === "ArrowLeft") nc = Math.max(0, c - 1);
-      if (e.code === "ArrowRight") nc = Math.min(cols - 1, c + 1);
-      if (e.code === "ArrowUp") nr = Math.max(0, r - 1);
-      if (e.code === "ArrowDown") nr = nr + 1;
-
-      let next = nr * cols + nc;
-      if (next >= total) next = total - 1;
-
-      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.code)) {
-        this.focusIndex = next;
-        this.applyFocus(this.focusIndex);
-        return;
-      }
+      if (e.code === "ArrowLeft") return this.moveFocus(-1, 0);
+      if (e.code === "ArrowRight") return this.moveFocus(1, 0);
+      if (e.code === "ArrowUp") return this.moveFocus(0, -1);
+      if (e.code === "ArrowDown") return this.moveFocus(0, 1);
 
       if (e.code === "Enter" || e.code === "Space") {
         const card = this.cards[this.focusIndex];
@@ -491,24 +467,44 @@ class MemoryScene extends Phaser.Scene {
     });
   }
 
-  applyFocus(index, silent = false) {
-    if (!this.cards || !this.cards.length) return;
-    const card = this.cards[index];
-    if (!card || !Number.isFinite(card.cx) || !Number.isFinite(card.cy)) return;
+  moveFocus(dx, dy) {
+    const total = this.cards.length;
+    if (!total) return;
 
-    this.cards.forEach((c) => c.focusOutline?.setVisible(false));
+    const cols = this.gridCols || 4;
+    const rows = Math.ceil(total / cols);
+
+    const idx = this.focusIndex;
+    const r = Math.floor(idx / cols);
+    const c = idx % cols;
+
+    let nr = Phaser.Math.Clamp(r + dy, 0, rows - 1);
+    let nc = Phaser.Math.Clamp(c + dx, 0, cols - 1);
+
+    let next = nr * cols + nc;
+    if (next >= total) next = total - 1;
+
+    this.applyFocus(next);
+  }
+
+  applyFocus(index, silent = false) {
+    const prev = this.cards[this.focusIndex];
+    if (prev?.focusOutline) prev.focusOutline.setVisible(false);
+
+    this.focusIndex = index;
+    const card = this.cards[index];
+    if (!card) return;
 
     if (!card.focusOutline) {
       card.focusOutline = this.add
-        .rectangle(card.cx, card.cy, 120, 140, 0x000000, 0)
-        .setOrigin(0.5)
+        .rectangle(0, 0, 120, 140, 0x000000, 0)
         .setStrokeStyle(4, 0x22c55e, 1);
       card.focusOutline.setVisible(false);
+      card.container.add(card.focusOutline);
+      card.container.sendToBack(card.focusOutline);
     }
 
     card.focusOutline.setVisible(true);
-    card.focusOutline.setPosition(card.cx, card.cy);
-    card.focusOutline.setSize(card.w + 14, card.h + 14);
 
     if (!silent) {
       const cols = this.gridCols || 4;
@@ -524,16 +520,22 @@ class MemoryScene extends Phaser.Scene {
   }
 
   createCard(idx, item) {
-    const faceDown = this.add.image(0, 0, "cardBack").setOrigin(0, 0);
+    const container = this.add.container(0, 0);
+
+    const baseW = 110;
+    const baseH = 130;
+
+    const hit = this.add.zone(0, 0, baseW, baseH).setOrigin(0.5);
+    hit.setInteractive({ useHandCursor: true });
+
+    const faceDown = this.add.image(0, 0, "cardBack").setDisplaySize(baseW, baseH);
 
     const backBorder = this.add
-      .rectangle(0, 0, 110, 130, 0x000000, 0)
-      .setOrigin(0, 0)
+      .rectangle(0, 0, baseW, baseH, 0x000000, 0)
       .setStrokeStyle(2, 0xffffff, 0.12);
 
     const faceUp = this.add
-      .rectangle(0, 0, 110, 130, 0xf8fafc, 1)
-      .setOrigin(0, 0)
+      .rectangle(0, 0, baseW, baseH, 0xf8fafc, 1)
       .setStrokeStyle(2, 0x111827, 0.25);
 
     const txt = this.add
@@ -544,32 +546,34 @@ class MemoryScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    const hit = this.add.zone(0, 0, 110, 130).setOrigin(0, 0);
-    hit.setInteractive({ useHandCursor: true });
-    hit.setDepth(10);
+    container.add([hit, faceDown, backBorder, faceUp, txt]);
 
     const card = {
       idx,
       value: item.symbol,
       label: item.label,
       matchKey: item.label,
+      container,
+      hit,
       faceDown,
       backBorder,
       faceUp,
       txt,
-      hit,
       flipped: false,
       matched: false,
       focusOutline: null,
-      x0: 0,
-      y0: 0,
-      cx: 0,
-      cy: 0,
-      w: 110,
-      h: 130,
+      scale: 1,
+      x: 0,
+      y: 0,
     };
 
     this.setCardVisual(card, false);
+
+    hit.on("pointerdown", () => {
+      if (this.state.locked || card.matched || card.flipped) return;
+      this.applyFocus(idx, true);
+      this.onCardClick(card);
+    });
 
     hit.on("pointerover", () => {
       if (card.matched || card.flipped) return;
@@ -577,13 +581,6 @@ class MemoryScene extends Phaser.Scene {
       const row = Math.floor(idx / cols) + 1;
       const col = (idx % cols) + 1;
       this.say(`Carta fila ${row}, columna ${col}`);
-    });
-
-    hit.on("pointerdown", () => {
-      if (this.state.locked || card.matched || card.flipped) return;
-      this.focusIndex = idx;
-      this.applyFocus(idx, true);
-      this.onCardClick(card);
     });
 
     return card;
@@ -595,14 +592,7 @@ class MemoryScene extends Phaser.Scene {
     card.backBorder.setVisible(!isFlipped);
     card.faceUp.setVisible(isFlipped);
     card.txt.setVisible(isFlipped);
-
-    const alpha = card.matched ? 0.55 : 1;
-    card.faceDown.setAlpha(alpha);
-    card.backBorder.setAlpha(alpha);
-    card.faceUp.setAlpha(alpha);
-    card.txt.setAlpha(alpha);
-    card.hit.setAlpha(1);
-    card.focusOutline?.setAlpha(alpha);
+    card.container.setAlpha(card.matched ? 0.55 : 1);
   }
 
   onCardClick(card) {
@@ -617,12 +607,13 @@ class MemoryScene extends Phaser.Scene {
       return;
     }
 
+    this.state.second = card;
     this.state.locked = true;
     this.state.attempts += 1;
     this.attemptsText.setText(`Intentos: ${this.state.attempts}`);
 
     const a = this.state.first;
-    const b = card;
+    const b = this.state.second;
 
     const revealDelay = 1400;
     const hideDelay = 900;
@@ -633,11 +624,11 @@ class MemoryScene extends Phaser.Scene {
         b.matched = true;
         this.setCardVisual(a, true);
         this.setCardVisual(b, true);
+
         this.say(`Correcto. Pareja de ${b.label}`);
 
         this.state.matchedPairs += 1;
-        this.state.first = null;
-        this.state.locked = false;
+        this.resetTurn();
 
         if (this.state.matchedPairs === this.pairs) {
           this.onWin();
@@ -650,11 +641,16 @@ class MemoryScene extends Phaser.Scene {
         this.time.delayedCall(hideDelay, () => {
           this.setCardVisual(a, false);
           this.setCardVisual(b, false);
-          this.state.first = null;
-          this.state.locked = false;
+          this.resetTurn();
         });
       });
     }
+  }
+
+  resetTurn() {
+    this.state.first = null;
+    this.state.second = null;
+    this.state.locked = false;
   }
 
   onWin() {
@@ -662,6 +658,7 @@ class MemoryScene extends Phaser.Scene {
     this.cards.forEach((c) => c.hit.disableInteractive());
 
     const durationMs = Date.now() - this.state.startTime;
+    const sec = Math.floor(durationMs / 1000);
 
     let level = "MEDIUM";
     if (this.pairs === 4) level = "EASY";
@@ -683,9 +680,7 @@ class MemoryScene extends Phaser.Scene {
       },
     };
 
-    this.say(
-      `Ganaste. Tiempo ${Math.floor(durationMs / 1000)} segundos. Intentos ${this.state.attempts}`
-    );
+    this.say(`Ganaste. Tiempo ${sec} segundos. Intentos ${this.state.attempts}`);
     stopSpeech();
 
     this._onFinish?.(this.finalResult);
@@ -703,10 +698,10 @@ class MemoryScene extends Phaser.Scene {
     const overlay = this.add
       .rectangle(0, 0, W, H, 0x000000, 0.55)
       .setOrigin(0)
-      .setDepth(2000);
+      .setDepth(1000);
 
-    const boxW = Math.min(560, W * 0.9);
-    const boxH = 260;
+    const boxW = Math.min(560, W * 0.85);
+    const boxH = 240;
 
     const panelFill = hc ? 0xffffff : 0x111827;
     const panelStroke = hc ? 0x000000 : 0xffffff;
@@ -716,205 +711,160 @@ class MemoryScene extends Phaser.Scene {
     const box = this.add
       .rectangle(W / 2, H / 2, boxW, boxH, panelFill, 1)
       .setStrokeStyle(2, panelStroke, hc ? 1 : 0.16)
-      .setDepth(2001);
+      .setDepth(1001);
 
     const t1 = this.add
-      .text(W / 2, H / 2 - 80, "¡Excelente!", {
+      .text(W / 2, H / 2 - 70, "¡Excelente!", {
         fontFamily: "Arial",
         fontSize: Math.round(40 * ts),
         color: textColor,
       })
       .setOrigin(0.5)
-      .setDepth(2002);
+      .setDepth(1002);
 
     const sec = Math.floor(durationMs / 1000);
     const t2 = this.add
-      .text(W / 2, H / 2 - 25, `Tiempo: ${sec}s   •   Intentos: ${moves}`, {
+      .text(W / 2, H / 2 - 15, `Tiempo: ${sec}s  •  Intentos: ${moves}`, {
         fontFamily: "Arial",
         fontSize: Math.round(20 * ts),
         color: subColor,
       })
       .setOrigin(0.5)
-      .setDepth(2002);
+      .setDepth(1002);
 
-    const makeModalBtn = (cx, cy, label, onClick) => {
-      const bw = 220;
-      const bh = 52;
-
-      const btnBg = this.add
-        .rectangle(cx - bw / 2, cy - bh / 2, bw, bh, hc ? 0x000000 : 0x0b1220, 1)
-        .setOrigin(0, 0)
-        .setStrokeStyle(2, panelStroke, hc ? 1 : 0.16)
-        .setDepth(2003);
-
-      const btnTx = this.add
-        .text(cx, cy, label, {
-          fontFamily: "Arial",
-          fontSize: Math.round(18 * ts),
-          color: textColor,
-        })
-        .setOrigin(0.5)
-        .setDepth(2004);
-
-      const hit = this.add
-        .zone(cx - bw / 2, cy - bh / 2, bw, bh)
-        .setOrigin(0, 0)
-        .setDepth(2005);
-
-      hit.setInteractive({ useHandCursor: true });
-      hit.on("pointerdown", onClick);
-
-      return { btnBg, btnTx, hit };
-    };
-
-    const btnAgain = makeModalBtn(W / 2 - 130, H / 2 + 70, "Jugar otra vez", () => {
+    const btnAgain = this.makeButton(W / 2 - 120, H / 2 + 65, 210, 48, "Jugar otra vez", () => {
       this.hideEndModal();
       this.scene.restart({ pairs: this.pairs });
     });
+    btnAgain.container.setDepth(1003);
 
-    const btnExit = makeModalBtn(W / 2 + 130, H / 2 + 70, "Salir", () => {
+    const btnMenu = this.makeButton(W / 2 + 120, H / 2 + 65, 170, 48, "Menú", () => {
       this.hideEndModal();
-      this._onExit?.();
+      this.scene.start("MenuScene");
     });
+    btnMenu.container.setDepth(1003);
 
-    this.endModal = { overlay, box, t1, t2, btnAgain, btnExit };
-
-    this.__endResize = () => {
-      if (!this.endModal) return;
-      const W2 = this.scale.width;
-      const H2 = this.scale.height;
-
-      overlay.setSize(W2, H2);
-      box.setPosition(W2 / 2, H2 / 2);
-      t1.setPosition(W2 / 2, H2 / 2 - 80);
-      t2.setPosition(W2 / 2, H2 / 2 - 25);
-
-      const moveBtn = (btn, cx, cy) => {
-        const bw = 220;
-        const bh = 52;
-        btn.btnBg.setPosition(cx - bw / 2, cy - bh / 2);
-        btn.btnTx.setPosition(cx, cy);
-        btn.hit.setPosition(cx - bw / 2, cy - bh / 2);
-      };
-
-      moveBtn(btnAgain, W2 / 2 - 130, H2 / 2 + 70);
-      moveBtn(btnExit, W2 / 2 + 130, H2 / 2 + 70);
+    this.endModal = {
+      overlay,
+      box,
+      t1,
+      t2,
+      btnAgain,
+      btnMenu,
+      boxH,
     };
+  }
 
-    this.scale.on("resize", this.__endResize);
+  relayoutEndModal() {
+    if (!this.endModal) return;
+
+    const { overlay, box, t1, t2, btnAgain, btnMenu, boxH } = this.endModal;
+    const W = this.scale.width;
+    const H = this.scale.height;
+
+    overlay.setSize(W, H);
+    box.setPosition(W / 2, H / 2).setSize(Math.min(560, W * 0.85), boxH);
+    t1.setPosition(W / 2, H / 2 - 70);
+    t2.setPosition(W / 2, H / 2 - 15);
+    btnAgain.container.setPosition(W / 2 - 120, H / 2 + 65);
+    btnMenu.container.setPosition(W / 2 + 120, H / 2 + 65);
   }
 
   hideEndModal() {
     if (!this.endModal) return;
-    const { overlay, box, t1, t2, btnAgain, btnExit } = this.endModal;
+    const { overlay, box, t1, t2, btnAgain, btnMenu } = this.endModal;
 
     try {
       overlay.destroy();
       box.destroy();
       t1.destroy();
       t2.destroy();
-      btnAgain.btnBg.destroy();
-      btnAgain.btnTx.destroy();
-      btnAgain.hit.destroy();
-      btnExit.btnBg.destroy();
-      btnExit.btnTx.destroy();
-      btnExit.hit.destroy();
+      btnAgain.container.destroy();
+      btnMenu.container.destroy();
     } catch {}
 
     this.endModal = null;
-
-    if (this.__endResize) {
-      this.scale.off("resize", this.__endResize);
-      this.__endResize = null;
-    }
   }
 
   layoutCards() {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    if (W < 320 || H < 480) return;
-
     const leftPad = contentLeft(this);
-    const rightPad = 16;
+    const rightPad = 24;
     const topPad = 120;
-    const bottomPad = 16;
+    const bottomPad = 24;
 
     const areaW = W - leftPad - rightPad;
     const areaH = H - topPad - bottomPad;
 
-    if (areaW < 220 || areaH < 220) return;
+    const totalCards = this.pairs * 2;
 
-    const total = this.pairs * 2;
-    const cols = 4;
-    const rows = Math.ceil(total / cols);
+    let cols = 4;
+    if (totalCards >= 12) cols = 6;
+    if (totalCards >= 16) cols = 8;
     this.gridCols = cols;
 
+    const rows = Math.ceil(totalCards / cols);
     const gap = 18;
-    const rawCellW = Math.floor((areaW - gap * (cols - 1)) / cols);
-    const rawCellH = Math.floor((areaH - gap * (rows - 1)) / rows);
 
-    const cellW = Math.max(50, rawCellW);
-    const cellH = Math.max(60, rawCellH);
-
-    const ui = this.a11y.uiScale || 1;
-    const ts = this.a11y.textScale || 1;
-
-    let w = Math.floor(cellW * 0.92 * ui);
-    let h = Math.floor(cellH * 0.92 * ui);
-
-    w = Math.min(w, cellW);
-    h = Math.min(h, cellH);
-    w = Math.max(w, 50);
-    h = Math.max(h, 60);
+    const cardW = Math.floor((areaW - gap * (cols - 1)) / cols);
+    const cardH = Math.floor((areaH - gap * (rows - 1)) / rows);
 
     this.cards.forEach((card, i) => {
       const r = Math.floor(i / cols);
       const c = i % cols;
 
-      const cx = leftPad + c * (cellW + gap) + cellW / 2;
-      const cy = topPad + r * (cellH + gap) + cellH / 2;
+      const x = leftPad + c * (cardW + gap) + cardW / 2;
+      const y = topPad + r * (cardH + gap) + cardH / 2;
 
-      const x0 = cx - w / 2;
-      const y0 = cy - h / 2;
+      const scaleX = cardW / 110;
+      const scaleY = cardH / 130;
+      const s = Math.min(scaleX, scaleY);
 
-      const sizeChanged = card.w !== w || card.h !== h;
+      card.x = x;
+      card.y = y;
+      card.scale = s;
 
-      card.x0 = x0;
-      card.y0 = y0;
-      card.cx = cx;
-      card.cy = cy;
-
-      card.faceDown.setPosition(x0, y0);
-      card.backBorder.setPosition(x0, y0);
-      card.faceUp.setPosition(x0, y0);
-
-      if (sizeChanged) {
-        card.faceDown.setDisplaySize(w, h);
-        card.backBorder.setSize(w, h);
-        card.faceUp.setSize(w, h);
-      }
-
-      card.w = w;
-      card.h = h;
-
-      card.hit.setPosition(x0, y0);
-      card.hit.setSize(w, h);
-
-      if (card.hit.input?.hitArea?.setTo) {
-        card.hit.input.hitArea.setTo(0, 0, w, h);
-      }
-
-      card.txt.setPosition(cx, cy);
-      card.txt.setFontSize(
-        Math.max(22, Math.floor(Math.min(w, h) * 0.42 * ts))
-      );
-
-      if (card.focusOutline) {
-        card.focusOutline.setPosition(cx, cy);
-        card.focusOutline.setSize(w + 14, h + 14);
-      }
+      card.container.setPosition(x, y);
+      card.container.setScale(s);
+      card.container.setDepth(10);
     });
+  }
+
+  makeButton(x, y, w, h, label, onClick) {
+    const container = this.add.container(x, y);
+
+    const hit = this.add.zone(0, 0, w, h).setOrigin(0.5);
+    hit.setInteractive({ useHandCursor: true });
+
+    const bg = this.add
+      .rectangle(0, 0, w, h, 0x111827)
+      .setStrokeStyle(2, 0xffffff, 0.12);
+
+    const txt = this.add
+      .text(0, 0, label, {
+        fontFamily: "Arial",
+        fontSize: "18px",
+        color: "#ffffff",
+      })
+      .setOrigin(0.5);
+
+    container.add([hit, bg, txt]);
+
+    hit.on("pointerdown", onClick);
+    hit.on("pointerover", () => bg.setFillStyle(0x1f2937));
+    hit.on("pointerout", () => bg.setFillStyle(0x111827));
+
+    return {
+      container,
+      setTheme: ({ fill, strokeAlpha, textColor, fontSize }) => {
+        bg.setFillStyle(fill, 1);
+        bg.setStrokeStyle(2, 0xffffff, strokeAlpha);
+        txt.setColor(textColor);
+        if (fontSize) txt.setFontSize(fontSize);
+      },
+    };
   }
 }
 
