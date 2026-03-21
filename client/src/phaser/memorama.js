@@ -257,6 +257,8 @@ class MenuScene extends Phaser.Scene {
 
   layout() {
     const W = this.scale.width;
+    if (W < 320) return;
+    
     const left = contentLeft(this);
     const right = 16;
     const cx = left + (W - left - right) / 2;
