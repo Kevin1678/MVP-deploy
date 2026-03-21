@@ -310,7 +310,7 @@ class MemoryScene extends Phaser.Scene {
     }
 
     this.bg = this.add
-      .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
       .setOrigin(0);
 
     this.title = this.add
