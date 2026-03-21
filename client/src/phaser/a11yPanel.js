@@ -6,7 +6,7 @@ export const PANEL_OPEN_W = 290;
 export const PANEL_CLOSED_W = 78;
 export const PANEL_GAP = 16;
 
-// Compat: por si aún importas estos nombres
+// Compat
 export const A11Y_PANEL_WIDTH = PANEL_OPEN_W;
 export const A11Y_PANEL_GAP = PANEL_GAP;
 
@@ -14,7 +14,6 @@ export function defaultA11yPrefs() {
   return {
     ttsEnabled: false,
     highContrast: false,
-    // ✅ filtros reales
     colorMode: "normal", // normal | protanopia | tritanopia | grayscale
     uiScale: 1.0,
     textScale: 1.0,
@@ -61,60 +60,99 @@ function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
-/**
- * ✅ Opción 1: filtros reales de daltonismo vía ColorMatrix.
- * Se aplica a TODA la escena (cámara principal).
- */
-// Matrices 3x3 (RGB) convertidas a 4x5 (20 valores) para ColorMatrix.set()
-// Fuente: matrices tipo Coblis (aprox) :contentReference[oaicite:2]{index=2}
+// Matrices 4x5 para ColorMatrix
 const CVD = {
   protanopia: [
-    0.567, 0.433, 0.000, 0, 0,
-    0.558, 0.442, 0.000, 0, 0,
-    0.000, 0.242, 0.758, 0, 0,
+    0.567, 0.433, 0.0,   0, 0,
+    0.558, 0.442, 0.0,   0, 0,
+    0.0,   0.242, 0.758, 0, 0,
     0,     0,     0,     1, 0,
   ],
   tritanopia: [
-    0.950, 0.050, 0.000, 0, 0,
-    0.000, 0.433, 0.567, 0, 0,
-    0.000, 0.475, 0.525, 0, 0,
+    0.95,  0.05,  0.0,   0, 0,
+    0.0,   0.433, 0.567, 0, 0,
+    0.0,   0.475, 0.525, 0, 0,
     0,     0,     0,     1, 0,
   ],
 };
 
+function destroyA11yFx(scene) {
+  if (!scene?.__a11yFx) return;
+
+  try {
+    scene.__a11yFx.reset?.();
+  } catch {}
+
+  try {
+    scene.__a11yFx.destroy?.();
+  } catch {}
+
+  scene.__a11yFx = null;
+}
+
+/**
+ * Cambios importantes:
+ * 1) Ya NO crea postFX cuando el filtro está en "normal".
+ * 2) Si vuelves a "normal", destruye el fx y libera el pipeline.
+ * 3) Eso evita muchos glitches de resize en WebGL.
+ */
 export function applyA11yToScene(scene, prefs) {
   if (!scene) return;
+
   scene.a11y = { ...(scene.a11y || {}), ...(prefs || {}) };
 
   const cam = scene.cameras?.main;
-  if (!cam?.postFX?.addColorMatrix) return; // si no hay WebGL / FX, no hacemos nada
+  const mode = scene.a11y?.colorMode || "normal";
+  const needsFx = mode === "grayscale" || mode === "protanopia" || mode === "tritanopia";
 
-  if (!scene.__a11yFx) scene.__a11yFx = cam.postFX.addColorMatrix();
+  // Si no hay WebGL/postFX o no se necesita filtro, limpiamos y salimos.
+  if (!cam?.postFX?.addColorMatrix || !needsFx) {
+    destroyA11yFx(scene);
+    return;
+  }
+
+  if (!scene.__a11yFx) {
+    try {
+      scene.__a11yFx = cam.postFX.addColorMatrix();
+    } catch {
+      scene.__a11yFx = null;
+      return;
+    }
+  }
+
   const fx = scene.__a11yFx;
+  if (!fx) return;
 
-  fx.reset(); // limpia cualquier filtro previo :contentReference[oaicite:3]{index=3}
+  try {
+    fx.reset();
+  } catch {}
 
-  switch (scene.a11y.colorMode) {
+  switch (mode) {
     case "grayscale":
-      fx.grayscale(); // existe :contentReference[oaicite:4]{index=4}
+      try {
+        fx.grayscale();
+      } catch {}
       break;
 
     case "protanopia":
-      fx.set(CVD.protanopia); // set() existe y requiere 20 valores :contentReference[oaicite:5]{index=5}
+      try {
+        fx.set(CVD.protanopia);
+      } catch {}
       break;
 
     case "tritanopia":
-      fx.set(CVD.tritanopia);
+      try {
+        fx.set(CVD.tritanopia);
+      } catch {}
       break;
 
     default:
-      // normal = sin filtro
+      destroyA11yFx(scene);
       break;
   }
 }
 
 function makeBtn(scene, x, y, w, h, label, onClick) {
-  // TOP-LEFT button, hit 0..w 0..h (estable)
   const box = scene.add.rectangle(x, y, w, h, 0x111827, 1).setOrigin(0, 0);
   box.setStrokeStyle(2, 0xffffff, 0.16);
 
@@ -150,7 +188,8 @@ function makeBtn(scene, x, y, w, h, label, onClick) {
   };
 
   const setSize = (nw, nh) => {
-    w = nw; h = nh;
+    w = nw;
+    h = nh;
     box.setSize(w, h);
     hit.setSize(w, h);
     text.setPosition(box.x + w / 2, box.y + h / 2);
@@ -174,8 +213,14 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
 
   const root = scene.add.container(0, 0).setDepth(9999);
 
-  const shadow = scene.add.rectangle(6, 8, PANEL_OPEN_W, scene.scale.height - 32, 0x000000, 0.18).setOrigin(0, 0);
-  const bg = scene.add.rectangle(0, 0, PANEL_OPEN_W, scene.scale.height - 32, 0x0a1222, 0.92).setOrigin(0, 0);
+  const shadow = scene.add
+    .rectangle(6, 8, PANEL_OPEN_W, scene.scale.height - 32, 0x000000, 0.18)
+    .setOrigin(0, 0);
+
+  const bg = scene.add
+    .rectangle(0, 0, PANEL_OPEN_W, scene.scale.height - 32, 0x0a1222, 0.92)
+    .setOrigin(0, 0);
+
   bg.setStrokeStyle(2, 0xffffff, 0.14);
 
   const title = scene.add.text(pad, 14, "Accesibilidad", {
@@ -202,24 +247,48 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     if (typeof onChange === "function") onChange(scene.a11y);
   }
 
-  const toggle = makeBtn(scene, PANEL_OPEN_W - 112, 14, 98, 40, scene.a11y.panelOpen ? "Ocultar" : "Mostrar", () => {
-    scene.a11y.panelOpen = !scene.a11y.panelOpen;
-    commit();
-    refresh();
-  });
+  const toggle = makeBtn(
+    scene,
+    PANEL_OPEN_W - 112,
+    14,
+    98,
+    40,
+    scene.a11y.panelOpen ? "Ocultar" : "Mostrar",
+    () => {
+      scene.a11y.panelOpen = !scene.a11y.panelOpen;
+      commit();
+      refresh();
+    }
+  );
 
-  const btnTTS = makeBtn(scene, pad, 102, PANEL_OPEN_W - 2 * pad, 46, scene.a11y.ttsEnabled ? "Voz: ON" : "Voz: OFF", () => {
-    scene.a11y.ttsEnabled = !scene.a11y.ttsEnabled;
-    if (!scene.a11y.ttsEnabled) stopSpeech();
-    commit();
-    refresh();
-  });
+  const btnTTS = makeBtn(
+    scene,
+    pad,
+    102,
+    PANEL_OPEN_W - 2 * pad,
+    46,
+    scene.a11y.ttsEnabled ? "Voz: ON" : "Voz: OFF",
+    () => {
+      scene.a11y.ttsEnabled = !scene.a11y.ttsEnabled;
+      if (!scene.a11y.ttsEnabled) stopSpeech();
+      commit();
+      refresh();
+    }
+  );
 
-  const btnHC = makeBtn(scene, pad, 158, PANEL_OPEN_W - 2 * pad, 46, scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal", () => {
-    scene.a11y.highContrast = !scene.a11y.highContrast;
-    commit();
-    refresh();
-  });
+  const btnHC = makeBtn(
+    scene,
+    pad,
+    158,
+    PANEL_OPEN_W - 2 * pad,
+    46,
+    scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal",
+    () => {
+      scene.a11y.highContrast = !scene.a11y.highContrast;
+      commit();
+      refresh();
+    }
+  );
 
   const labelFilter = scene.add.text(pad, 220, "Filtro (daltonismo)", {
     fontFamily: "Arial",
@@ -227,18 +296,59 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     color: "#cbd5e1",
   });
 
-  // 2 filas de botones
-  const btnNormal = makeBtn(scene, pad, 244, 124, 42, "Normal", () => { scene.a11y.colorMode = "normal"; commit(); refresh(); });
-  const btnProtan = makeBtn(scene, pad + 138, 244, 124, 42, "Protan.", () => { scene.a11y.colorMode = "protanopia"; commit(); refresh(); });
-  const btnTritan = makeBtn(scene, pad, 294, 124, 42, "Tritan.", () => { scene.a11y.colorMode = "tritanopia"; commit(); refresh(); });
-  const btnGray   = makeBtn(scene, pad + 138, 294, 124, 42, "Grises", () => { scene.a11y.colorMode = "grayscale"; commit(); refresh(); });
+  const btnNormal = makeBtn(scene, pad, 244, 124, 42, "Normal", () => {
+    scene.a11y.colorMode = "normal";
+    commit();
+    refresh();
+  });
 
-  const labelSize = scene.add.text(pad, 350, "Tamaño", { fontFamily: "Arial", fontSize: "13px", color: "#cbd5e1" });
+  const btnProtan = makeBtn(scene, pad + 138, 244, 124, 42, "Protan.", () => {
+    scene.a11y.colorMode = "protanopia";
+    commit();
+    refresh();
+  });
 
-  const btnAminus = makeBtn(scene, pad, 374, 124, 42, "A-", () => { scene.a11y.textScale = clamp(scene.a11y.textScale - 0.1, 0.9, 1.3); commit(); refresh(); });
-  const btnAplus  = makeBtn(scene, pad + 138, 374, 124, 42, "A+", () => { scene.a11y.textScale = clamp(scene.a11y.textScale + 0.1, 0.9, 1.3); commit(); refresh(); });
-  const btnUIminus = makeBtn(scene, pad, 426, 124, 42, "UI-", () => { scene.a11y.uiScale = clamp(scene.a11y.uiScale - 0.1, 0.9, 1.3); commit(); refresh(); });
-  const btnUIplus  = makeBtn(scene, pad + 138, 426, 124, 42, "UI+", () => { scene.a11y.uiScale = clamp(scene.a11y.uiScale + 0.1, 0.9, 1.3); commit(); refresh(); });
+  const btnTritan = makeBtn(scene, pad, 294, 124, 42, "Tritan.", () => {
+    scene.a11y.colorMode = "tritanopia";
+    commit();
+    refresh();
+  });
+
+  const btnGray = makeBtn(scene, pad + 138, 294, 124, 42, "Grises", () => {
+    scene.a11y.colorMode = "grayscale";
+    commit();
+    refresh();
+  });
+
+  const labelSize = scene.add.text(pad, 350, "Tamaño", {
+    fontFamily: "Arial",
+    fontSize: "13px",
+    color: "#cbd5e1",
+  });
+
+  const btnAminus = makeBtn(scene, pad, 374, 124, 42, "A-", () => {
+    scene.a11y.textScale = clamp(scene.a11y.textScale - 0.1, 0.9, 1.3);
+    commit();
+    refresh();
+  });
+
+  const btnAplus = makeBtn(scene, pad + 138, 374, 124, 42, "A+", () => {
+    scene.a11y.textScale = clamp(scene.a11y.textScale + 0.1, 0.9, 1.3);
+    commit();
+    refresh();
+  });
+
+  const btnUIminus = makeBtn(scene, pad, 426, 124, 42, "UI-", () => {
+    scene.a11y.uiScale = clamp(scene.a11y.uiScale - 0.1, 0.9, 1.3);
+    commit();
+    refresh();
+  });
+
+  const btnUIplus = makeBtn(scene, pad + 138, 426, 124, 42, "UI+", () => {
+    scene.a11y.uiScale = clamp(scene.a11y.uiScale + 0.1, 0.9, 1.3);
+    commit();
+    refresh();
+  });
 
   const btnReset = makeBtn(scene, pad, 486, PANEL_OPEN_W - 2 * pad, 46, "Restablecer", () => {
     scene.a11y = { ...defaultA11yPrefs() };
@@ -284,7 +394,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     const hc = !!scene.a11y.highContrast;
 
     const panelW = getWidth();
-    const panelH = open ? (scene.scale.height - 32) : headerH;
+    const panelH = open ? scene.scale.height - 32 : headerH;
 
     bg.setSize(panelW, panelH);
     shadow.setSize(panelW, panelH);
@@ -305,18 +415,39 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     const btnText = hc ? "#000000" : "#ffffff";
     const strokeA = hc ? 1 : 0.16;
 
-    [toggle, btnTTS, btnHC, btnNormal, btnProtan, btnTritan, btnGray, btnAminus, btnAplus, btnUIminus, btnUIplus, btnReset]
-      .forEach((b) => b.setStyle(btnFill, btnText, strokeA));
+    [
+      toggle,
+      btnTTS,
+      btnHC,
+      btnNormal,
+      btnProtan,
+      btnTritan,
+      btnGray,
+      btnAminus,
+      btnAplus,
+      btnUIminus,
+      btnUIplus,
+      btnReset,
+    ].forEach((b) => b.setStyle(btnFill, btnText, strokeA));
 
-    // colapso
-    const v = open;
-    title.setVisible(v);
-    hint.setVisible(v);
-    labelFilter.setVisible(v);
-    labelSize.setVisible(v);
+    title.setVisible(open);
+    hint.setVisible(open);
+    labelFilter.setVisible(open);
+    labelSize.setVisible(open);
 
-    [btnTTS, btnHC, btnNormal, btnProtan, btnTritan, btnGray, btnAminus, btnAplus, btnUIminus, btnUIplus, btnReset]
-      .forEach((b) => b.setVisible(v));
+    [
+      btnTTS,
+      btnHC,
+      btnNormal,
+      btnProtan,
+      btnTritan,
+      btnGray,
+      btnAminus,
+      btnAplus,
+      btnUIminus,
+      btnUIplus,
+      btnReset,
+    ].forEach((b) => b.setVisible(open));
 
     toggle.setPos(panelW - 112, 14);
 
@@ -326,10 +457,34 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   place();
   refresh();
 
-  scene.scale.on("resize", () => {
+  const resizeHandler = () => {
     place();
     refresh();
-  });
+  };
 
-  return { getWidth, refresh, destroy: () => root.destroy(true) };
+  scene.scale.on("resize", resizeHandler);
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+
+    try {
+      scene.scale.off("resize", resizeHandler);
+    } catch {}
+
+    destroyA11yFx(scene);
+  };
+
+  scene.events?.once("shutdown", cleanup);
+  scene.events?.once("destroy", cleanup);
+
+  return {
+    getWidth,
+    refresh,
+    destroy: () => {
+      cleanup();
+      root.destroy(true);
+    },
+  };
 }
