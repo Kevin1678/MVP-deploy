@@ -584,7 +584,7 @@ class MemoryScene extends Phaser.Scene {
     });
   }
 
-  applyFocus(index, silent = false) {
+applyFocus(index, silent = false) {
   if (!this.cards || !this.cards.length) return;
 
   const card = this.cards[index];
