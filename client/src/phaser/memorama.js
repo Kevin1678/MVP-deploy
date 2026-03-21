@@ -867,86 +867,95 @@ class MemoryScene extends Phaser.Scene {
     }
   }
 
-  layoutCards() {
-    const W = this.scale.width;
-    const H = this.scale.height;
-    
-    if (W < 320 || H < 480) return;
-    
-    const leftPad = contentLeft(this);
-    const rightPad = 16;
-    const topPad = 120;
-    const bottomPad = 16;
+layoutCards() {
+  const W = this.scale.width;
+  const H = this.scale.height;
 
-    const areaW = Math.max(220, W - leftPad - rightPad);
-    const areaH = Math.max(220, H - topPad - bottomPad);
+  if (W < 320 || H < 480) return;
 
-    const total = this.pairs * 2;
-    const cols = 4;
-    const rows = Math.ceil(total / cols);
-    this.gridCols = cols;
+  const leftPad = contentLeft(this);
+  const rightPad = 16;
+  const topPad = 120;
+  const bottomPad = 16;
 
-    const gap = 18;
+  const areaW = W - leftPad - rightPad;
+  const areaH = H - topPad - bottomPad;
 
-    const rawCellW = Math.floor((areaW - gap * (cols - 1)) / cols);
-    const rawCellH = Math.floor((areaH - gap * (rows - 1)) / rows);
+  if (areaW < 220 || areaH < 220) return;
 
-    const cellW = Math.max(50, rawCellW);
-    const cellH = Math.max(60, rawCellH);
+  const total = this.pairs * 2;
+  const cols = 4;
+  const rows = Math.ceil(total / cols);
+  this.gridCols = cols;
 
-    const ui = this.a11y.uiScale || 1;
-    const ts = this.a11y.textScale || 1;
+  const gap = 18;
 
-    let w = Math.floor(cellW * 0.92 * ui);
-    let h = Math.floor(cellH * 0.92 * ui);
+  const rawCellW = Math.floor((areaW - gap * (cols - 1)) / cols);
+  const rawCellH = Math.floor((areaH - gap * (rows - 1)) / rows);
 
-    w = Math.min(w, cellW);
-    h = Math.min(h, cellH);
+  const cellW = Math.max(50, rawCellW);
+  const cellH = Math.max(60, rawCellH);
 
-    w = Math.max(w, 50);
-    h = Math.max(h, 60);
+  const ui = this.a11y.uiScale || 1;
+  const ts = this.a11y.textScale || 1;
 
-    this.cards.forEach((card, i) => {
-      const r = Math.floor(i / cols);
-      const c = i % cols;
+  let w = Math.floor(cellW * 0.92 * ui);
+  let h = Math.floor(cellH * 0.92 * ui);
 
-      const cx = leftPad + c * (cellW + gap) + cellW / 2;
-      const cy = topPad + r * (cellH + gap) + cellH / 2;
+  w = Math.min(w, cellW);
+  h = Math.min(h, cellH);
 
-      const x0 = cx - w / 2;
-      const y0 = cy - h / 2;
+  w = Math.max(w, 50);
+  h = Math.max(h, 60);
 
-      card.x0 = x0;
-      card.y0 = y0;
-      card.cx = cx;
-      card.cy = cy;
-      card.w = w;
-      card.h = h;
+  this.cards.forEach((card, i) => {
+    const r = Math.floor(i / cols);
+    const c = i % cols;
 
-      card.faceDown.setPosition(x0, y0);
+    const cx = leftPad + c * (cellW + gap) + cellW / 2;
+    const cy = topPad + r * (cellH + gap) + cellH / 2;
+
+    const x0 = cx - w / 2;
+    const y0 = cy - h / 2;
+
+    const sizeChanged = card.w !== w || card.h !== h;
+
+    card.x0 = x0;
+    card.y0 = y0;
+    card.cx = cx;
+    card.cy = cy;
+
+    card.faceDown.setPosition(x0, y0);
+    card.backBorder.setPosition(x0, y0);
+    card.faceUp.setPosition(x0, y0);
+
+    if (sizeChanged) {
       card.faceDown.setDisplaySize(w, h);
+      card.backBorder.setSize(w, h);
+      card.faceUp.setSize(w, h);
+    }
 
-      card.backBorder.setPosition(x0, y0).setSize(w, h);
-      card.faceUp.setPosition(x0, y0).setSize(w, h);
+    card.w = w;
+    card.h = h;
 
-      card.hit.setPosition(x0, y0);
-      card.hit.setSize(w, h);
+    card.hit.setPosition(x0, y0);
+    card.hit.setSize(w, h);
 
-      if (card.hit.input?.hitArea?.setTo) {
-        card.hit.input.hitArea.setTo(0, 0, w, h);
-      }
+    if (card.hit.input?.hitArea?.setTo) {
+      card.hit.input.hitArea.setTo(0, 0, w, h);
+    }
 
-      card.txt.setPosition(cx, cy);
-      card.txt.setFontSize(Math.max(22, Math.floor(Math.min(w, h) * 0.42 * ts)));
+    card.txt.setPosition(cx, cy);
+    card.txt.setFontSize(
+      Math.max(22, Math.floor(Math.min(w, h) * 0.42 * ts))
+    );
 
-      if (card.focusOutline) {
-        card.focusOutline.setPosition(cx, cy);
-        card.focusOutline.setSize(w + 14, h + 14);
-      }
-    });
-  }
+    if (card.focusOutline) {
+      card.focusOutline.setPosition(cx, cy);
+      card.focusOutline.setSize(w + 14, h + 14);
+    }
+  });
 }
-
 /* ======================= createMemoramaGame ======================= */
 export function createMemoramaGame(parentId, onFinish, onExit) {
   const parentEl = document.getElementById(parentId);
