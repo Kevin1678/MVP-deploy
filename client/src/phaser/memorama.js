@@ -36,7 +36,6 @@ function contentLeft(scene) {
   return 16 + panelW + (PANEL_GAP ?? 16);
 }
 
-/* ---------- Helpers de botón (menu) ---------- */
 function makeMenuButton(scene, label, onClick) {
   let w = 520;
   let h = 60;
@@ -78,7 +77,6 @@ function makeMenuButton(scene, label, onClick) {
     setCenter(cx, cy) {
       x0 = cx - w / 2;
       y0 = cy - h / 2;
-
       box.setPosition(x0, y0);
       text.setPosition(cx, cy);
       hit.setPosition(x0, y0);
@@ -87,11 +85,9 @@ function makeMenuButton(scene, label, onClick) {
     setSize(newW, newH) {
       w = newW;
       h = newH;
-
       box.setSize(w, h);
       hit.setSize(w, h);
       refreshHit();
-
       text.setPosition(x0 + w / 2, y0 + h / 2);
     },
 
@@ -104,7 +100,6 @@ function makeMenuButton(scene, label, onClick) {
   };
 }
 
-/* ======================= BootScene ======================= */
 class BootScene extends Phaser.Scene {
   constructor() {
     super("BootScene");
@@ -121,7 +116,6 @@ class BootScene extends Phaser.Scene {
         if (this.textures.exists("cardBack")) {
           this.textures.remove("cardBack");
         }
-
         this.textures.addImage("cardBack", img);
         this.scene.start("MenuScene");
       } catch (err) {
@@ -139,7 +133,6 @@ class BootScene extends Phaser.Scene {
   }
 }
 
-/* ======================= MenuScene ======================= */
 class MenuScene extends Phaser.Scene {
   constructor(onExit) {
     super("MenuScene");
@@ -148,7 +141,7 @@ class MenuScene extends Phaser.Scene {
 
   create() {
     this.bg = this.add
-      .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
       .setOrigin(0);
 
     this.title = this.add
@@ -163,7 +156,7 @@ class MenuScene extends Phaser.Scene {
       .text(0, 0, "Elige dificultad", {
         fontFamily: "Arial",
         fontSize: "24px",
-        color: "#cbd5e1",
+        color: "#334155",
       })
       .setOrigin(0.5);
 
@@ -229,11 +222,10 @@ class MenuScene extends Phaser.Scene {
     const ui = this.a11y.uiScale || 1;
     const ts = this.a11y.textScale || 1;
 
-    this.bg.setFillStyle(hc ? 0x000000 : 0x0b1020, 1);
-
+    this.bg.setFillStyle(hc ? 0x000000 : 0x9eb7e5, 1);
     this.title.setFontSize(Math.round(54 * ts));
     this.subtitle.setFontSize(Math.round(24 * ts));
-    this.subtitle.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.subtitle.setColor(hc ? "#ffffff" : "#334155");
 
     this.exitBtn.setStyle({
       color: hc ? "#000000" : "#ffffff",
@@ -243,7 +235,6 @@ class MenuScene extends Phaser.Scene {
 
     const w = Math.round(520 * ui);
     const h = Math.round(60 * ui);
-
     const fill = hc ? 0xffffff : 0x111827;
     const strokeAlpha = hc ? 1 : 0.14;
     const textColor = hc ? "#000000" : "#ffffff";
@@ -257,25 +248,25 @@ class MenuScene extends Phaser.Scene {
 
   layout() {
     const W = this.scale.width;
+    if (W < 320) return;
+
     const left = contentLeft(this);
     const right = 16;
     const cx = left + (W - left - right) / 2;
 
     this.exitBtn.setPosition(W - 16, 16);
-
     this.title.setPosition(cx, 90);
     this.subtitle.setPosition(cx, 150);
 
     const startY = 260;
     const gap = 92;
 
-    this.btnEasy.setCenter(cx, startY + gap * 0);
-    this.btnMed.setCenter(cx, startY + gap * 1);
+    this.btnEasy.setCenter(cx, startY);
+    this.btnMed.setCenter(cx, startY + gap);
     this.btnHard.setCenter(cx, startY + gap * 2);
   }
 }
 
-/* ======================= MemoryScene ======================= */
 class MemoryScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
     super("MemoryScene");
@@ -290,7 +281,6 @@ class MemoryScene extends Phaser.Scene {
         : 8;
 
     this.pairs = pairs;
-
     this.state = {
       first: null,
       locked: false,
@@ -310,7 +300,7 @@ class MemoryScene extends Phaser.Scene {
     }
 
     this.bg = this.add
-      .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
       .setOrigin(0);
 
     this.title = this.add
@@ -325,7 +315,7 @@ class MemoryScene extends Phaser.Scene {
       .text(0, 0, "Intentos: 0", {
         fontFamily: "Arial",
         fontSize: "18px",
-        color: "#cbd5e1",
+        color: "#334155",
       })
       .setOrigin(0, 0);
 
@@ -333,7 +323,7 @@ class MemoryScene extends Phaser.Scene {
       .text(0, 0, "Tiempo: 0s", {
         fontFamily: "Arial",
         fontSize: "18px",
-        color: "#cbd5e1",
+        color: "#334155",
       })
       .setOrigin(0, 0);
 
@@ -405,10 +395,11 @@ class MemoryScene extends Phaser.Scene {
       this.applyTheme();
       this.layoutTopUI();
       this.layoutCards();
-      this.applyFocus(this.focusIndex, true);
     });
 
-    this.events.once("shutdown", () => stopSpeech());
+    this.events.once("shutdown", () => {
+      stopSpeech();
+    });
   }
 
   say(text) {
@@ -424,14 +415,12 @@ class MemoryScene extends Phaser.Scene {
     const hc = !!this.a11y.highContrast;
     const ts = this.a11y.textScale || 1;
 
-    this.bg.setFillStyle(hc ? 0x000000 : 0x0b1020, 1);
-
+    this.bg.setFillStyle(hc ? 0x000000 : 0x9eb7e5, 1);
     this.title.setFontSize(Math.round(24 * ts));
     this.attemptsText.setFontSize(Math.round(18 * ts));
     this.timeText.setFontSize(Math.round(18 * ts));
-
-    this.attemptsText.setColor(hc ? "#ffffff" : "#cbd5e1");
-    this.timeText.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.attemptsText.setColor(hc ? "#ffffff" : "#334155");
+    this.timeText.setColor(hc ? "#ffffff" : "#334155");
 
     const btnStyle = {
       color: hc ? "#000000" : "#ffffff",
@@ -445,24 +434,21 @@ class MemoryScene extends Phaser.Scene {
     this.cards.forEach((card) => {
       card.faceDown.clearTint();
       if (hc) card.faceDown.setTint(0xffffff);
-
       card.backBorder.setStrokeStyle(2, 0xffffff, hc ? 1 : 0.12);
-
       card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
       card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
-
       card.txt.setColor(hc ? "#000000" : "#0b1020");
     });
   }
 
   layoutTopUI() {
     const W = this.scale.width;
-    const left = contentLeft(this);
+    if (W < 320) return;
 
+    const left = contentLeft(this);
     this.title.setPosition(left, 16);
     this.attemptsText.setPosition(left, 48);
     this.timeText.setPosition(left, 72);
-
     this.menuBtn.setPosition(W - 120, 16);
     this.exitBtn.setPosition(W - 16, 16);
   }
@@ -478,7 +464,6 @@ class MemoryScene extends Phaser.Scene {
 
       const cols = this.gridCols || 4;
       const total = this.cards.length;
-
       const r = Math.floor(this.focusIndex / cols);
       const c = this.focusIndex % cols;
 
@@ -507,9 +492,11 @@ class MemoryScene extends Phaser.Scene {
   }
 
   applyFocus(index, silent = false) {
-    this.cards.forEach((c) => c.focusOutline?.setVisible(false));
+    if (!this.cards || !this.cards.length) return;
     const card = this.cards[index];
-    if (!card) return;
+    if (!card || !Number.isFinite(card.cx) || !Number.isFinite(card.cy)) return;
+
+    this.cards.forEach((c) => c.focusOutline?.setVisible(false));
 
     if (!card.focusOutline) {
       card.focusOutline = this.add
@@ -551,7 +538,7 @@ class MemoryScene extends Phaser.Scene {
 
     const txt = this.add
       .text(0, 0, item.symbol, {
-        fontFamily: "Arial",
+        fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", Arial',
         fontSize: "52px",
         color: "#0b1020",
       })
@@ -604,7 +591,6 @@ class MemoryScene extends Phaser.Scene {
 
   setCardVisual(card, isFlipped) {
     card.flipped = isFlipped;
-
     card.faceDown.setVisible(!isFlipped);
     card.backBorder.setVisible(!isFlipped);
     card.faceUp.setVisible(isFlipped);
@@ -624,7 +610,6 @@ class MemoryScene extends Phaser.Scene {
 
     this.state.flips += 1;
     this.setCardVisual(card, true);
-
     this.say(`Figura ${card.label}`);
 
     if (!this.state.first) {
@@ -648,7 +633,6 @@ class MemoryScene extends Phaser.Scene {
         b.matched = true;
         this.setCardVisual(a, true);
         this.setCardVisual(b, true);
-
         this.say(`Correcto. Pareja de ${b.label}`);
 
         this.state.matchedPairs += 1;
@@ -713,7 +697,6 @@ class MemoryScene extends Phaser.Scene {
 
     const W = this.scale.width;
     const H = this.scale.height;
-
     const hc = !!this.a11y.highContrast;
     const ts = this.a11y.textScale || 1;
 
@@ -803,7 +786,6 @@ class MemoryScene extends Phaser.Scene {
 
       overlay.setSize(W2, H2);
       box.setPosition(W2 / 2, H2 / 2);
-
       t1.setPosition(W2 / 2, H2 / 2 - 80);
       t2.setPosition(W2 / 2, H2 / 2 - 25);
 
@@ -851,13 +833,17 @@ class MemoryScene extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
+    if (W < 320 || H < 480) return;
+
     const leftPad = contentLeft(this);
     const rightPad = 16;
     const topPad = 120;
     const bottomPad = 16;
 
-    const areaW = Math.max(220, W - leftPad - rightPad);
-    const areaH = Math.max(220, H - topPad - bottomPad);
+    const areaW = W - leftPad - rightPad;
+    const areaH = H - topPad - bottomPad;
+
+    if (areaW < 220 || areaH < 220) return;
 
     const total = this.pairs * 2;
     const cols = 4;
@@ -865,7 +851,6 @@ class MemoryScene extends Phaser.Scene {
     this.gridCols = cols;
 
     const gap = 18;
-
     const rawCellW = Math.floor((areaW - gap * (cols - 1)) / cols);
     const rawCellH = Math.floor((areaH - gap * (rows - 1)) / rows);
 
@@ -880,7 +865,6 @@ class MemoryScene extends Phaser.Scene {
 
     w = Math.min(w, cellW);
     h = Math.min(h, cellH);
-
     w = Math.max(w, 50);
     h = Math.max(h, 60);
 
@@ -894,18 +878,25 @@ class MemoryScene extends Phaser.Scene {
       const x0 = cx - w / 2;
       const y0 = cy - h / 2;
 
+      const sizeChanged = card.w !== w || card.h !== h;
+
       card.x0 = x0;
       card.y0 = y0;
       card.cx = cx;
       card.cy = cy;
-      card.w = w;
-      card.h = h;
 
       card.faceDown.setPosition(x0, y0);
-      card.faceDown.setDisplaySize(w, h);
+      card.backBorder.setPosition(x0, y0);
+      card.faceUp.setPosition(x0, y0);
 
-      card.backBorder.setPosition(x0, y0).setSize(w, h);
-      card.faceUp.setPosition(x0, y0).setSize(w, h);
+      if (sizeChanged) {
+        card.faceDown.setDisplaySize(w, h);
+        card.backBorder.setSize(w, h);
+        card.faceUp.setSize(w, h);
+      }
+
+      card.w = w;
+      card.h = h;
 
       card.hit.setPosition(x0, y0);
       card.hit.setSize(w, h);
@@ -915,7 +906,9 @@ class MemoryScene extends Phaser.Scene {
       }
 
       card.txt.setPosition(cx, cy);
-      card.txt.setFontSize(Math.max(22, Math.floor(Math.min(w, h) * 0.42 * ts)));
+      card.txt.setFontSize(
+        Math.max(22, Math.floor(Math.min(w, h) * 0.42 * ts))
+      );
 
       if (card.focusOutline) {
         card.focusOutline.setPosition(cx, cy);
@@ -925,50 +918,35 @@ class MemoryScene extends Phaser.Scene {
   }
 }
 
-/* ======================= createMemoramaGame ======================= */
 export function createMemoramaGame(parentId, onFinish, onExit) {
   const parentEl = document.getElementById(parentId);
   if (!parentEl) throw new Error(`No existe el elemento con id="${parentId}"`);
 
   parentEl.style.position = "relative";
   parentEl.style.overflow = "hidden";
-
-  const w0 = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
-  const h0 = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
+  parentEl.style.minHeight = "480px";
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: parentId,
-    backgroundColor: "#0b1020",
+    backgroundColor: "#9eb7e5",
     scene: [
       new BootScene(),
       new MenuScene(onExit),
       new MemoryScene(onFinish, onExit),
     ],
     scale: {
-      mode: Phaser.Scale.RESIZE,
-      autoCenter: Phaser.Scale.NO_CENTER,
-      width: w0,
-      height: h0,
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: 1280,
+      height: 720,
     },
   });
 
   const canvas = game.canvas;
   if (canvas) {
     canvas.style.display = "block";
-    canvas.style.position = "absolute";
-    canvas.style.left = "0";
-    canvas.style.top = "0";
   }
-
-  setTimeout(() => {
-    const w = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
-    const h = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
-    try {
-      game.scale.resize(w, h);
-      game.scale.refresh();
-    } catch {}
-  }, 0);
 
   return () => {
     stopSpeech();
