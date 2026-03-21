@@ -57,7 +57,10 @@ function makeMenuButton(scene, label, onClick) {
     .setOrigin(0.5);
 
   const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0);
-  hit.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
+  hit.setInteractive(
+    new Phaser.Geom.Rectangle(0, 0, w, h),
+    Phaser.Geom.Rectangle.Contains
+  );
   hit.setDepth(1000);
 
   hit.on("pointerover", () => speakIfEnabled(scene, label));
@@ -65,7 +68,10 @@ function makeMenuButton(scene, label, onClick) {
 
   function refreshHit() {
     hit.disableInteractive();
-    hit.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
+    hit.setInteractive(
+      new Phaser.Geom.Rectangle(0, 0, w, h),
+      Phaser.Geom.Rectangle.Contains
+    );
   }
 
   return {
@@ -104,13 +110,9 @@ class BootScene extends Phaser.Scene {
     super("BootScene");
   }
 
-  preload() {
-    // No usamos Phaser Loader para cardBack aquí
-  }
+  preload() {}
 
   create() {
-    console.log("BootScene create");
-
     const img = new Image();
     img.crossOrigin = "anonymous";
 
@@ -121,9 +123,6 @@ class BootScene extends Phaser.Scene {
         }
 
         this.textures.addImage("cardBack", img);
-
-        console.log("cardBack registrada manualmente:", this.textures.exists("cardBack"));
-
         this.scene.start("MenuScene");
       } catch (err) {
         console.error("Error registrando cardBack:", err);
@@ -139,6 +138,7 @@ class BootScene extends Phaser.Scene {
     img.src = "/assets/card-back.png";
   }
 }
+
 /* ======================= MenuScene ======================= */
 class MenuScene extends Phaser.Scene {
   constructor(onExit) {
@@ -284,8 +284,6 @@ class MemoryScene extends Phaser.Scene {
   }
 
   init(data) {
-    console.log("MemoryScene init data:", data);
-
     const pairs =
       typeof data?.pairs === "number" && !Number.isNaN(data.pairs)
         ? data.pairs
@@ -307,10 +305,7 @@ class MemoryScene extends Phaser.Scene {
   }
 
   create() {
-    console.log("MemoryScene create, pairs =", this.pairs);
-
     if (![4, 6, 8].includes(this.pairs)) {
-      console.warn("pairs inválido, usando 8 por defecto:", this.pairs);
       this.pairs = 8;
     }
 
@@ -385,7 +380,7 @@ class MemoryScene extends Phaser.Scene {
 
     const chosen = shuffle(SYMBOLS).slice(0, this.pairs);
     const values = shuffle([...chosen, ...chosen]);
-    this.cards = values.map((val, idx) => this.createCard(idx, val));
+    this.cards = values.map((item, idx) => this.createCard(idx, item));
 
     this.a11yPanel = createA11yPanel(this, {
       anchor: "left",
@@ -529,79 +524,84 @@ class MemoryScene extends Phaser.Scene {
     card.focusOutline.setSize(card.w + 14, card.h + 14);
 
     if (!silent) {
-  const cols = this.gridCols || 4;
-  const row = Math.floor(index / cols) + 1;
-  const col = (index % cols) + 1;
-  const status = card.matched ? "emparejada" : card.flipped ? `volteada, ${card.label}` : "oculta";
-  this.say(`Carta fila ${row}, columna ${col}, ${status}`);
+      const cols = this.gridCols || 4;
+      const row = Math.floor(index / cols) + 1;
+      const col = (index % cols) + 1;
+      const status = card.matched
+        ? "emparejada"
+        : card.flipped
+          ? `volteada, ${card.label}`
+          : "oculta";
+      this.say(`Carta fila ${row}, columna ${col}, ${status}`);
+    }
   }
 
   createCard(idx, item) {
-  const faceDown = this.add.image(0, 0, "cardBack").setOrigin(0, 0);
+    const faceDown = this.add.image(0, 0, "cardBack").setOrigin(0, 0);
 
-  const backBorder = this.add
-    .rectangle(0, 0, 110, 130, 0x000000, 0)
-    .setOrigin(0, 0)
-    .setStrokeStyle(2, 0xffffff, 0.12);
+    const backBorder = this.add
+      .rectangle(0, 0, 110, 130, 0x000000, 0)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0xffffff, 0.12);
 
-  const faceUp = this.add
-    .rectangle(0, 0, 110, 130, 0xf8fafc, 1)
-    .setOrigin(0, 0)
-    .setStrokeStyle(2, 0x111827, 0.25);
+    const faceUp = this.add
+      .rectangle(0, 0, 110, 130, 0xf8fafc, 1)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0x111827, 0.25);
 
-  const txt = this.add
-    .text(0, 0, item.symbol, {
-      fontFamily: "Arial",
-      fontSize: "52px",
-      color: "#0b1020",
-    })
-    .setOrigin(0.5);
+    const txt = this.add
+      .text(0, 0, item.symbol, {
+        fontFamily: "Arial",
+        fontSize: "52px",
+        color: "#0b1020",
+      })
+      .setOrigin(0.5);
 
-  const hit = this.add.zone(0, 0, 110, 130).setOrigin(0, 0);
-  hit.setInteractive({ useHandCursor: true });
-  hit.setDepth(10);
+    const hit = this.add.zone(0, 0, 110, 130).setOrigin(0, 0);
+    hit.setInteractive({ useHandCursor: true });
+    hit.setDepth(10);
 
-  const card = {
-    idx,
-    value: item.symbol,
-    label: item.label,
-    matchKey: item.label,
-    faceDown,
-    backBorder,
-    faceUp,
-    txt,
-    hit,
-    flipped: false,
-    matched: false,
-    focusOutline: null,
-    x0: 0,
-    y0: 0,
-    cx: 0,
-    cy: 0,
-    w: 110,
-    h: 130,
-  };
+    const card = {
+      idx,
+      value: item.symbol,
+      label: item.label,
+      matchKey: item.label,
+      faceDown,
+      backBorder,
+      faceUp,
+      txt,
+      hit,
+      flipped: false,
+      matched: false,
+      focusOutline: null,
+      x0: 0,
+      y0: 0,
+      cx: 0,
+      cy: 0,
+      w: 110,
+      h: 130,
+    };
 
-  this.setCardVisual(card, false);
+    this.setCardVisual(card, false);
 
-  hit.on("pointerover", () => {
-    if (card.matched || card.flipped) return;
-    const cols = this.gridCols || 4;
-    const row = Math.floor(idx / cols) + 1;
-    const col = (idx % cols) + 1;
-    this.say(`Carta fila ${row}, columna ${col}`);
-  });
+    hit.on("pointerover", () => {
+      if (card.matched || card.flipped) return;
+      const cols = this.gridCols || 4;
+      const row = Math.floor(idx / cols) + 1;
+      const col = (idx % cols) + 1;
+      this.say(`Carta fila ${row}, columna ${col}`);
+    });
 
-  hit.on("pointerdown", () => {
-    if (this.state.locked || card.matched || card.flipped) return;
-    this.focusIndex = idx;
-    this.applyFocus(idx, true);
-    this.onCardClick(card);
-  });
+    hit.on("pointerdown", () => {
+      if (this.state.locked || card.matched || card.flipped) return;
+      this.focusIndex = idx;
+      this.applyFocus(idx, true);
+      this.onCardClick(card);
+    });
 
-  return card;
-}
- 
+    return card;
+  }
+
   setCardVisual(card, isFlipped) {
     card.flipped = isFlipped;
 
@@ -620,59 +620,58 @@ class MemoryScene extends Phaser.Scene {
   }
 
   onCardClick(card) {
-  if (this.state.locked || card.matched || card.flipped) return;
+    if (this.state.locked || card.matched || card.flipped) return;
 
-  this.state.flips += 1;
-  this.setCardVisual(card, true);
+    this.state.flips += 1;
+    this.setCardVisual(card, true);
 
-  // Narración controlada
-  this.say(`Figura ${card.label}`);
+    this.say(`Figura ${card.label}`);
 
-  if (!this.state.first) {
-    this.state.first = card;
-    return;
-  }
+    if (!this.state.first) {
+      this.state.first = card;
+      return;
+    }
 
-  this.state.locked = true;
-  this.state.attempts += 1;
-  this.attemptsText.setText(`Intentos: ${this.state.attempts}`);
+    this.state.locked = true;
+    this.state.attempts += 1;
+    this.attemptsText.setText(`Intentos: ${this.state.attempts}`);
 
-  const a = this.state.first;
-  const b = card;
+    const a = this.state.first;
+    const b = card;
 
-  // Delay mayor para que sí se alcance a oír la segunda figura
-  const revealDelay = 1400;
+    const revealDelay = 1400;
+    const hideDelay = 900;
 
-  if (a.matchKey === b.matchKey) {
-    this.time.delayedCall(revealDelay, () => {
-      a.matched = true;
-      b.matched = true;
-      this.setCardVisual(a, true);
-      this.setCardVisual(b, true);
+    if (a.matchKey === b.matchKey) {
+      this.time.delayedCall(revealDelay, () => {
+        a.matched = true;
+        b.matched = true;
+        this.setCardVisual(a, true);
+        this.setCardVisual(b, true);
 
-      this.say(`Correcto. Pareja de ${b.label}`);
+        this.say(`Correcto. Pareja de ${b.label}`);
 
-      this.state.matchedPairs += 1;
-      this.state.first = null;
-      this.state.locked = false;
-
-      if (this.state.matchedPairs === this.pairs) {
-        this.onWin();
-      }
-    });
-  } else {
-    this.time.delayedCall(revealDelay, () => {
-      this.say(`Incorrecto. Era ${a.label} y ${b.label}`);
-
-      this.time.delayedCall(700, () => {
-        this.setCardVisual(a, false);
-        this.setCardVisual(b, false);
+        this.state.matchedPairs += 1;
         this.state.first = null;
         this.state.locked = false;
+
+        if (this.state.matchedPairs === this.pairs) {
+          this.onWin();
+        }
       });
-    });
+    } else {
+      this.time.delayedCall(revealDelay, () => {
+        this.say(`Incorrecto. Era ${a.label} y ${b.label}`);
+
+        this.time.delayedCall(hideDelay, () => {
+          this.setCardVisual(a, false);
+          this.setCardVisual(b, false);
+          this.state.first = null;
+          this.state.locked = false;
+        });
+      });
+    }
   }
-}
 
   onWin() {
     this.state.locked = true;
