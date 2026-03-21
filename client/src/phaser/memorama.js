@@ -850,7 +850,9 @@ class MemoryScene extends Phaser.Scene {
   layoutCards() {
     const W = this.scale.width;
     const H = this.scale.height;
-
+    
+    if (W < 320 || H < 480) return;
+    
     const leftPad = contentLeft(this);
     const rightPad = 16;
     const topPad = 120;
