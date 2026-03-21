@@ -209,12 +209,28 @@ class MenuScene extends Phaser.Scene {
     this.applyTheme();
     this.layout();
 
-    this.scale.on("resize", () => {
-      if (!this.bg) return;
-      this.bg.setSize(this.scale.width, this.scale.height);
-      this.applyTheme();
-      this.layout();
-    });
+    this._resizeTimer = null;
+
+this.scale.on("resize", () => {
+  if (!this.bg || !this.cards) return;
+
+  if (this._resizeTimer) {
+    clearTimeout(this._resizeTimer);
+  }
+
+  this._resizeTimer = setTimeout(() => {
+    const W = this.scale.width;
+    const H = this.scale.height;
+
+    if (W < 320 || H < 480) return;
+
+    this.bg.setSize(W, H);
+    this.applyTheme();
+    this.layoutTopUI();
+    this.layoutCards();
+    this.applyFocus(this.focusIndex, true);
+  }, 80);
+});
 
     this.events.once("shutdown", () => stopSpeech());
   }
