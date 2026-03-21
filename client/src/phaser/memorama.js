@@ -932,14 +932,20 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
 
   parentEl.style.position = "relative";
   parentEl.style.overflow = "hidden";
+  parentEl.style.minHeight = "480px";
 
-  const w0 = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
-  const h0 = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
+  const getSafeSize = () => {
+    const w = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
+    const h = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
+    return { w, h };
+  };
+
+  const { w: w0, h: h0 } = getSafeSize();
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: parentId,
-    backgroundColor: "#0b1020",
+    backgroundColor: "#9eb7e5",
     scene: [
       new BootScene(),
       new MenuScene(onExit),
@@ -959,19 +965,38 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
     canvas.style.position = "absolute";
     canvas.style.left = "0";
     canvas.style.top = "0";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
   }
 
-  setTimeout(() => {
-    const w = Math.max(320, parentEl.clientWidth || window.innerWidth || 900);
-    const h = Math.max(480, parentEl.clientHeight || window.innerHeight || 650);
-    try {
-      game.scale.resize(w, h);
-      game.scale.refresh();
-    } catch {}
-  }, 0);
+  let resizeTimer = null;
+
+  const handleResize = () => {
+    if (resizeTimer) clearTimeout(resizeTimer);
+
+    resizeTimer = setTimeout(() => {
+      const { w, h } = getSafeSize();
+
+      try {
+        if (w > 0 && h > 0) {
+          game.scale.resize(w, h);
+          game.scale.refresh();
+        }
+      } catch (err) {
+        console.error("Error al redimensionar Phaser:", err);
+      }
+    }, 80);
+  };
+
+  window.addEventListener("resize", handleResize);
+
+  setTimeout(handleResize, 0);
 
   return () => {
     stopSpeech();
+    window.removeEventListener("resize", handleResize);
+    if (resizeTimer) clearTimeout(resizeTimer);
+
     try {
       game.destroy(true);
     } catch {}
