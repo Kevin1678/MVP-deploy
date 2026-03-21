@@ -457,6 +457,8 @@ class MemoryScene extends Phaser.Scene {
 
   layoutTopUI() {
     const W = this.scale.width;
+    if (W < 320) return;
+    
     const left = contentLeft(this);
 
     this.title.setPosition(left, 16);
