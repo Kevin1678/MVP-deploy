@@ -8,18 +8,18 @@ import {
 } from "./a11yPanel";
 
 const SYMBOLS = [
-  { symbol: "★", label: "estrella" },
-  { symbol: "●", label: "círculo" },
-  { symbol: "▲", label: "triángulo" },
-  { symbol: "■", label: "cuadrado" },
-  { symbol: "◆", label: "rombo" },
-  { symbol: "❤", label: "corazón" },
-  { symbol: "☀", label: "sol" },
-  { symbol: "☂", label: "sombrilla" },
-  { symbol: "☘", label: "trébol" },
-  { symbol: "♫", label: "nota musical" },
-  { symbol: "✿", label: "flor" },
-  { symbol: "☕", label: "taza" },
+  { symbol: "⭐", label: "estrella" },
+  { symbol: "🟠", label: "círculo" },
+  { symbol: "🔺", label: "triángulo" },
+  { symbol: "🟥", label: "cuadrado" },
+  { symbol: "🔶", label: "rombo" },
+  { symbol: "❤️", label: "corazón" },
+  { symbol: "☀️", label: "sol" },
+  { symbol: "☂️", label: "sombrilla" },
+  { symbol: "☘️", label: "trébol" },
+  { symbol: "🎵", label: "nota musical" },
+  { symbol: "🌸", label: "flor" },
+  { symbol: "☕️", label: "taza" },
 ];
 
 function shuffle(arr) {
@@ -50,7 +50,7 @@ function makeMenuButton(scene, label, onClick) {
 
   const text = scene.add
     .text(x0 + w / 2, y0 + h / 2, label, {
-      fontFamily: "Arial",
+      fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", Arial',
       fontSize: "26px",
       color: "#ffffff",
     })
