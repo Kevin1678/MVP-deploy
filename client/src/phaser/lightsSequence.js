@@ -7,6 +7,18 @@ import {
   PANEL_GAP,
 } from "./a11yPanel";
 
+const TILE_DEFS = [
+  { hex: "#D74663", colorName: "rosa" },
+  { hex: "#7C3F8C", colorName: "morado" },
+  { hex: "#AED13F", colorName: "verde limón" },
+  { hex: "#F2A413", colorName: "amarillo naranja" },
+  { hex: "#D23806", colorName: "rojo naranja" },
+  { hex: "#288896", colorName: "azul petróleo" },
+  { hex: "#AB6831", colorName: "café" },
+  { hex: "#5CFAC7", colorName: "turquesa" },
+  { hex: "#FAF37F", colorName: "amarillo claro" },
+];
+
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
@@ -18,6 +30,26 @@ function randInt(min, max) {
 function contentLeft(scene) {
   const panelW = scene.a11yPanel?.getWidth?.() ?? 290;
   return 16 + panelW + (PANEL_GAP ?? 16);
+}
+
+function hexToNumber(hex) {
+  return parseInt(hex.replace("#", ""), 16);
+}
+
+function mixColors(colorA, colorB, amount = 0.25) {
+  const ar = (colorA >> 16) & 0xff;
+  const ag = (colorA >> 8) & 0xff;
+  const ab = colorA & 0xff;
+
+  const br = (colorB >> 16) & 0xff;
+  const bg = (colorB >> 8) & 0xff;
+  const bb = colorB & 0xff;
+
+  const r = Math.round(ar + (br - ar) * amount);
+  const g = Math.round(ag + (bg - ag) * amount);
+  const b = Math.round(ab + (bb - ab) * amount);
+
+  return (r << 16) | (g << 8) | b;
 }
 
 function makeTopLeftButton(scene, label, onClick, depth = 10) {
@@ -38,6 +70,7 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
       fontFamily: "Arial",
       fontSize: "28px",
       color: "#ffffff",
+      align: "center",
     })
     .setOrigin(0.5)
     .setDepth(depth + 1);
@@ -132,21 +165,22 @@ function getTileName(r, c) {
 }
 
 function makeGridTile(scene, r, c) {
-  const name = getTileName(r, c);
+  const index = r * 3 + c;
+  const def = TILE_DEFS[index];
+  const positionName = getTileName(r, c);
+
+  const baseColor = hexToNumber(def.hex);
+  const activeColor = mixColors(baseColor, 0xffffff, 0.30);
+  const pressColor = mixColors(baseColor, 0xffffff, 0.18);
 
   const bg = scene.add
-    .rectangle(0, 0, 120, 110, 0x111827, 1)
-    .setOrigin(0, 0);
+    .rectangle(0, 0, 120, 110, baseColor, 1)
+    .setOrigin(0, 0)
+    .setStrokeStyle(3, 0xffffff, 0.18);
 
-  const label = scene.add
-    .text(0, 0, name, {
-      fontFamily: "Arial",
-      fontSize: "20px",
-      color: "#ffffff",
-      align: "center",
-      wordWrap: { width: 90 },
-    })
-    .setOrigin(0.5);
+  const shine = scene.add
+    .rectangle(0, 0, 120, 34, 0xffffff, 0.10)
+    .setOrigin(0, 0);
 
   const focus = scene.add
     .rectangle(0, 0, 132, 122, 0x000000, 0)
@@ -163,9 +197,15 @@ function makeGridTile(scene, r, c) {
   return {
     r,
     c,
-    name,
+    index,
+    positionName,
+    colorName: def.colorName,
+    voiceName: `${def.colorName}, ${positionName}`,
+    baseColor,
+    activeColor,
+    pressColor,
     bg,
-    label,
+    shine,
     focus,
     hit,
     x0: 0,
@@ -282,11 +322,21 @@ class LightsMenuScene extends Phaser.Scene {
   handleResize(gameSize) {
     const width = Math.max(
       320,
-      Math.floor(gameSize?.width ?? this.scale.gameSize?.width ?? this.scale.width ?? window.innerWidth)
+      Math.floor(
+        gameSize?.width ??
+          this.scale.gameSize?.width ??
+          this.scale.width ??
+          window.innerWidth
+      )
     );
     const height = Math.max(
       480,
-      Math.floor(gameSize?.height ?? this.scale.gameSize?.height ?? this.scale.height ?? window.innerHeight)
+      Math.floor(
+        gameSize?.height ??
+          this.scale.gameSize?.height ??
+          this.scale.height ??
+          window.innerHeight
+      )
     );
 
     this.cameras.resize(width, height);
@@ -379,6 +429,7 @@ class LightsGameScene extends Phaser.Scene {
       score: 0,
       attempts: 0,
       wrongRounds: 0,
+      repeatCount: 0,
       locked: true,
       sequence: [],
       inputIndex: 0,
@@ -441,6 +492,13 @@ class LightsGameScene extends Phaser.Scene {
       .setOrigin(1, 0)
       .setInteractive({ useHandCursor: true });
 
+    this.repeatBtn = makeTopLeftButton(
+      this,
+      "Repetir secuencia",
+      () => this.repeatSequence(),
+      20
+    );
+
     this.menuBtn.on("pointerdown", () => {
       if (this.gameEnded && this.endModal) return;
       this.cleanupTransientState();
@@ -475,6 +533,7 @@ class LightsGameScene extends Phaser.Scene {
     this.layout();
     this.layoutGrid();
     this.applyFocus(0, true);
+    this.updateRepeatButtonState();
     this.nextRound(true);
     this.handleResize({ width: this.scale.width, height: this.scale.height });
 
@@ -543,11 +602,21 @@ class LightsGameScene extends Phaser.Scene {
   handleResize(gameSize) {
     const width = Math.max(
       320,
-      Math.floor(gameSize?.width ?? this.scale.gameSize?.width ?? this.scale.width ?? window.innerWidth)
+      Math.floor(
+        gameSize?.width ??
+          this.scale.gameSize?.width ??
+          this.scale.width ??
+          window.innerWidth
+      )
     );
     const height = Math.max(
       480,
-      Math.floor(gameSize?.height ?? this.scale.gameSize?.height ?? this.scale.height ?? window.innerHeight)
+      Math.floor(
+        gameSize?.height ??
+          this.scale.gameSize?.height ??
+          this.scale.height ??
+          window.innerHeight
+      )
     );
 
     this.cameras.resize(width, height);
@@ -594,16 +663,27 @@ class LightsGameScene extends Phaser.Scene {
     this.menuBtn.setFontSize(Math.round(16 * ts));
     this.exitBtn.setFontSize(Math.round(16 * ts));
 
+    this.repeatBtn.setTheme({
+      fill: hc ? 0xffffff : 0x1d4ed8,
+      strokeAlpha: 1,
+      textColor: hc ? "#000000" : "#ffffff",
+      fontSize: Math.round(18 * ts),
+    });
+
     this.tiles.forEach((tile) => {
-      tile.bg.setFillStyle(hc ? 0x000000 : 0x111827, 1);
-      tile.bg.setStrokeStyle(3, 0xffffff, hc ? 1 : 0.12);
-      tile.label.setColor("#ffffff");
+      tile.bg.setFillStyle(tile.baseColor, 1);
+      tile.bg.setStrokeStyle(3, 0xffffff, hc ? 1 : 0.20);
+      tile.shine.setFillStyle(0xffffff, hc ? 0.18 : 0.10);
       tile.focus.setStrokeStyle(4, hc ? 0xffffff : 0x22c55e, 0);
     });
 
     if (this.endModal) {
       this.endModal.box.setFillStyle(hc ? 0xffffff : 0x0f172a, 1);
-      this.endModal.box.setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16);
+      this.endModal.box.setStrokeStyle(
+        2,
+        hc ? 0x000000 : 0xffffff,
+        hc ? 1 : 0.16
+      );
 
       this.endModal.title.setStyle({
         fontFamily: "Arial",
@@ -631,6 +711,8 @@ class LightsGameScene extends Phaser.Scene {
         fontSize: Math.round(18 * ts),
       });
     }
+
+    this.updateRepeatButtonState();
   }
 
   layout() {
@@ -638,11 +720,11 @@ class LightsGameScene extends Phaser.Scene {
     const left = contentLeft(this);
 
     this.title.setPosition(left, 16);
-    this.sub.setPosition(left, 52);
-    this.stats.setPosition(left, 80);
+    this.sub.setPosition(left, this.title.y + this.title.height + 6);
+    this.stats.setPosition(left, this.sub.y + this.sub.height + 6);
 
-    this.menuBtn.setPosition(W - 120, 16);
     this.exitBtn.setPosition(W - 16, 16);
+    this.menuBtn.setPosition(this.exitBtn.x - this.exitBtn.width - 12, 16);
   }
 
   buildGrid() {
@@ -655,7 +737,7 @@ class LightsGameScene extends Phaser.Scene {
         tile.hit.on("pointerover", () => {
           if (this.gameEnded) return;
           this.applyFocus(r * 3 + c, true);
-          speakIfEnabled(this, tile.name);
+          speakIfEnabled(this, tile.voiceName);
         });
 
         tile.hit.on("pointerdown", () => {
@@ -675,20 +757,33 @@ class LightsGameScene extends Phaser.Scene {
     const left = contentLeft(this);
 
     const ui = this.a11y.uiScale || 1;
-    const ts = this.a11y.textScale || 1;
 
-    const tileW = Math.round(120 * ui);
-    const tileH = Math.round(110 * ui);
-    const gap = Math.round(18 * ui);
+    const baseTileW = 120 * ui;
+    const baseTileH = 110 * ui;
+    const baseGap = 18 * ui;
+    const baseButtonH = Math.round(56 * ui);
+    const baseButtonGap = Math.round(24 * ui);
+
+    const headerBottom = this.stats.y + this.stats.height + 24;
+    const availableWidth = Math.max(220, W - left - 16);
+    const footerReserved = baseButtonH + baseButtonGap + 28;
+    const availableHeight = Math.max(180, H - headerBottom - footerReserved);
+
+    const totalBaseW = baseTileW * 3 + baseGap * 2;
+    const totalBaseH = baseTileH * 3 + baseGap * 2;
+
+    const fit = Math.min(1, availableWidth / totalBaseW, availableHeight / totalBaseH);
+
+    const tileW = Math.max(74, Math.round(baseTileW * fit));
+    const tileH = Math.max(68, Math.round(baseTileH * fit));
+    const gap = Math.max(10, Math.round(baseGap * fit));
 
     const totalW = tileW * 3 + gap * 2;
     const totalH = tileH * 3 + gap * 2;
 
-    const centerX = left + (W - left - 16) / 2;
-    const centerY = 170 + (H - 170 - 130) / 2;
-
+    const centerX = left + availableWidth / 2;
     const startX = centerX - totalW / 2;
-    const startY = centerY - totalH / 2;
+    const startY = headerBottom + Math.max(0, (availableHeight - totalH) / 2);
 
     this.tiles.forEach((tile) => {
       const x0 = startX + tile.c * (tileW + gap);
@@ -704,11 +799,8 @@ class LightsGameScene extends Phaser.Scene {
       tile.cy = cy;
 
       tile.bg.setPosition(x0, y0).setSize(tileW, tileH);
-      tile.label.setPosition(cx, cy);
+      tile.shine.setPosition(x0, y0).setSize(tileW, Math.max(20, Math.round(tileH * 0.28)));
       tile.focus.setPosition(cx, cy).setSize(tileW + 12, tileH + 12);
-
-      tile.label.setFontSize(Math.round(20 * ts));
-      tile.label.setWordWrapWidth(Math.round(tileW * 0.82));
 
       tile.hit.setPosition(x0, y0);
       tile.hit.setSize(tileW, tileH);
@@ -716,6 +808,12 @@ class LightsGameScene extends Phaser.Scene {
         tile.hit.input.hitArea.setTo(0, 0, tileW, tileH);
       }
     });
+
+    const btnW = Math.max(220, Math.min(Math.round(totalW * 0.82), availableWidth));
+    const btnCy = startY + totalH + baseButtonGap + baseButtonH / 2;
+
+    this.repeatBtn.setSize(btnW, baseButtonH);
+    this.repeatBtn.setCenter(centerX, btnCy);
   }
 
   initKeyboard() {
@@ -727,6 +825,11 @@ class LightsGameScene extends Phaser.Scene {
         this.cleanupTransientState();
         stopSpeech();
         this._onExit?.();
+        return;
+      }
+
+      if (e.code === "KeyR") {
+        this.repeatSequence();
         return;
       }
 
@@ -778,7 +881,7 @@ class LightsGameScene extends Phaser.Scene {
     tile.focus.setPosition(tile.cx, tile.cy);
     tile.focus.setStrokeStyle(4, focusColor, 1);
 
-    if (!silent) speakIfEnabled(this, tile.name);
+    if (!silent) speakIfEnabled(this, tile.voiceName);
   }
 
   setTilesEnabled(enabled) {
@@ -795,6 +898,22 @@ class LightsGameScene extends Phaser.Scene {
         tile.hit.disableInteractive();
       }
     });
+  }
+
+  updateStats() {
+    this.stats.setText(
+      `Puntos: ${this.state.score} • Intentos: ${this.state.attempts} • Ronda: ${this.state.round}/${this.roundsTotal}`
+    );
+  }
+
+  updateRepeatButtonState() {
+    if (!this.repeatBtn) return;
+    const canRepeat =
+      !this.gameEnded &&
+      !this.state.locked &&
+      Array.isArray(this.state.sequence) &&
+      this.state.sequence.length > 0;
+    this.repeatBtn.setEnabled(canRepeat);
   }
 
   nextRound(isFirst = false) {
@@ -822,13 +941,38 @@ class LightsGameScene extends Phaser.Scene {
 
     this.state.sequence = sequence;
 
-    this.stats.setText(
-      `Puntos: ${this.state.score} • Intentos: ${this.state.attempts} • Ronda: ${this.state.round}/${this.roundsTotal}`
-    );
+    this.updateStats();
+    this.updateRepeatButtonState();
 
     speakIfEnabled(this, `Ronda ${this.state.round}. Observa la secuencia.`);
-    if (isFirst) speakIfEnabled(this, "Usa flechas y Enter si no quieres usar mouse.");
+    if (isFirst) {
+      speakIfEnabled(
+        this,
+        "Usa flechas y Enter si no quieres usar mouse. Presiona R para repetir la secuencia."
+      );
+    }
 
+    this.playSequence(this.sequenceRunId);
+  }
+
+  repeatSequence() {
+    if (
+      this.gameEnded ||
+      this.state.locked ||
+      !Array.isArray(this.state.sequence) ||
+      this.state.sequence.length === 0
+    ) {
+      return;
+    }
+
+    this.cancelPendingTimers();
+    this.sequenceRunId += 1;
+    this.state.locked = true;
+    this.state.inputIndex = 0;
+    this.state.repeatCount += 1;
+    this.updateRepeatButtonState();
+
+    speakIfEnabled(this, "Repitiendo la secuencia.");
     this.playSequence(this.sequenceRunId);
   }
 
@@ -838,7 +982,9 @@ class LightsGameScene extends Phaser.Scene {
 
   async playSequence(runId) {
     const hc = !!this.a11y.highContrast;
-    const activeFill = hc ? 0xffffff : 0x60a5fa;
+    const baseStrokeAlpha = hc ? 1 : 0.20;
+
+    this.updateRepeatButtonState();
 
     const okStart = await this.wait(350, runId);
     if (!okStart || this.gameEnded) return;
@@ -850,16 +996,13 @@ class LightsGameScene extends Phaser.Scene {
       const tile = this.getTile(r, c);
       if (!tile) continue;
 
-      speakIfEnabled(this, tile.name);
+      speakIfEnabled(this, tile.colorName);
 
-      const oldFill = tile.bg.fillColor;
-      const oldAlpha = tile.bg.strokeAlpha;
-
-      tile.bg.setFillStyle(activeFill, 1);
+      tile.bg.setFillStyle(tile.activeColor, 1);
       tile.bg.setStrokeStyle(5, 0xffffff, 1);
 
       this.tweens.add({
-        targets: [tile.bg, tile.label, tile.focus],
+        targets: [tile.bg, tile.shine, tile.focus],
         scaleX: { from: 1, to: 1.05 },
         scaleY: { from: 1, to: 1.05 },
         yoyo: true,
@@ -869,8 +1012,8 @@ class LightsGameScene extends Phaser.Scene {
       const okOn = await this.wait(this.speedMs, runId);
       if (!okOn || this.gameEnded) return;
 
-      tile.bg.setFillStyle(oldFill, 1);
-      tile.bg.setStrokeStyle(3, 0xffffff, oldAlpha);
+      tile.bg.setFillStyle(tile.baseColor, 1);
+      tile.bg.setStrokeStyle(3, 0xffffff, baseStrokeAlpha);
 
       const okOff = await this.wait(Math.max(120, this.speedMs * 0.2), runId);
       if (!okOff || this.gameEnded) return;
@@ -879,6 +1022,7 @@ class LightsGameScene extends Phaser.Scene {
     if (!this.scene.isActive() || this.gameEnded || runId !== this.sequenceRunId) return;
 
     this.state.locked = false;
+    this.updateRepeatButtonState();
     speakIfEnabled(this, "Tu turno. Repite la secuencia.");
   }
 
@@ -889,16 +1033,26 @@ class LightsGameScene extends Phaser.Scene {
     if (!tile) return;
 
     const hc = !!this.a11y.highContrast;
-    const pressFill = hc ? 0x999999 : 0xfbbf24;
-    const old = tile.bg.fillColor;
+    const baseStrokeAlpha = hc ? 1 : 0.20;
 
-    tile.bg.setFillStyle(pressFill, 1);
-    this.schedule(160, () => {
-      if (!this.scene.isActive()) return;
-      tile.bg.setFillStyle(old, 1);
+    tile.bg.setFillStyle(tile.pressColor, 1);
+    tile.bg.setStrokeStyle(5, 0xffffff, 1);
+
+    this.tweens.add({
+      targets: [tile.bg, tile.shine],
+      scaleX: { from: 1, to: 1.03 },
+      scaleY: { from: 1, to: 1.03 },
+      yoyo: true,
+      duration: 120,
     });
 
-    speakIfEnabled(this, tile.name);
+    this.schedule(160, () => {
+      if (!this.scene.isActive()) return;
+      tile.bg.setFillStyle(tile.baseColor, 1);
+      tile.bg.setStrokeStyle(3, 0xffffff, baseStrokeAlpha);
+    });
+
+    speakIfEnabled(this, tile.colorName);
 
     const expected = this.state.sequence[this.state.inputIndex];
     const ok = expected && expected.r === r && expected.c === c;
@@ -920,6 +1074,9 @@ class LightsGameScene extends Phaser.Scene {
 
     this.state.locked = true;
     this.state.score += 1;
+    this.updateStats();
+    this.updateRepeatButtonState();
+
     speakIfEnabled(this, "Correcto");
     this.showOverlayIcon(true);
 
@@ -939,6 +1096,8 @@ class LightsGameScene extends Phaser.Scene {
 
     this.state.locked = true;
     this.state.wrongRounds += 1;
+    this.updateRepeatButtonState();
+
     speakIfEnabled(this, "Incorrecto");
     this.showOverlayIcon(false);
 
@@ -1008,6 +1167,7 @@ class LightsGameScene extends Phaser.Scene {
     this.cancelPendingTimers();
     this.sequenceRunId += 1;
     this.setTilesEnabled(false);
+    this.updateRepeatButtonState();
 
     this.menuBtn.disableInteractive();
     this.exitBtn.disableInteractive();
@@ -1025,13 +1185,17 @@ class LightsGameScene extends Phaser.Scene {
       moves: this.state.attempts,
       durationMs,
       level,
-      accuracy: this.state.score,
+      accuracy:
+        this.roundsTotal > 0
+          ? Number((this.state.score / this.roundsTotal).toFixed(4))
+          : 0,
       attempts: this.state.attempts,
       metadata: {
         steps: this.steps,
         speedMs: this.speedMs,
         roundsTotal: this.roundsTotal,
         wrongRounds: this.state.wrongRounds,
+        repeatCount: this.state.repeatCount,
         difficulty: this.difficulty,
       },
     };
