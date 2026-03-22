@@ -1080,7 +1080,11 @@ class LightsGameScene extends Phaser.Scene {
       tile.bg.setStrokeStyle(3, 0xffffff, baseStrokeAlpha);
     });
 
-    speakIfEnabled(this, tile.colorName);
+    speakIfEnabled(this, tile.colorName, {
+      delayMs: 60,
+      minGapMs: 320,
+      rate: 0.96,
+    });
 
     const expected = this.state.sequence[this.state.inputIndex];
     const ok = expected && expected.r === r && expected.c === c;
