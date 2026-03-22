@@ -13,7 +13,7 @@ const TILE_DEFS = [
   { hex: "#AED13F", colorName: "verde limón" },
   { hex: "#F2A413", colorName: "amarillo naranja" },
   { hex: "#D23806", colorName: "rojo naranja" },
-  { hex: "#288896", colorName: "azul petróleo" },
+  { hex: "#288896", colorName: "azul" },
   { hex: "#AB6831", colorName: "café" },
   { hex: "#5CFAC7", colorName: "turquesa" },
   { hex: "#FAF37F", colorName: "amarillo claro" },
@@ -137,11 +137,14 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
 
     setEnabled(v) {
       enabled = !!v;
+
       if (enabled) {
-        if (!hit.input) hit.setInteractive({ useHandCursor: true });
+        hit.setInteractive({ useHandCursor: true });
+        if (hit.input) hit.input.cursor = "pointer";
       } else {
         hit.disableInteractive();
       }
+
       box.setAlpha(enabled ? 1 : 0.55);
       text.setAlpha(enabled ? 1 : 0.55);
     },
@@ -463,7 +466,7 @@ class LightsGameScene extends Phaser.Scene {
       .setOrigin(0, 0);
 
     this.stats = this.add
-      .text(0, 0, "Puntos: 0 • Intentos: 0 • Ronda: 0/0", {
+      .text(0, 0, "Puntos: 0 • Intentos: 0 • Ayudas: 0 • Ronda: 0/0", {
         fontFamily: "Arial",
         fontSize: "18px",
         color: "#cbd5e1",
@@ -533,6 +536,7 @@ class LightsGameScene extends Phaser.Scene {
     this.layout();
     this.layoutGrid();
     this.applyFocus(0, true);
+    this.updateStats();
     this.updateRepeatButtonState();
     this.nextRound(true);
     this.handleResize({ width: this.scale.width, height: this.scale.height });
@@ -804,6 +808,7 @@ class LightsGameScene extends Phaser.Scene {
 
       tile.hit.setPosition(x0, y0);
       tile.hit.setSize(tileW, tileH);
+
       if (tile.hit.input?.hitArea?.setTo) {
         tile.hit.input.hitArea.setTo(0, 0, tileW, tileH);
       }
@@ -887,7 +892,7 @@ class LightsGameScene extends Phaser.Scene {
   setTilesEnabled(enabled) {
     this.tiles.forEach((tile) => {
       if (enabled) {
-        if (!tile.hit.input) {
+        if (!tile.hit.input?.enabled) {
           tile.hit.setInteractive(
             new Phaser.Geom.Rectangle(0, 0, tile.w, tile.h),
             Phaser.Geom.Rectangle.Contains
@@ -902,17 +907,19 @@ class LightsGameScene extends Phaser.Scene {
 
   updateStats() {
     this.stats.setText(
-      `Puntos: ${this.state.score} • Intentos: ${this.state.attempts} • Ronda: ${this.state.round}/${this.roundsTotal}`
+      `Puntos: ${this.state.score} • Intentos: ${this.state.attempts} • Ayudas: ${this.state.repeatCount} • Ronda: ${this.state.round}/${this.roundsTotal}`
     );
   }
 
   updateRepeatButtonState() {
     if (!this.repeatBtn) return;
+
     const canRepeat =
       !this.gameEnded &&
       !this.state.locked &&
       Array.isArray(this.state.sequence) &&
       this.state.sequence.length > 0;
+
     this.repeatBtn.setEnabled(canRepeat);
   }
 
@@ -970,6 +977,8 @@ class LightsGameScene extends Phaser.Scene {
     this.state.locked = true;
     this.state.inputIndex = 0;
     this.state.repeatCount += 1;
+
+    this.updateStats();
     this.updateRepeatButtonState();
 
     speakIfEnabled(this, "Repitiendo la secuencia.");
@@ -1210,113 +1219,112 @@ class LightsGameScene extends Phaser.Scene {
     speakIfEnabled(this, "Juego terminado. Selecciona Jugar otra vez o Salir.");
   }
 
- showEndModal() {
-  if (this.endModal) return;
+  showEndModal() {
+    if (this.endModal) return;
 
-  const W = this.scale.width;
-  const H = this.scale.height;
-  const hc = !!this.a11y.highContrast;
-  const ts = this.a11y.textScale || 1;
+    const W = this.scale.width;
+    const H = this.scale.height;
+    const hc = !!this.a11y.highContrast;
+    const ts = this.a11y.textScale || 1;
 
-  const overlay = this.add
-    .rectangle(0, 0, W, H, 0x000000, 0.55)
-    .setOrigin(0)
-    .setDepth(4000)
-    .setInteractive();
+    const overlay = this.add
+      .rectangle(0, 0, W, H, 0x000000, 0.55)
+      .setOrigin(0)
+      .setDepth(4000)
+      .setInteractive();
 
-  overlay.on("pointerdown", (pointer, localX, localY, event) => {
-    event?.stopPropagation?.();
-  });
+    overlay.on("pointerdown", (pointer, localX, localY, event) => {
+      event?.stopPropagation?.();
+    });
 
-  const box = this.add
-    .rectangle(
-      W / 2,
-      H / 2,
-      Math.min(600, W * 0.9),
-      300,
-      hc ? 0xffffff : 0x0f172a,
-      1
-    )
-    .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
-    .setDepth(4001)
-    .setInteractive();
+    const box = this.add
+      .rectangle(
+        W / 2,
+        H / 2,
+        Math.min(600, W * 0.9),
+        300,
+        hc ? 0xffffff : 0x0f172a,
+        1
+      )
+      .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
+      .setDepth(4001)
+      .setInteractive();
 
-  box.on("pointerdown", (pointer, localX, localY, event) => {
-    event?.stopPropagation?.();
-  });
+    box.on("pointerdown", (pointer, localX, localY, event) => {
+      event?.stopPropagation?.();
+    });
 
-  const title = this.add
-    .text(W / 2, H / 2 - 92, "¡Terminaste!", {
-      fontFamily: "Arial",
-      fontSize: `${Math.round(38 * ts)}px`,
-      color: hc ? "#000000" : "#ffffff",
-    })
-    .setOrigin(0.5)
-    .setDepth(4002);
-
-  const sub = this.add
-    .text(
-      W / 2,
-      H / 2 - 18,
-      [
-        `Puntos: ${this.state.score}`,
-        `Errores: ${this.state.wrongRounds}`,
-        `Ayudas usadas: ${this.state.repeatCount}`,
-      ].join("\n"),
-      {
+    const title = this.add
+      .text(W / 2, H / 2 - 92, "¡Terminaste!", {
         fontFamily: "Arial",
-        fontSize: `${Math.round(20 * ts)}px`,
-        color: hc ? "#000000" : "#cbd5e1",
-        align: "center",
-        lineSpacing: 10,
-        wordWrap: { width: Math.min(500, W * 0.72) },
-      }
-    )
-    .setOrigin(0.5)
-    .setDepth(4002);
+        fontSize: `${Math.round(38 * ts)}px`,
+        color: hc ? "#000000" : "#ffffff",
+      })
+      .setOrigin(0.5)
+      .setDepth(4002);
 
-  const btnAgain = makeTopLeftButton(
-    this,
-    "Jugar otra vez",
-    () => this.restartGame(),
-    4003
-  );
+    const sub = this.add
+      .text(
+        W / 2,
+        H / 2 - 18,
+        [
+          `Puntos: ${this.state.score}`,
+          `Errores: ${this.state.wrongRounds}`,
+          `Ayudas usadas: ${this.state.repeatCount}`,
+        ].join("\n"),
+        {
+          fontFamily: "Arial",
+          fontSize: `${Math.round(20 * ts)}px`,
+          color: hc ? "#000000" : "#cbd5e1",
+          align: "center",
+          lineSpacing: 10,
+          wordWrap: { width: Math.min(500, W * 0.72) },
+        }
+      )
+      .setOrigin(0.5)
+      .setDepth(4002);
 
-  const btnExit = makeTopLeftButton(
-    this,
-    "Salir",
-    () => {
-      this.hideEndModal();
-      stopSpeech();
-      this._onExit?.();
-    },
-    4003
-  );
+    const btnAgain = makeTopLeftButton(
+      this,
+      "Jugar otra vez",
+      () => this.restartGame(),
+      4003
+    );
 
-  btnAgain.setSize(210, 52);
-  btnExit.setSize(170, 52);
+    const btnExit = makeTopLeftButton(
+      this,
+      "Salir",
+      () => {
+        this.hideEndModal();
+        stopSpeech();
+        this._onExit?.();
+      },
+      4003
+    );
 
-  this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
+    btnAgain.setSize(210, 52);
+    btnExit.setSize(170, 52);
 
-  this.applyTheme();
-  this.layoutEndModal();
-}
+    this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
 
-layoutEndModal() {
-  if (!this.endModal) return;
+    this.applyTheme();
+    this.layoutEndModal();
+  }
 
-  const W = this.scale.width;
-  const H = this.scale.height;
+  layoutEndModal() {
+    if (!this.endModal) return;
 
-  this.endModal.overlay.setSize(W, H);
-  this.endModal.box.setPosition(W / 2, H / 2);
+    const W = this.scale.width;
+    const H = this.scale.height;
 
-  this.endModal.title.setPosition(W / 2, H / 2 - 92);
-  this.endModal.sub.setPosition(W / 2, H / 2 - 8);
+    this.endModal.overlay.setSize(W, H);
+    this.endModal.box.setPosition(W / 2, H / 2);
+    this.endModal.title.setPosition(W / 2, H / 2 - 92);
+    this.endModal.sub.setPosition(W / 2, H / 2 - 8);
 
-  this.endModal.btnAgain.setTL(W / 2 - 230, H / 2 + 82);
-  this.endModal.btnExit.setTL(W / 2 + 20, H / 2 + 82);
-}
+    this.endModal.btnAgain.setTL(W / 2 - 230, H / 2 + 82);
+    this.endModal.btnExit.setTL(W / 2 + 20, H / 2 + 82);
+  }
 
   hideEndModal() {
     if (!this.endModal) return;
