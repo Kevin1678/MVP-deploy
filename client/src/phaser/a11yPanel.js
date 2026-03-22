@@ -77,25 +77,39 @@ const CVD = {
 };
 
 function destroyA11yFx(scene) {
-  if (!scene?.__a11yFx) return;
+  const cam = scene?.cameras?.main;
+  const fx = scene?.__a11yFx;
 
   try {
-    scene.__a11yFx.reset?.();
+    if (fx && cam?.postFX?.remove) {
+      cam.postFX.remove(fx);
+    }
   } catch {}
 
   try {
-    scene.__a11yFx.destroy?.();
+    fx?.setActive?.(false);
+  } catch {}
+
+  try {
+    fx?.reset?.();
+  } catch {}
+
+  try {
+    fx?.destroy?.();
+  } catch {}
+
+  try {
+    cam?.clearFX?.();
+  } catch {}
+
+  try {
+    cam?.resetPostPipeline?.(true);
   } catch {}
 
   scene.__a11yFx = null;
+  scene.__a11yFxMode = "normal";
 }
 
-/**
- * Cambios importantes:
- * 1) Ya NO crea postFX cuando el filtro está en "normal".
- * 2) Si vuelves a "normal", destruye el fx y libera el pipeline.
- * 3) Eso evita muchos glitches de resize en WebGL.
- */
 export function applyA11yToScene(scene, prefs) {
   if (!scene) return;
 
@@ -103,19 +117,30 @@ export function applyA11yToScene(scene, prefs) {
 
   const cam = scene.cameras?.main;
   const mode = scene.a11y?.colorMode || "normal";
-  const needsFx = mode === "grayscale" || mode === "protanopia" || mode === "tritanopia";
+  const needsFx =
+    mode === "grayscale" || mode === "protanopia" || mode === "tritanopia";
 
-  // Si no hay WebGL/postFX o no se necesita filtro, limpiamos y salimos.
-  if (!cam?.postFX?.addColorMatrix || !needsFx) {
+  if (!cam?.postFX?.addColorMatrix) {
     destroyA11yFx(scene);
     return;
   }
 
-  if (!scene.__a11yFx) {
+  if (!needsFx) {
+    destroyA11yFx(scene);
+    return;
+  }
+
+  const mustRebuild = !scene.__a11yFx || scene.__a11yFxMode !== mode;
+
+  if (mustRebuild) {
+    destroyA11yFx(scene);
+
     try {
       scene.__a11yFx = cam.postFX.addColorMatrix();
+      scene.__a11yFxMode = mode;
     } catch {
       scene.__a11yFx = null;
+      scene.__a11yFxMode = "normal";
       return;
     }
   }
@@ -151,7 +176,6 @@ export function applyA11yToScene(scene, prefs) {
       break;
   }
 }
-
 function makeBtn(scene, x, y, w, h, label, onClick) {
   const box = scene.add.rectangle(x, y, w, h, 0x111827, 1).setOrigin(0, 0);
   box.setStrokeStyle(2, 0xffffff, 0.16);
