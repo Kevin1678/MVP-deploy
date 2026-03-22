@@ -1210,98 +1210,113 @@ class LightsGameScene extends Phaser.Scene {
     speakIfEnabled(this, "Juego terminado. Selecciona Jugar otra vez o Salir.");
   }
 
-  showEndModal() {
-    if (this.endModal) return;
+ showEndModal() {
+  if (this.endModal) return;
 
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
+  const W = this.scale.width;
+  const H = this.scale.height;
+  const hc = !!this.a11y.highContrast;
+  const ts = this.a11y.textScale || 1;
 
-    const overlay = this.add
-      .rectangle(0, 0, W, H, 0x000000, 0.55)
-      .setOrigin(0)
-      .setDepth(4000)
-      .setInteractive();
+  const overlay = this.add
+    .rectangle(0, 0, W, H, 0x000000, 0.55)
+    .setOrigin(0)
+    .setDepth(4000)
+    .setInteractive();
 
-    overlay.on("pointerdown", (pointer, localX, localY, event) => {
-      event?.stopPropagation?.();
-    });
+  overlay.on("pointerdown", (pointer, localX, localY, event) => {
+    event?.stopPropagation?.();
+  });
 
-    const box = this.add
-      .rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x0f172a, 1)
-      .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
-      .setDepth(4001)
-      .setInteractive();
+  const box = this.add
+    .rectangle(
+      W / 2,
+      H / 2,
+      Math.min(600, W * 0.9),
+      300,
+      hc ? 0xffffff : 0x0f172a,
+      1
+    )
+    .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
+    .setDepth(4001)
+    .setInteractive();
 
-    box.on("pointerdown", (pointer, localX, localY, event) => {
-      event?.stopPropagation?.();
-    });
+  box.on("pointerdown", (pointer, localX, localY, event) => {
+    event?.stopPropagation?.();
+  });
 
-    const title = this.add
-      .text(W / 2, H / 2 - 70, "¡Terminaste!", {
+  const title = this.add
+    .text(W / 2, H / 2 - 92, "¡Terminaste!", {
+      fontFamily: "Arial",
+      fontSize: `${Math.round(38 * ts)}px`,
+      color: hc ? "#000000" : "#ffffff",
+    })
+    .setOrigin(0.5)
+    .setDepth(4002);
+
+  const sub = this.add
+    .text(
+      W / 2,
+      H / 2 - 18,
+      [
+        `Puntos: ${this.state.score}`,
+        `Errores: ${this.state.wrongRounds}`,
+        `Ayudas usadas: ${this.state.repeatCount}`,
+      ].join("\n"),
+      {
         fontFamily: "Arial",
-        fontSize: `${Math.round(38 * ts)}px`,
-        color: hc ? "#000000" : "#ffffff",
-      })
-      .setOrigin(0.5)
-      .setDepth(4002);
+        fontSize: `${Math.round(20 * ts)}px`,
+        color: hc ? "#000000" : "#cbd5e1",
+        align: "center",
+        lineSpacing: 10,
+        wordWrap: { width: Math.min(500, W * 0.72) },
+      }
+    )
+    .setOrigin(0.5)
+    .setDepth(4002);
 
-    const sub = this.add
-      .text(
-        W / 2,
-        H / 2 - 18,
-        `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
-        {
-          fontFamily: "Arial",
-          fontSize: `${Math.round(20 * ts)}px`,
-          color: hc ? "#000000" : "#cbd5e1",
-        }
-      )
-      .setOrigin(0.5)
-      .setDepth(4002);
+  const btnAgain = makeTopLeftButton(
+    this,
+    "Jugar otra vez",
+    () => this.restartGame(),
+    4003
+  );
 
-    const btnAgain = makeTopLeftButton(
-      this,
-      "Jugar otra vez",
-      () => this.restartGame(),
-      4003
-    );
+  const btnExit = makeTopLeftButton(
+    this,
+    "Salir",
+    () => {
+      this.hideEndModal();
+      stopSpeech();
+      this._onExit?.();
+    },
+    4003
+  );
 
-    const btnExit = makeTopLeftButton(
-      this,
-      "Salir",
-      () => {
-        this.hideEndModal();
-        stopSpeech();
-        this._onExit?.();
-      },
-      4003
-    );
+  btnAgain.setSize(210, 52);
+  btnExit.setSize(170, 52);
 
-    btnAgain.setSize(210, 52);
-    btnExit.setSize(170, 52);
+  this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
 
-    this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
+  this.applyTheme();
+  this.layoutEndModal();
+}
 
-    this.applyTheme();
-    this.layoutEndModal();
-  }
+layoutEndModal() {
+  if (!this.endModal) return;
 
-  layoutEndModal() {
-    if (!this.endModal) return;
+  const W = this.scale.width;
+  const H = this.scale.height;
 
-    const W = this.scale.width;
-    const H = this.scale.height;
+  this.endModal.overlay.setSize(W, H);
+  this.endModal.box.setPosition(W / 2, H / 2);
 
-    this.endModal.overlay.setSize(W, H);
-    this.endModal.box.setPosition(W / 2, H / 2);
-    this.endModal.title.setPosition(W / 2, H / 2 - 70);
-    this.endModal.sub.setPosition(W / 2, H / 2 - 18);
+  this.endModal.title.setPosition(W / 2, H / 2 - 92);
+  this.endModal.sub.setPosition(W / 2, H / 2 - 8);
 
-    this.endModal.btnAgain.setTL(W / 2 - 230, H / 2 + 46);
-    this.endModal.btnExit.setTL(W / 2 + 20, H / 2 + 46);
-  }
+  this.endModal.btnAgain.setTL(W / 2 - 230, H / 2 + 82);
+  this.endModal.btnExit.setTL(W / 2 + 20, H / 2 + 82);
+}
 
   hideEndModal() {
     if (!this.endModal) return;
