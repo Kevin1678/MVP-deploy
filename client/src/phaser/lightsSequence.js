@@ -741,8 +741,11 @@ class LightsGameScene extends Phaser.Scene {
         tile.hit.on("pointerover", () => {
           if (this.gameEnded) return;
           this.applyFocus(r * 3 + c, true);
-          speakIfEnabled(this, tile.voiceName);
-        });
+          speakIfEnabled(this, tile.voiceName, {
+            delayMs: 180,
+            minGapMs: 420,
+            rate: 0.96,
+          });
 
         tile.hit.on("pointerdown", () => {
           if (this.gameEnded) return;
