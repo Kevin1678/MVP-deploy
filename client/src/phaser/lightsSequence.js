@@ -990,50 +990,66 @@ class LightsGameScene extends Phaser.Scene {
   }
 
   async playSequence(runId) {
-    const hc = !!this.a11y.highContrast;
-    const baseStrokeAlpha = hc ? 1 : 0.20;
+  const hc = !!this.a11y.highContrast;
+  const baseStrokeAlpha = hc ? 1 : 0.20;
 
-    this.updateRepeatButtonState();
+  this.updateRepeatButtonState();
 
-    const okStart = await this.wait(350, runId);
-    if (!okStart || this.gameEnded) return;
+  const okStart = await this.wait(420, runId);
+  if (!okStart || this.gameEnded) return;
 
-    for (let i = 0; i < this.state.sequence.length; i++) {
-      if (!this.scene.isActive() || this.gameEnded || runId !== this.sequenceRunId) return;
-
-      const { r, c } = this.state.sequence[i];
-      const tile = this.getTile(r, c);
-      if (!tile) continue;
-
-      speakIfEnabled(this, tile.colorName);
-
-      tile.bg.setFillStyle(tile.activeColor, 1);
-      tile.bg.setStrokeStyle(5, 0xffffff, 1);
-
-      this.tweens.add({
-        targets: [tile.bg, tile.shine, tile.focus],
-        scaleX: { from: 1, to: 1.05 },
-        scaleY: { from: 1, to: 1.05 },
-        yoyo: true,
-        duration: Math.max(180, this.speedMs * 0.35),
-      });
-
-      const okOn = await this.wait(this.speedMs, runId);
-      if (!okOn || this.gameEnded) return;
-
-      tile.bg.setFillStyle(tile.baseColor, 1);
-      tile.bg.setStrokeStyle(3, 0xffffff, baseStrokeAlpha);
-
-      const okOff = await this.wait(Math.max(120, this.speedMs * 0.2), runId);
-      if (!okOff || this.gameEnded) return;
-    }
-
+  for (let i = 0; i < this.state.sequence.length; i++) {
     if (!this.scene.isActive() || this.gameEnded || runId !== this.sequenceRunId) return;
 
-    this.state.locked = false;
-    this.updateRepeatButtonState();
-    speakIfEnabled(this, "Tu turno. Repite la secuencia.");
+    const { r, c } = this.state.sequence[i];
+    const tile = this.getTile(r, c);
+    if (!tile) continue;
+
+    const voiceLeadMs = Math.max(320, tile.colorName.length * 55);
+    const lightOnMs = Math.max(this.speedMs, 380);
+    const lightOffMs = Math.max(240, this.speedMs * 0.35);
+
+    speakIfEnabled(this, tile.colorName, {
+      delayMs: 40,
+      minGapMs: 380,
+      rate: 0.96,
+    });
+
+    const okVoice = await this.wait(voiceLeadMs, runId);
+    if (!okVoice || this.gameEnded) return;
+
+    tile.bg.setFillStyle(tile.activeColor, 1);
+    tile.bg.setStrokeStyle(5, 0xffffff, 1);
+
+    this.tweens.add({
+      targets: [tile.bg, tile.shine, tile.focus],
+      scaleX: { from: 1, to: 1.05 },
+      scaleY: { from: 1, to: 1.05 },
+      yoyo: true,
+      duration: Math.max(180, lightOnMs * 0.35),
+    });
+
+    const okOn = await this.wait(lightOnMs, runId);
+    if (!okOn || this.gameEnded) return;
+
+    tile.bg.setFillStyle(tile.baseColor, 1);
+    tile.bg.setStrokeStyle(3, 0xffffff, baseStrokeAlpha);
+
+    const okOff = await this.wait(lightOffMs, runId);
+    if (!okOff || this.gameEnded) return;
   }
+
+  if (!this.scene.isActive() || this.gameEnded || runId !== this.sequenceRunId) return;
+
+  this.state.locked = false;
+  this.updateRepeatButtonState();
+
+  speakIfEnabled(this, "Tu turno. Repite la secuencia.", {
+    delayMs: 120,
+    minGapMs: 420,
+    rate: 0.96,
+  });
+}
 
   onTilePress(r, c) {
     if (this.state.locked || this.gameEnded) return;
