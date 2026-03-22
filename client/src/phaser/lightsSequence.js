@@ -13,7 +13,7 @@ const TILE_DEFS = [
   { hex: "#AED13F", colorName: "verde limón" },
   { hex: "#F2A413", colorName: "amarillo naranja" },
   { hex: "#D23806", colorName: "rojo naranja" },
-  { hex: "#288896", colorName: "azul" },
+  { hex: "#288896", colorName: "azul petróleo" },
   { hex: "#AB6831", colorName: "café" },
   { hex: "#5CFAC7", colorName: "turquesa" },
   { hex: "#FAF37F", colorName: "amarillo claro" },
@@ -80,7 +80,11 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
 
   hit.on("pointerover", () => {
     if (!enabled) return;
-    speakIfEnabled(scene, `Botón ${label}`);
+    speakIfEnabled(scene, `Botón ${label}`, {
+      delayMs: 160,
+      minGapMs: 380,
+      rate: 0.96,
+    });
   });
 
   hit.on("pointerdown", () => {
@@ -746,6 +750,7 @@ class LightsGameScene extends Phaser.Scene {
             minGapMs: 420,
             rate: 0.96,
           });
+        });
 
         tile.hit.on("pointerdown", () => {
           if (this.gameEnded) return;
@@ -889,7 +894,13 @@ class LightsGameScene extends Phaser.Scene {
     tile.focus.setPosition(tile.cx, tile.cy);
     tile.focus.setStrokeStyle(4, focusColor, 1);
 
-    if (!silent) speakIfEnabled(this, tile.voiceName);
+    if (!silent) {
+      speakIfEnabled(this, tile.voiceName, {
+        delayMs: 180,
+        minGapMs: 420,
+        rate: 0.96,
+      });
+    }
   }
 
   setTilesEnabled(enabled) {
@@ -954,11 +965,21 @@ class LightsGameScene extends Phaser.Scene {
     this.updateStats();
     this.updateRepeatButtonState();
 
-    speakIfEnabled(this, `Ronda ${this.state.round}. Observa la secuencia.`);
+    speakIfEnabled(this, `Ronda ${this.state.round}. Observa la secuencia.`, {
+      delayMs: 140,
+      minGapMs: 420,
+      rate: 0.96,
+    });
+
     if (isFirst) {
       speakIfEnabled(
         this,
-        "Usa flechas y Enter si no quieres usar mouse. Presiona R para repetir la secuencia."
+        "Usa flechas y Enter si no quieres usar mouse. Presiona R para repetir la secuencia.",
+        {
+          delayMs: 380,
+          minGapMs: 520,
+          rate: 0.94,
+        }
       );
     }
 
@@ -984,7 +1005,12 @@ class LightsGameScene extends Phaser.Scene {
     this.updateStats();
     this.updateRepeatButtonState();
 
-    speakIfEnabled(this, "Repitiendo la secuencia.");
+    speakIfEnabled(this, "Repitiendo la secuencia.", {
+      delayMs: 120,
+      minGapMs: 420,
+      rate: 0.96,
+    });
+
     this.playSequence(this.sequenceRunId);
   }
 
@@ -993,66 +1019,66 @@ class LightsGameScene extends Phaser.Scene {
   }
 
   async playSequence(runId) {
-  const hc = !!this.a11y.highContrast;
-  const baseStrokeAlpha = hc ? 1 : 0.20;
+    const hc = !!this.a11y.highContrast;
+    const baseStrokeAlpha = hc ? 1 : 0.20;
 
-  this.updateRepeatButtonState();
+    this.updateRepeatButtonState();
 
-  const okStart = await this.wait(420, runId);
-  if (!okStart || this.gameEnded) return;
+    const okStart = await this.wait(420, runId);
+    if (!okStart || this.gameEnded) return;
 
-  for (let i = 0; i < this.state.sequence.length; i++) {
+    for (let i = 0; i < this.state.sequence.length; i++) {
+      if (!this.scene.isActive() || this.gameEnded || runId !== this.sequenceRunId) return;
+
+      const { r, c } = this.state.sequence[i];
+      const tile = this.getTile(r, c);
+      if (!tile) continue;
+
+      const voiceLeadMs = Math.max(320, tile.colorName.length * 55);
+      const lightOnMs = Math.max(this.speedMs, 380);
+      const lightOffMs = Math.max(240, this.speedMs * 0.35);
+
+      speakIfEnabled(this, tile.colorName, {
+        delayMs: 40,
+        minGapMs: 380,
+        rate: 0.96,
+      });
+
+      const okVoice = await this.wait(voiceLeadMs, runId);
+      if (!okVoice || this.gameEnded) return;
+
+      tile.bg.setFillStyle(tile.activeColor, 1);
+      tile.bg.setStrokeStyle(5, 0xffffff, 1);
+
+      this.tweens.add({
+        targets: [tile.bg, tile.shine, tile.focus],
+        scaleX: { from: 1, to: 1.05 },
+        scaleY: { from: 1, to: 1.05 },
+        yoyo: true,
+        duration: Math.max(180, lightOnMs * 0.35),
+      });
+
+      const okOn = await this.wait(lightOnMs, runId);
+      if (!okOn || this.gameEnded) return;
+
+      tile.bg.setFillStyle(tile.baseColor, 1);
+      tile.bg.setStrokeStyle(3, 0xffffff, baseStrokeAlpha);
+
+      const okOff = await this.wait(lightOffMs, runId);
+      if (!okOff || this.gameEnded) return;
+    }
+
     if (!this.scene.isActive() || this.gameEnded || runId !== this.sequenceRunId) return;
 
-    const { r, c } = this.state.sequence[i];
-    const tile = this.getTile(r, c);
-    if (!tile) continue;
+    this.state.locked = false;
+    this.updateRepeatButtonState();
 
-    const voiceLeadMs = Math.max(320, tile.colorName.length * 55);
-    const lightOnMs = Math.max(this.speedMs, 380);
-    const lightOffMs = Math.max(240, this.speedMs * 0.35);
-
-    speakIfEnabled(this, tile.colorName, {
-      delayMs: 40,
-      minGapMs: 380,
+    speakIfEnabled(this, "Tu turno. Repite la secuencia.", {
+      delayMs: 120,
+      minGapMs: 420,
       rate: 0.96,
     });
-
-    const okVoice = await this.wait(voiceLeadMs, runId);
-    if (!okVoice || this.gameEnded) return;
-
-    tile.bg.setFillStyle(tile.activeColor, 1);
-    tile.bg.setStrokeStyle(5, 0xffffff, 1);
-
-    this.tweens.add({
-      targets: [tile.bg, tile.shine, tile.focus],
-      scaleX: { from: 1, to: 1.05 },
-      scaleY: { from: 1, to: 1.05 },
-      yoyo: true,
-      duration: Math.max(180, lightOnMs * 0.35),
-    });
-
-    const okOn = await this.wait(lightOnMs, runId);
-    if (!okOn || this.gameEnded) return;
-
-    tile.bg.setFillStyle(tile.baseColor, 1);
-    tile.bg.setStrokeStyle(3, 0xffffff, baseStrokeAlpha);
-
-    const okOff = await this.wait(lightOffMs, runId);
-    if (!okOff || this.gameEnded) return;
   }
-
-  if (!this.scene.isActive() || this.gameEnded || runId !== this.sequenceRunId) return;
-
-  this.state.locked = false;
-  this.updateRepeatButtonState();
-
-  speakIfEnabled(this, "Tu turno. Repite la secuencia.", {
-    delayMs: 120,
-    minGapMs: 420,
-    rate: 0.96,
-  });
-}
 
   onTilePress(r, c) {
     if (this.state.locked || this.gameEnded) return;
@@ -1109,7 +1135,12 @@ class LightsGameScene extends Phaser.Scene {
     this.updateStats();
     this.updateRepeatButtonState();
 
-    speakIfEnabled(this, "Correcto");
+    speakIfEnabled(this, "Correcto", {
+      delayMs: 80,
+      minGapMs: 360,
+      rate: 0.96,
+    });
+
     this.showOverlayIcon(true);
 
     this.schedule(900, () => {
@@ -1130,7 +1161,12 @@ class LightsGameScene extends Phaser.Scene {
     this.state.wrongRounds += 1;
     this.updateRepeatButtonState();
 
-    speakIfEnabled(this, "Incorrecto");
+    speakIfEnabled(this, "Incorrecto", {
+      delayMs: 80,
+      minGapMs: 360,
+      rate: 0.96,
+    });
+
     this.showOverlayIcon(false);
 
     this.tweens.add({
@@ -1144,7 +1180,13 @@ class LightsGameScene extends Phaser.Scene {
     this.schedule(1000, () => {
       if (!this.scene.isActive() || this.gameEnded) return;
       this.state.inputIndex = 0;
-      speakIfEnabled(this, "Mira otra vez.");
+
+      speakIfEnabled(this, "Mira otra vez.", {
+        delayMs: 120,
+        minGapMs: 420,
+        rate: 0.96,
+      });
+
       this.sequenceRunId += 1;
       this.playSequence(this.sequenceRunId);
     });
@@ -1239,7 +1281,12 @@ class LightsGameScene extends Phaser.Scene {
     }
 
     this.showEndModal();
-    speakIfEnabled(this, "Juego terminado. Selecciona Jugar otra vez o Salir.");
+
+    speakIfEnabled(this, "Juego terminado. Selecciona Jugar otra vez o Salir.", {
+      delayMs: 180,
+      minGapMs: 500,
+      rate: 0.94,
+    });
   }
 
   showEndModal() {
