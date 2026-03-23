@@ -12,10 +12,55 @@ const resultSchema = z.object({
   moves: z.number().int().min(0),
   durationMs: z.number().int().min(0),
   level: z.string().max(50).optional(),
-  accuracy: z.number().int().min(0).optional(),
+  accuracy: z.number().min(0).optional(),
   attempts: z.number().int().min(0).optional(),
   metadata: z.any().optional(),
 });
+
+function round(value, digits = 1) {
+  if (typeof value !== "number" || Number.isNaN(value)) return null;
+  return Number(value.toFixed(digits));
+}
+
+function normalizeAccuracy(data) {
+  const score = typeof data.score === "number" ? data.score : null;
+  const metadata =
+    data.metadata && typeof data.metadata === "object" ? data.metadata : {};
+
+  const roundsTotal = Number(metadata.roundsTotal);
+  const pairs = Number(metadata.pairs);
+
+  switch (data.game) {
+    case "memorama":
+      if (pairs > 0 && score !== null) {
+        return round((score / pairs) * 100);
+      }
+      break;
+
+    case "countPick":
+      if (roundsTotal > 0 && score !== null) {
+        return round((score / roundsTotal) * 100);
+      }
+      break;
+
+    case "lights-sequence":
+      if (roundsTotal > 0 && score !== null) {
+        return round((score / roundsTotal) * 100);
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  if (typeof data.accuracy === "number") {
+    return data.accuracy <= 1
+      ? round(data.accuracy * 100)
+      : round(data.accuracy);
+  }
+
+  return null;
+}
 
 function mapGameToGameType(game) {
   switch (game) {
@@ -67,7 +112,7 @@ router.post("/", requireAuth, async (req, res) => {
         moves: data.moves,
         durationMs: data.durationMs,
         level: data.level ?? null,
-        accuracy: data.accuracy ?? null,
+        accuracy: normalizeAccuracy(data),
         attempts: data.attempts ?? null,
         metadata: data.metadata ?? null,
       },
