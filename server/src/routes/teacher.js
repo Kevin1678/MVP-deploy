@@ -16,6 +16,57 @@ function normalizeEmail(email) {
   return email.trim().toLowerCase();
 }
 
+function fullName(user) {
+  return [user.firstName, user.lastNameP, user.lastNameM]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function round(value, digits = 1) {
+  if (typeof value !== "number" || Number.isNaN(value)) return null;
+  return Number(value.toFixed(digits));
+}
+
+function average(values) {
+  if (!values.length) return null;
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return total / values.length;
+}
+
+function resultPerformance(result) {
+  if (typeof result?.accuracy === "number" && !Number.isNaN(result.accuracy)) {
+    return result.accuracy <= 1
+      ? round(result.accuracy * 100)
+      : round(result.accuracy);
+  }
+
+  const metadata =
+    result?.metadata && typeof result.metadata === "object"
+      ? result.metadata
+      : {};
+
+  const score = typeof result?.score === "number" ? result.score : null;
+
+  if (result?.gameType === "MEMORAMA") {
+    const pairs = Number(metadata.pairs);
+    if (pairs > 0 && score !== null) {
+      return round((score / pairs) * 100);
+    }
+  }
+
+  if (
+    result?.gameType === "COUNT_PICK" ||
+    result?.gameType === "LIGHTS_SEQUENCE"
+  ) {
+    const roundsTotal = Number(metadata.roundsTotal);
+    if (roundsTotal > 0 && score !== null) {
+      return round((score / roundsTotal) * 100);
+    }
+  }
+
+  return null;
+}
+
 const createStudentSchema = z.object({
   firstName: z.string().min(2),
   lastNameP: z.string().min(2),
