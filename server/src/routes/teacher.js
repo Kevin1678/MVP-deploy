@@ -176,6 +176,157 @@ async function resolveParent(tx, parentData) {
 }
 
 router.get(
+  "/dashboard",
+  requireAuth,
+  requireRole("TEACHER"),
+  async (req, res) => {
+    try {
+      const teacher = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastNameP: true,
+          lastNameM: true,
+
+          groupsOwned: {
+            orderBy: { name: "asc" },
+            select: {
+              id: true,
+              name: true,
+              students: {
+                where: { role: Role.STUDENT },
+                select: { id: true }
+              },
+              results: {
+                select: {
+                  id: true,
+                  score: true,
+                  accuracy: true,
+                  gameType: true,
+                  metadata: true
+                }
+              }
+            }
+          },
+
+          studentsCreated: {
+            where: { role: Role.STUDENT },
+            orderBy: [
+              { firstName: "asc" },
+              { lastNameP: "asc" },
+              { lastNameM: "asc" }
+            ],
+            select: {
+              id: true,
+              firstName: true,
+              lastNameP: true,
+              lastNameM: true,
+              group: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              },
+              results: {
+                orderBy: { playedAt: "desc" },
+                select: {
+                  id: true,
+                  score: true,
+                  accuracy: true,
+                  gameType: true,
+                  metadata: true,
+                  playedAt: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!teacher) {
+        return res.status(404).json({ message: "Docente no encontrado." });
+      }
+
+      const groupStats = teacher.groupsOwned
+        .map((group) => {
+          const performances = group.results
+            .map(resultPerformance)
+            .filter((value) => typeof value === "number");
+
+          return {
+            name: group.name,
+            avgPerformance: round(average(performances)),
+            games: group.results.length,
+            students: group.students.length
+          };
+        })
+        .filter((group) => group.students > 0 || group.games > 0);
+
+      const studentResults = teacher.studentsCreated
+        .map((student) => {
+          const performances = student.results
+            .map(resultPerformance)
+            .filter((value) => typeof value === "number");
+
+          return {
+            id: student.id,
+            student: fullName(student),
+            group: student.group?.name || "Sin grupo",
+            avgPerformance: round(average(performances)),
+            games: student.results.length,
+            lastActivity: student.results[0]?.playedAt || null
+          };
+        })
+        .sort((a, b) => {
+          const aTime = a.lastActivity ? new Date(a.lastActivity).getTime() : 0;
+          const bTime = b.lastActivity ? new Date(b.lastActivity).getTime() : 0;
+
+          if (bTime !== aTime) return bTime - aTime;
+          return a.student.localeCompare(b.student, "es");
+        });
+
+      const allResults = teacher.studentsCreated.flatMap(
+        (student) => student.results
+      );
+
+      const allPerformances = allResults
+        .map(resultPerformance)
+        .filter((value) => typeof value === "number");
+
+      const lastActivity = allResults.reduce((latest, item) => {
+        if (!item?.playedAt) return latest;
+        if (!latest) return item.playedAt;
+        return new Date(item.playedAt) > new Date(latest)
+          ? item.playedAt
+          : latest;
+      }, null);
+
+      res.json({
+        teacher: {
+          id: teacher.id,
+          name: fullName(teacher),
+          email: teacher.email
+        },
+        summary: {
+          totalStudents: teacher.studentsCreated.length,
+          totalGroups: groupStats.length,
+          totalGames: allResults.length,
+          avgPerformance: round(average(allPerformances)),
+          lastActivity
+        },
+        groupStats,
+        studentResults
+      });
+    } catch (error) {
+      console.error("GET /teacher/dashboard error:", error);
+      res.status(500).json({ message: "Error interno" });
+    }
+  }
+);
+
+router.get(
   "/students",
   requireAuth,
   requireRole("TEACHER"),
