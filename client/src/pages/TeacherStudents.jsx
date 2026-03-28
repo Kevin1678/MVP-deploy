@@ -18,6 +18,22 @@ const initialForm = {
   visualAlertsEnabled: true
 };
 
+function applyVisualPreset(nextVisualCondition, prevForm) {
+  const nextForm = {
+    ...prevForm,
+    visualCondition: nextVisualCondition
+  };
+
+  if (nextVisualCondition === "LOW_VISION") {
+    nextForm.highContrast = true;
+    nextForm.textToSpeechEnabled = true;
+    nextForm.voiceInstructions = true;
+    nextForm.fontScale = Math.max(Number(nextForm.fontScale) || 100, 125);
+  }
+
+  return nextForm;
+}
+
 export default function TeacherStudents() {
   const [form, setForm] = useState(initialForm);
   const [msg, setMsg] = useState("");
