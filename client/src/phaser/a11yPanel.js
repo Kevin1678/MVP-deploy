@@ -406,13 +406,13 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     color: "#cbd5e1",
   });
 
-  const btnAminus = makeBtn(scene, pad, 374, 124, 42, "A-", () => {
+  const btnAminus = makeBtn(scene, pad, 374, 124, 42, "T-", () => {
     scene.a11y.textScale = clamp(scene.a11y.textScale - 0.1, 0.9, 1.3);
     commit();
     refresh();
   });
 
-  const btnAplus = makeBtn(scene, pad + 138, 374, 124, 42, "A+", () => {
+  const btnAplus = makeBtn(scene, pad + 138, 374, 124, 42, "T+", () => {
     scene.a11y.textScale = clamp(scene.a11y.textScale + 0.1, 0.9, 1.3);
     commit();
     refresh();
