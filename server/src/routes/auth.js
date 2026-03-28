@@ -51,7 +51,44 @@ router.post("/logout", (req, res) => {
 });
 
 router.get("/me", requireAuth, async (req, res) => {
-  res.json(req.user);
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        firstName: true,
+        lastNameP: true,
+        lastNameM: true,
+        ...(req.user.role === "STUDENT"
+          ? {
+              studentProfile: {
+                select: {
+                  visualCondition: true,
+                  auditoryCondition: true,
+                  fontScale: true,
+                  highContrast: true,
+                  textToSpeechEnabled: true,
+                  voiceInstructions: true,
+                  captionsEnabled: true,
+                  visualAlertsEnabled: true
+                }
+              }
+            }
+          : {})
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error("GET /auth/me error:", error);
+    res.status(500).json({ message: "Error interno" });
+  }
 });
 
 module.exports = router;
