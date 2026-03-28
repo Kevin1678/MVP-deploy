@@ -468,7 +468,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     const open = !!scene.a11y.panelOpen;
 
     toggle.setLabel(open ? "Ocultar" : "Mostrar");
-    btnTTS.setLabel(scene.a11y.ttsEnabled ? "Voz: ON" : "Voz: OFF");
+    btnTTS.setLabel(scene.a11y.ttsEnabled ? "Voz: Encendido" : "Voz: Apagado");
     btnHC.setLabel(scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal");
 
     const hc = !!scene.a11y.highContrast;
