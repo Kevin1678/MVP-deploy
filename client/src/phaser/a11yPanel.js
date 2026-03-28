@@ -370,7 +370,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     }
   );
 
-  const labelFilter = scene.add.text(pad, 220, "Filtro (daltonismo)", {
+  const labelFilter = scene.add.text(pad, 220, "Filtros", {
     fontFamily: "Arial",
     fontSize: "13px",
     color: "#cbd5e1",
