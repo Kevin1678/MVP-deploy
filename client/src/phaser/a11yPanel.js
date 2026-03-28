@@ -347,7 +347,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     102,
     PANEL_OPEN_W - 2 * pad,
     46,
-    scene.a11y.ttsEnabled ? "Voz: ON" : "Voz: OFF",
+    scene.a11y.ttsEnabled ? "Voz: Encendido" : "Voz: Apagado",
     () => {
       scene.a11y.ttsEnabled = !scene.a11y.ttsEnabled;
       if (!scene.a11y.ttsEnabled) stopSpeech();
