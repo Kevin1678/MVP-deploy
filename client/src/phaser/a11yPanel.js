@@ -404,13 +404,28 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     }
   );
 
-  const labelSize = scene.add.text(pad, 220, "Tamaño", {
+  const btnTheme = makeBtn(
+    scene,
+    pad,
+    214,
+    PANEL_OPEN_W - 2 * pad,
+    46,
+    scene.a11y.themeMode === "light" ? "Modo: Claro" : "Modo: Oscuro",
+    () => {
+      scene.a11y.themeMode =
+        scene.a11y.themeMode === "light" ? "dark" : "light";
+      commit();
+      refresh();
+    }
+  );
+
+  const labelSize = scene.add.text(pad, 276, "Tamaño", {
     fontFamily: "Arial",
     fontSize: "13px",
     color: "#cbd5e1",
   });
 
-  const btnAminus = makeBtn(scene, pad, 244, 124, 42, "T-", () => {
+  const btnAminus = makeBtn(scene, pad, 300, 124, 42, "T-", () => {
     scene.a11y.textScale = clamp(
       (scene.a11y.textScale ?? 1) - 0.1,
       MIN_TEXT_SCALE,
@@ -420,7 +435,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     refresh();
   });
 
-  const btnAplus = makeBtn(scene, pad + 138, 244, 124, 42, "T+", () => {
+  const btnAplus = makeBtn(scene, pad + 138, 300, 124, 42, "T+", () => {
     scene.a11y.textScale = clamp(
       (scene.a11y.textScale ?? 1) + 0.1,
       MIN_TEXT_SCALE,
@@ -430,7 +445,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     refresh();
   });
 
-  const btnUIminus = makeBtn(scene, pad, 294, 124, 42, "UI-", () => {
+  const btnUIminus = makeBtn(scene, pad, 350, 124, 42, "UI-", () => {
     scene.a11y.uiScale = clamp(
       (scene.a11y.uiScale ?? 1) - 0.1,
       MIN_UI_SCALE,
@@ -440,7 +455,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     refresh();
   });
 
-  const btnUIplus = makeBtn(scene, pad + 138, 294, 124, 42, "UI+", () => {
+  const btnUIplus = makeBtn(scene, pad + 138, 350, 124, 42, "UI+", () => {
     scene.a11y.uiScale = clamp(
       (scene.a11y.uiScale ?? 1) + 0.1,
       MIN_UI_SCALE,
@@ -453,7 +468,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const btnReset = makeBtn(
     scene,
     pad,
-    354,
+    410,
     PANEL_OPEN_W - 2 * pad,
     46,
     "Restablecer",
@@ -481,6 +496,10 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     btnHC.box,
     btnHC.text,
     btnHC.hit,
+
+    btnTheme.box,
+    btnTheme.text,
+    btnTheme.hit,
 
     labelSize,
 
@@ -523,8 +542,12 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     btnHC.setLabel(
       scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal"
     );
+    btnTheme.setLabel(
+      scene.a11y.themeMode === "light" ? "Modo: Claro" : "Modo: Oscuro"
+    );
 
     const hc = !!scene.a11y.highContrast;
+    const isLight = scene.a11y.themeMode === "light";
 
     const panelW = getWidth();
     const panelH = open ? scene.scale.height - 32 : headerH;
@@ -532,25 +555,55 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     bg.setSize(panelW, panelH);
     shadow.setSize(panelW, panelH);
 
-    const panelFill = hc ? 0xffffff : 0x0a1222;
-    bg.setFillStyle(panelFill, hc ? 1 : 0.92);
-    bg.setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.14);
-    shadow.setVisible(!hc);
+    let panelFill = 0x0a1222;
+    let panelAlpha = 0.92;
+    let panelStroke = 0xffffff;
+    let panelStrokeAlpha = 0.14;
+    let titleColor = "#ffffff";
+    let muted = "#cbd5e1";
+    let btnFill = 0x111827;
+    let btnText = "#ffffff";
+    let strokeA = 0.16;
+    let showShadow = true;
 
-    const titleColor = hc ? "#000000" : "#ffffff";
-    const muted = hc ? "#000000" : "#cbd5e1";
+    if (isLight) {
+      panelFill = 0xf3f6fb;
+      panelAlpha = 0.98;
+      panelStroke = 0x1f2937;
+      panelStrokeAlpha = 0.22;
+      titleColor = "#111827";
+      muted = "#374151";
+      btnFill = 0xe5e7eb;
+      btnText = "#111827";
+      strokeA = 0.22;
+    }
+
+    if (hc) {
+      panelFill = 0xffffff;
+      panelAlpha = 1;
+      panelStroke = 0x000000;
+      panelStrokeAlpha = 1;
+      titleColor = "#000000";
+      muted = "#000000";
+      btnFill = 0xffffff;
+      btnText = "#000000";
+      strokeA = 1;
+      showShadow = false;
+    }
+
+    bg.setFillStyle(panelFill, panelAlpha);
+    bg.setStrokeStyle(2, panelStroke, panelStrokeAlpha);
+    shadow.setVisible(showShadow);
+
     title.setColor(titleColor);
     hint.setColor(muted);
     labelSize.setColor(muted);
-
-    const btnFill = hc ? 0xffffff : 0x111827;
-    const btnText = hc ? "#000000" : "#ffffff";
-    const strokeA = hc ? 1 : 0.16;
 
     [
       toggle,
       btnTTS,
       btnHC,
+      btnTheme,
       btnAminus,
       btnAplus,
       btnUIminus,
@@ -565,6 +618,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     [
       btnTTS,
       btnHC,
+      btnTheme,
       btnAminus,
       btnAplus,
       btnUIminus,
