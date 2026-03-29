@@ -135,17 +135,17 @@ export default function TeacherStudents() {
 
           <div className="teacher-field">
             <label>Discapacidad visual</label>
-            <select
-              value={form.visualCondition}
-              onChange={(e) =>
-                setForm({ ...form, visualCondition: e.target.value })
-              }
-            >
-              <option value="NONE">Ninguna</option>
-              <option value="PROTANOPIA">Protanopia</option>
-              <option value="TRITANOPIA">Tritanopia</option>
-              <option value="LOW_VISION">Baja visión / ceguera leve</option>
-            </select>
+<select
+  value={form.visualCondition}
+  onChange={(e) =>
+    setForm((prev) => applyVisualPreset(e.target.value, prev))
+  }
+>
+  <option value="NONE">Ninguna</option>
+  <option value="PROTANOPIA">Protanopia</option>
+  <option value="TRITANOPIA">Tritanopia</option>
+  <option value="LOW_VISION">Baja visión / ceguera leve</option>
+</select>
           </div>
 
           <div className="teacher-field">
