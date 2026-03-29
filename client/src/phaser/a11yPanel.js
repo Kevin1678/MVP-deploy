@@ -116,6 +116,11 @@ function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
+const MIN_UI_SCALE = 0.9;
+const MAX_UI_SCALE = 1.3;
+const MIN_TEXT_SCALE = 1.0;
+const MAX_TEXT_SCALE = 1.5;
+
 // Matrices 4x5 para ColorMatrix
 const CVD = {
   protanopia: [
