@@ -10,6 +10,11 @@ export const PANEL_GAP = 16;
 export const A11Y_PANEL_WIDTH = PANEL_OPEN_W;
 export const A11Y_PANEL_GAP = PANEL_GAP;
 
+const MIN_UI_SCALE = 0.9;
+const MAX_UI_SCALE = 1.3;
+const MIN_TEXT_SCALE = 1.0;
+const MAX_TEXT_SCALE = 1.5;
+
 export function defaultA11yPrefs() {
   return {
     ttsEnabled: false,
@@ -116,24 +121,19 @@ function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
-const MIN_UI_SCALE = 0.9;
-const MAX_UI_SCALE = 1.3;
-const MIN_TEXT_SCALE = 1.0;
-const MAX_TEXT_SCALE = 1.5;
-
 // Matrices 4x5 para ColorMatrix
 const CVD = {
   protanopia: [
-    0.567, 0.433, 0.0,   0, 0,
-    0.558, 0.442, 0.0,   0, 0,
-    0.0,   0.242, 0.758, 0, 0,
-    0,     0,     0,     1, 0,
+    0.567, 0.433, 0.0, 0, 0,
+    0.558, 0.442, 0.0, 0, 0,
+    0.0, 0.242, 0.758, 0, 0,
+    0, 0, 0, 1, 0,
   ],
   tritanopia: [
-    0.95,  0.05,  0.0,   0, 0,
-    0.0,   0.433, 0.567, 0, 0,
-    0.0,   0.475, 0.525, 0, 0,
-    0,     0,     0,     1, 0,
+    0.95, 0.05, 0.0, 0, 0,
+    0.0, 0.433, 0.567, 0, 0,
+    0.0, 0.475, 0.525, 0, 0,
+    0, 0, 0, 1, 0,
   ],
 };
 
@@ -237,15 +237,18 @@ export function applyA11yToScene(scene, prefs) {
       break;
   }
 }
+
 function makeBtn(scene, x, y, w, h, label, onClick) {
   const box = scene.add.rectangle(x, y, w, h, 0x111827, 1).setOrigin(0, 0);
   box.setStrokeStyle(2, 0xffffff, 0.16);
 
-  const text = scene.add.text(x + w / 2, y + h / 2, label, {
-    fontFamily: "Arial",
-    fontSize: "16px",
-    color: "#ffffff",
-  }).setOrigin(0.5);
+  const text = scene.add
+    .text(x + w / 2, y + h / 2, label, {
+      fontFamily: "Arial",
+      fontSize: "16px",
+      color: "#ffffff",
+    })
+    .setOrigin(0.5);
 
   const hit = scene.add.zone(x, y, w, h).setOrigin(0, 0);
   hit.setInteractive({ useHandCursor: true });
@@ -286,12 +289,29 @@ function makeBtn(scene, x, y, w, h, label, onClick) {
     hit.destroy();
   };
 
-  return { box, text, hit, setLabel, setVisible, setStyle, setPos, setSize, destroy };
+  return {
+    box,
+    text,
+    hit,
+    setLabel,
+    setVisible,
+    setStyle,
+    setPos,
+    setSize,
+    destroy,
+  };
 }
 
 export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const loaded = loadA11yPrefs();
-  scene.a11y = { ...defaultA11yPrefs(), ...(loaded || {}), ...(scene.a11y || {}) };
+
+  const basePrefs = {
+    ...defaultA11yPrefs(),
+    ...(loaded || {}),
+    ...(scene.a11y || {}),
+  };
+
+  scene.a11y = { ...basePrefs };
 
   const pad = 14;
   const headerH = 64;
@@ -323,8 +343,16 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   root.add([shadow, bg, title, hint]);
 
   function commit() {
-scene.a11y.uiScale = clamp(scene.a11y.uiScale ?? 1, MIN_UI_SCALE, MAX_UI_SCALE);
-scene.a11y.textScale = clamp(scene.a11y.textScale ?? 1, MIN_TEXT_SCALE, MAX_TEXT_SCALE);
+    scene.a11y.uiScale = clamp(
+      scene.a11y.uiScale ?? 1,
+      MIN_UI_SCALE,
+      MAX_UI_SCALE
+    );
+    scene.a11y.textScale = clamp(
+      scene.a11y.textScale ?? 1,
+      MIN_TEXT_SCALE,
+      MAX_TEXT_SCALE
+    );
 
     saveA11yPrefs({ ...scene.a11y });
     applyA11yToScene(scene, scene.a11y);
@@ -375,76 +403,105 @@ scene.a11y.textScale = clamp(scene.a11y.textScale ?? 1, MIN_TEXT_SCALE, MAX_TEXT
     }
   );
 
-  const labelFilter = scene.add.text(pad, 220, "Filtros", {
+  const labelSize = scene.add.text(pad, 220, "Tamaño", {
     fontFamily: "Arial",
     fontSize: "13px",
     color: "#cbd5e1",
   });
 
-  const btnNormal = makeBtn(scene, pad, 244, 124, 42, "Normal", () => {
-    scene.a11y.colorMode = "normal";
+  const btnAminus = makeBtn(scene, pad, 244, 124, 42, "T-", () => {
+    scene.a11y.textScale = clamp(
+      (scene.a11y.textScale ?? 1) - 0.1,
+      MIN_TEXT_SCALE,
+      MAX_TEXT_SCALE
+    );
     commit();
     refresh();
   });
 
-  const btnGray = makeBtn(scene, pad + 138, 294, 124, 42, "Grises", () => {
-    scene.a11y.colorMode = "grayscale";
+  const btnAplus = makeBtn(scene, pad + 138, 244, 124, 42, "T+", () => {
+    scene.a11y.textScale = clamp(
+      (scene.a11y.textScale ?? 1) + 0.1,
+      MIN_TEXT_SCALE,
+      MAX_TEXT_SCALE
+    );
     commit();
     refresh();
   });
 
-const labelSize = scene.add.text(pad, 220, "Tamaño", {
-  fontFamily: "Arial",
-  fontSize: "13px",
-  color: "#cbd5e1",
-});
+  const btnUIminus = makeBtn(scene, pad, 294, 124, 42, "UI-", () => {
+    scene.a11y.uiScale = clamp(
+      (scene.a11y.uiScale ?? 1) - 0.1,
+      MIN_UI_SCALE,
+      MAX_UI_SCALE
+    );
+    commit();
+    refresh();
+  });
 
-const btnAminus = makeBtn(scene, pad, 244, 124, 42, "T-", () => {
-  scene.a11y.textScale = clamp(scene.a11y.textScale - 0.1, MIN_TEXT_SCALE, MAX_TEXT_SCALE);
-  commit();
-  refresh();
-});
+  const btnUIplus = makeBtn(scene, pad + 138, 294, 124, 42, "UI+", () => {
+    scene.a11y.uiScale = clamp(
+      (scene.a11y.uiScale ?? 1) + 0.1,
+      MIN_UI_SCALE,
+      MAX_UI_SCALE
+    );
+    commit();
+    refresh();
+  });
 
-const btnAplus = makeBtn(scene, pad + 138, 244, 124, 42, "T+", () => {
-  scene.a11y.textScale = clamp(scene.a11y.textScale + 0.1, MIN_TEXT_SCALE, MAX_TEXT_SCALE);
-  commit();
-  refresh();
-});
-
-const btnUIminus = makeBtn(scene, pad, 294, 124, 42, "UI-", () => {
-  scene.a11y.uiScale = clamp(scene.a11y.uiScale - 0.1, MIN_UI_SCALE, MAX_UI_SCALE);
-  commit();
-  refresh();
-});
-
-const btnUIplus = makeBtn(scene, pad + 138, 294, 124, 42, "UI+", () => {
-  scene.a11y.uiScale = clamp(scene.a11y.uiScale + 0.1, MIN_UI_SCALE, MAX_UI_SCALE);
-  commit();
-  refresh();
-});
-
-const btnReset = makeBtn(scene, pad, 354, PANEL_OPEN_W - 2 * pad, 46, "Restablecer", () => {
-  scene.a11y = { ...defaultA11yPrefs() };
-  stopSpeech();
-  commit();
-  refresh();
-});
+  const btnReset = makeBtn(
+    scene,
+    pad,
+    354,
+    PANEL_OPEN_W - 2 * pad,
+    46,
+    "Restablecer",
+    () => {
+      const panelOpen = scene.a11y.panelOpen;
+      scene.a11y = {
+        ...basePrefs,
+        panelOpen,
+      };
+      stopSpeech();
+      commit();
+      refresh();
+    }
+  );
 
   root.add([
-    toggle.box, toggle.text, toggle.hit,
-    btnTTS.box, btnTTS.text, btnTTS.hit,
-    btnHC.box, btnHC.text, btnHC.hit,
-    labelFilter,
-    btnNormal.box, btnNormal.text, btnNormal.hit,
-    btnProtan.box, btnProtan.text, btnProtan.hit,
-    btnTritan.box, btnTritan.text, btnTritan.hit,
-    btnGray.box, btnGray.text, btnGray.hit,
+    toggle.box,
+    toggle.text,
+    toggle.hit,
+
+    btnTTS.box,
+    btnTTS.text,
+    btnTTS.hit,
+
+    btnHC.box,
+    btnHC.text,
+    btnHC.hit,
+
     labelSize,
-    btnAminus.box, btnAminus.text, btnAminus.hit,
-    btnAplus.box, btnAplus.text, btnAplus.hit,
-    btnUIminus.box, btnUIminus.text, btnUIminus.hit,
-    btnUIplus.box, btnUIplus.text, btnUIplus.hit,
-    btnReset.box, btnReset.text, btnReset.hit,
+
+    btnAminus.box,
+    btnAminus.text,
+    btnAminus.hit,
+
+    btnAplus.box,
+    btnAplus.text,
+    btnAplus.hit,
+
+    btnUIminus.box,
+    btnUIminus.text,
+    btnUIminus.hit,
+
+    btnUIplus.box,
+    btnUIplus.text,
+    btnUIplus.hit,
+
+    btnReset.box,
+    btnReset.text,
+    btnReset.hit,
   ]);
 
   function getWidth() {
@@ -453,7 +510,7 @@ const btnReset = makeBtn(scene, pad, 354, PANEL_OPEN_W - 2 * pad, 46, "Restablec
 
   function place() {
     const w = scene.scale.width;
-    const x = anchor === "left" ? 16 : (w - getWidth() - 16);
+    const x = anchor === "left" ? 16 : w - getWidth() - 16;
     root.setPosition(x, 16);
   }
 
@@ -462,7 +519,9 @@ const btnReset = makeBtn(scene, pad, 354, PANEL_OPEN_W - 2 * pad, 46, "Restablec
 
     toggle.setLabel(open ? "Ocultar" : "Mostrar");
     btnTTS.setLabel(scene.a11y.ttsEnabled ? "Voz: Encendido" : "Voz: Apagado");
-    btnHC.setLabel(scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal");
+    btnHC.setLabel(
+      scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal"
+    );
 
     const hc = !!scene.a11y.highContrast;
 
@@ -481,7 +540,6 @@ const btnReset = makeBtn(scene, pad, 354, PANEL_OPEN_W - 2 * pad, 46, "Restablec
     const muted = hc ? "#000000" : "#cbd5e1";
     title.setColor(titleColor);
     hint.setColor(muted);
-    labelFilter.setColor(muted);
     labelSize.setColor(muted);
 
     const btnFill = hc ? 0xffffff : 0x111827;
@@ -489,29 +547,30 @@ const btnReset = makeBtn(scene, pad, 354, PANEL_OPEN_W - 2 * pad, 46, "Restablec
     const strokeA = hc ? 1 : 0.16;
 
     [
-  toggle,
-  btnTTS,
-  btnHC,
-  btnAminus,
-  btnAplus,
-  btnUIminus,
-  btnUIplus,
-  btnReset,
-].forEach((b) => b.setStyle(btnFill, btnText, strokeA));
+      toggle,
+      btnTTS,
+      btnHC,
+      btnAminus,
+      btnAplus,
+      btnUIminus,
+      btnUIplus,
+      btnReset,
+    ].forEach((b) => b.setStyle(btnFill, btnText, strokeA));
 
-title.setVisible(open);
-hint.setVisible(open);
-labelSize.setVisible(open);
+    title.setVisible(open);
+    hint.setVisible(open);
+    labelSize.setVisible(open);
 
-[
-  btnTTS,
-  btnHC,
-  btnAminus,
-  btnAplus,
-  btnUIminus,
-  btnUIplus,
-  btnReset,
-].forEach((b) => b.setVisible(open));
+    [
+      btnTTS,
+      btnHC,
+      btnAminus,
+      btnAplus,
+      btnUIminus,
+      btnUIplus,
+      btnReset,
+    ].forEach((b) => b.setVisible(open));
+
     toggle.setPos(panelW - 112, 14);
 
     place();
@@ -519,6 +578,7 @@ labelSize.setVisible(open);
 
   place();
   refresh();
+  commit();
 
   const resizeHandler = () => {
     place();
