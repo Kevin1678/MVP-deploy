@@ -4,6 +4,7 @@ import {
   applyA11yToScene,
   speakIfEnabled,
   stopSpeech,
+  getA11yTheme,
   PANEL_GAP,
 } from "./a11yPanel";
 
@@ -52,12 +53,87 @@ function mixColors(colorA, colorB, amount = 0.25) {
   return (r << 16) | (g << 8) | b;
 }
 
-function makeTopLeftButton(scene, label, onClick, depth = 10) {
-  let w = 160;
-  let h = 60;
+function getScales(scene) {
+  return {
+    ui: scene?.a11y?.uiScale || 1,
+    ts: scene?.a11y?.textScale || 1,
+  };
+}
+
+function fitFont(base, ts, min = 12) {
+  return Math.max(min, Math.round(base * ts));
+}
+
+function colorToCss(hex) {
+  return `#${hex.toString(16).padStart(6, "0")}`;
+}
+
+function getButtonPalette(scene, variant = "default") {
+  const theme = getA11yTheme(scene.a11y || {});
+  const hc = !!scene.a11y?.highContrast;
+
+  if (variant === "primary") {
+    if (hc) {
+      return {
+        fill: 0x000000,
+        strokeColor: 0x000000,
+        strokeAlpha: 1,
+        textColor: "#ffffff",
+      };
+    }
+    return {
+      fill: theme.primary,
+      strokeColor: theme.tileStroke,
+      strokeAlpha: 0.28,
+      textColor: "#ffffff",
+    };
+  }
+
+  if (variant === "danger") {
+    if (hc) {
+      return {
+        fill: 0x222222,
+        strokeColor: 0x000000,
+        strokeAlpha: 1,
+        textColor: "#ffffff",
+      };
+    }
+    return {
+      fill: 0xdc2626,
+      strokeColor: theme.tileStroke,
+      strokeAlpha: 0.28,
+      textColor: "#ffffff",
+    };
+  }
+
+  return {
+    fill: theme.buttonFill,
+    strokeColor: theme.tileStroke,
+    strokeAlpha: hc ? 1 : theme.buttonStrokeAlpha,
+    textColor: theme.buttonText,
+  };
+}
+
+function styleTextButton(textObj, scene, variant = "default", baseFont = 16) {
+  const palette = getButtonPalette(scene, variant);
+  const { ts } = getScales(scene);
+
+  textObj.setStyle({
+    color: palette.textColor,
+    backgroundColor: colorToCss(palette.fill),
+  });
+
+  textObj.setFontSize(fitFont(baseFont, ts));
+}
+
+function makeTopLeftButton(scene, label, onClick, depth = 10, opts = {}) {
+  let w = opts.width ?? 160;
+  let h = opts.height ?? 60;
   let x0 = 0;
   let y0 = 0;
   let enabled = true;
+  let variant = opts.variant ?? "default";
+  let baseFont = opts.baseFont ?? 28;
 
   const box = scene.add
     .rectangle(x0, y0, w, h, 0x111827, 1)
@@ -68,9 +144,10 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
   const text = scene.add
     .text(x0 + w / 2, y0 + h / 2, label, {
       fontFamily: "Arial",
-      fontSize: "28px",
+      fontSize: `${baseFont}px`,
       color: "#ffffff",
       align: "center",
+      wordWrap: { width: Math.max(100, w - 20) },
     })
     .setOrigin(0.5)
     .setDepth(depth + 1);
@@ -92,6 +169,22 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
     onClick?.();
   });
 
+  function refreshTextPos() {
+    text.setPosition(x0 + w / 2, y0 + h / 2);
+    text.setWordWrapWidth(Math.max(100, w - 20));
+  }
+
+  function applyCurrentTheme() {
+    const palette = getButtonPalette(scene, variant);
+    const { ts } = getScales(scene);
+
+    box.setFillStyle(palette.fill, 1);
+    box.setStrokeStyle(2, palette.strokeColor, palette.strokeAlpha);
+    text.setColor(palette.textColor);
+    text.setFontSize(fitFont(baseFont, ts));
+    text.setWordWrapWidth(Math.max(100, w - 20));
+  }
+
   return {
     box,
     text,
@@ -100,6 +193,12 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
     setLabel(next) {
       label = next;
       text.setText(next);
+      refreshTextPos();
+    },
+
+    setVariant(nextVariant) {
+      variant = nextVariant;
+      applyCurrentTheme();
     },
 
     setTL(nx, ny) {
@@ -107,7 +206,7 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
       y0 = ny;
       box.setPosition(x0, y0);
       hit.setPosition(x0, y0);
-      text.setPosition(x0 + w / 2, y0 + h / 2);
+      refreshTextPos();
     },
 
     setCenter(cx, cy) {
@@ -129,14 +228,20 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
         hit.input.hitArea.setTo(0, 0, w, h);
       }
 
-      text.setPosition(x0 + w / 2, y0 + h / 2);
+      refreshTextPos();
+      applyCurrentTheme();
     },
 
-    setTheme({ fill, strokeAlpha, textColor, fontSize }) {
+    setTheme({ fill, strokeAlpha, textColor, fontSize, strokeColor = 0xffffff }) {
       box.setFillStyle(fill, 1);
-      box.setStrokeStyle(2, 0xffffff, strokeAlpha);
+      box.setStrokeStyle(2, strokeColor, strokeAlpha);
       text.setColor(textColor);
       if (fontSize) text.setFontSize(fontSize);
+      text.setWordWrapWidth(Math.max(100, w - 20));
+    },
+
+    applyTheme() {
+      applyCurrentTheme();
     },
 
     setEnabled(v) {
@@ -269,35 +374,53 @@ class LightsMenuScene extends Phaser.Scene {
       this._onExit?.();
     });
 
-    this.btnEasy = makeTopLeftButton(this, "Fácil (3 pasos)", () => {
-      stopSpeech();
-      this.scene.start("LightsGameScene", {
-        steps: 3,
-        speedMs: 650,
-        roundsTotal: 5,
-        difficulty: "easy",
-      });
-    });
+    this.btnEasy = makeTopLeftButton(
+      this,
+      "Fácil (3 pasos)",
+      () => {
+        stopSpeech();
+        this.scene.start("LightsGameScene", {
+          steps: 3,
+          speedMs: 650,
+          roundsTotal: 5,
+          difficulty: "easy",
+        });
+      },
+      10,
+      { width: 430, height: 60, baseFont: 24 }
+    );
 
-    this.btnMed = makeTopLeftButton(this, "Medio (4 pasos)", () => {
-      stopSpeech();
-      this.scene.start("LightsGameScene", {
-        steps: 4,
-        speedMs: 520,
-        roundsTotal: 7,
-        difficulty: "medium",
-      });
-    });
+    this.btnMed = makeTopLeftButton(
+      this,
+      "Medio (4 pasos)",
+      () => {
+        stopSpeech();
+        this.scene.start("LightsGameScene", {
+          steps: 4,
+          speedMs: 520,
+          roundsTotal: 7,
+          difficulty: "medium",
+        });
+      },
+      10,
+      { width: 430, height: 60, baseFont: 24 }
+    );
 
-    this.btnHard = makeTopLeftButton(this, "Difícil (5 pasos)", () => {
-      stopSpeech();
-      this.scene.start("LightsGameScene", {
-        steps: 5,
-        speedMs: 420,
-        roundsTotal: 10,
-        difficulty: "hard",
-      });
-    });
+    this.btnHard = makeTopLeftButton(
+      this,
+      "Difícil (5 pasos)",
+      () => {
+        stopSpeech();
+        this.scene.start("LightsGameScene", {
+          steps: 5,
+          speedMs: 420,
+          roundsTotal: 10,
+          difficulty: "hard",
+        });
+      },
+      10,
+      { width: 430, height: 60, baseFont: 24 }
+    );
 
     this.a11yPanel = createA11yPanel(this, {
       anchor: "left",
@@ -349,7 +472,6 @@ class LightsMenuScene extends Phaser.Scene {
     this.cameras.resize(width, height);
     this.cameras.main.setViewport(0, 0, width, height);
     this.cameras.main.setScroll(0, 0);
-    this.cameras.main.setBackgroundColor(0x0b1020);
 
     if (this.bg) {
       this.bg.setPosition(0, 0);
@@ -363,48 +485,43 @@ class LightsMenuScene extends Phaser.Scene {
   applyTheme() {
     applyA11yToScene(this, this.a11y);
 
-    const hc = !!this.a11y.highContrast;
-    const ui = this.a11y.uiScale || 1;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ui, ts } = getScales(this);
 
-    this.bg.setFillStyle(hc ? 0x000000 : 0x0b1020, 1);
+    this.cameras.main.setBackgroundColor(theme.sceneBg);
+    this.bg.setFillStyle(theme.sceneBg, 1);
 
-    this.title.setFontSize(Math.round(48 * ts));
-    this.subtitle.setFontSize(Math.round(24 * ts));
-    this.subtitle.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.title.setFontSize(fitFont(48, ts));
+    this.title.setColor(theme.text);
 
-    this.exitBtn.setStyle({
-      color: hc ? "#000000" : "#ffffff",
-      backgroundColor: hc ? "#ffffff" : "#111827",
-    });
-    this.exitBtn.setFontSize(Math.round(16 * ts));
+    this.subtitle.setFontSize(fitFont(24, ts));
+    this.subtitle.setColor(theme.textMuted);
 
-    const fill = hc ? 0xffffff : 0x111827;
-    const strokeAlpha = hc ? 1 : 0.14;
-    const textColor = hc ? "#000000" : "#ffffff";
-    const fontSize = Math.round(24 * ts);
+    styleTextButton(this.exitBtn, this, "default", 16);
+
     const bw = Math.round(430 * ui);
     const bh = Math.round(60 * ui);
 
     [this.btnEasy, this.btnMed, this.btnHard].forEach((b) => {
       b.setSize(bw, bh);
-      b.setTheme({ fill, strokeAlpha, textColor, fontSize });
+      b.applyTheme();
     });
   }
 
   layout() {
     const W = this.scale.width;
+    const { ui } = getScales(this);
     const left = contentLeft(this);
     const right = 16;
     const cx = left + (W - left - right) / 2;
 
     this.exitBtn.setPosition(W - 16, 16);
 
-    this.title.setPosition(cx, 90);
-    this.subtitle.setPosition(cx, 150);
+    this.title.setPosition(cx, 90 * ui);
+    this.subtitle.setPosition(cx, 150 * ui);
 
-    const gap = 92;
-    const startY = 260;
+    const gap = 92 * ui;
+    const startY = 260 * ui;
 
     this.btnEasy.setCenter(cx, startY + 0 * gap);
     this.btnMed.setCenter(cx, startY + 1 * gap);
@@ -503,7 +620,8 @@ class LightsGameScene extends Phaser.Scene {
       this,
       "Repetir secuencia",
       () => this.repeatSequence(),
-      20
+      20,
+      { width: 280, height: 56, baseFont: 18, variant: "primary" }
     );
 
     this.menuBtn.on("pointerdown", () => {
@@ -630,7 +748,6 @@ class LightsGameScene extends Phaser.Scene {
     this.cameras.resize(width, height);
     this.cameras.main.setViewport(0, 0, width, height);
     this.cameras.main.setScroll(0, 0);
-    this.cameras.main.setBackgroundColor(0x0b1020);
 
     if (this.bg) {
       this.bg.setPosition(0, 0);
@@ -647,76 +764,75 @@ class LightsGameScene extends Phaser.Scene {
   applyTheme() {
     applyA11yToScene(this, this.a11y);
 
+    const theme = getA11yTheme(this.a11y);
+    const { ts } = getScales(this);
     const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
 
-    this.bg.setFillStyle(hc ? 0x000000 : 0x0b1020, 1);
+    this.cameras.main.setBackgroundColor(theme.sceneBg);
+    this.bg.setFillStyle(theme.sceneBg, 1);
 
-    this.title.setFontSize(Math.round(28 * ts));
-    this.sub.setFontSize(Math.round(18 * ts));
-    this.stats.setFontSize(Math.round(18 * ts));
+    this.title.setFontSize(fitFont(28, ts));
+    this.title.setColor(theme.text);
 
-    this.sub.setColor(hc ? "#ffffff" : "#cbd5e1");
-    this.stats.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.sub.setFontSize(fitFont(18, ts));
+    this.sub.setColor(theme.textMuted);
 
-    this.menuBtn.setStyle({
-      color: hc ? "#000000" : "#ffffff",
-      backgroundColor: hc ? "#ffffff" : "#111827",
-    });
-    this.exitBtn.setStyle({
-      color: hc ? "#000000" : "#ffffff",
-      backgroundColor: hc ? "#ffffff" : "#111827",
-    });
+    this.stats.setFontSize(fitFont(18, ts));
+    this.stats.setColor(theme.textMuted);
 
-    this.menuBtn.setFontSize(Math.round(16 * ts));
-    this.exitBtn.setFontSize(Math.round(16 * ts));
+    styleTextButton(this.menuBtn, this, "default", 16);
+    styleTextButton(this.exitBtn, this, "default", 16);
 
-    this.repeatBtn.setTheme({
-      fill: hc ? 0xffffff : 0x1d4ed8,
-      strokeAlpha: 1,
-      textColor: hc ? "#000000" : "#ffffff",
-      fontSize: Math.round(18 * ts),
-    });
+    this.repeatBtn.applyTheme();
 
     this.tiles.forEach((tile) => {
       tile.bg.setFillStyle(tile.baseColor, 1);
-      tile.bg.setStrokeStyle(3, 0xffffff, hc ? 1 : 0.20);
+      tile.bg.setStrokeStyle(3, hc ? 0x000000 : theme.tileStroke, hc ? 1 : 0.20);
       tile.shine.setFillStyle(0xffffff, hc ? 0.18 : 0.10);
-      tile.focus.setStrokeStyle(4, hc ? 0xffffff : 0x22c55e, 0);
+      tile.focus.setStrokeStyle(
+        4,
+        hc ? 0x000000 : 0x22c55e,
+        0
+      );
     });
 
     if (this.endModal) {
-      this.endModal.box.setFillStyle(hc ? 0xffffff : 0x0f172a, 1);
+      this.endModal.box.setFillStyle(theme.surface, 1);
       this.endModal.box.setStrokeStyle(
         2,
-        hc ? 0x000000 : 0xffffff,
-        hc ? 1 : 0.16
+        theme.tileStroke,
+        hc ? 1 : 0.18
       );
 
       this.endModal.title.setStyle({
         fontFamily: "Arial",
-        fontSize: `${Math.round(38 * ts)}px`,
-        color: hc ? "#000000" : "#ffffff",
+        fontSize: `${fitFont(38, ts)}px`,
+        color: theme.text,
       });
 
       this.endModal.sub.setStyle({
         fontFamily: "Arial",
-        fontSize: `${Math.round(20 * ts)}px`,
-        color: hc ? "#000000" : "#cbd5e1",
+        fontSize: `${fitFont(20, ts)}px`,
+        color: theme.textMuted,
       });
 
+      const againPalette = getButtonPalette(this, "primary");
+      const exitPalette = getButtonPalette(this, "danger");
+
       this.endModal.btnAgain.setTheme({
-        fill: hc ? 0x000000 : 0x2563eb,
-        strokeAlpha: 1,
-        textColor: "#ffffff",
-        fontSize: Math.round(18 * ts),
+        fill: againPalette.fill,
+        strokeColor: againPalette.strokeColor,
+        strokeAlpha: againPalette.strokeAlpha,
+        textColor: againPalette.textColor,
+        fontSize: fitFont(18, ts),
       });
 
       this.endModal.btnExit.setTheme({
-        fill: hc ? 0x222222 : 0xdc2626,
-        strokeAlpha: 1,
-        textColor: "#ffffff",
-        fontSize: Math.round(18 * ts),
+        fill: exitPalette.fill,
+        strokeColor: exitPalette.strokeColor,
+        strokeAlpha: exitPalette.strokeAlpha,
+        textColor: exitPalette.textColor,
+        fontSize: fitFont(18, ts),
       });
     }
 
@@ -725,11 +841,12 @@ class LightsGameScene extends Phaser.Scene {
 
   layout() {
     const W = this.scale.width;
+    const { ui } = getScales(this);
     const left = contentLeft(this);
 
-    this.title.setPosition(left, 16);
-    this.sub.setPosition(left, this.title.y + this.title.height + 6);
-    this.stats.setPosition(left, this.sub.y + this.sub.height + 6);
+    this.title.setPosition(left, 16 * ui);
+    this.sub.setPosition(left, this.title.y + this.title.height + Math.max(4, 6 * ui));
+    this.stats.setPosition(left, this.sub.y + this.sub.height + Math.max(4, 6 * ui));
 
     this.exitBtn.setPosition(W - 16, 16);
     this.menuBtn.setPosition(this.exitBtn.x - this.exitBtn.width - 12, 16);
@@ -776,9 +893,9 @@ class LightsGameScene extends Phaser.Scene {
     const baseButtonH = Math.round(56 * ui);
     const baseButtonGap = Math.round(24 * ui);
 
-    const headerBottom = this.stats.y + this.stats.height + 24;
+    const headerBottom = this.stats.y + this.stats.height + 24 * ui;
     const availableWidth = Math.max(220, W - left - 16);
-    const footerReserved = baseButtonH + baseButtonGap + 28;
+    const footerReserved = baseButtonH + baseButtonGap + 28 * ui;
     const availableHeight = Math.max(180, H - headerBottom - footerReserved);
 
     const totalBaseW = baseTileW * 3 + baseGap * 2;
@@ -878,7 +995,7 @@ class LightsGameScene extends Phaser.Scene {
 
   applyFocus(index, silent = false) {
     const hc = !!this.a11y.highContrast;
-    const focusColor = hc ? 0xffffff : 0x22c55e;
+    const focusColor = hc ? 0x000000 : 0x22c55e;
 
     const prev = this.tiles[this.state.focusIndex];
     if (prev?.focus) {
@@ -1020,6 +1137,8 @@ class LightsGameScene extends Phaser.Scene {
 
   async playSequence(runId) {
     const hc = !!this.a11y.highContrast;
+    const theme = getA11yTheme(this.a11y);
+    const baseStrokeColor = hc ? 0x000000 : theme.tileStroke;
     const baseStrokeAlpha = hc ? 1 : 0.20;
 
     this.updateRepeatButtonState();
@@ -1048,7 +1167,7 @@ class LightsGameScene extends Phaser.Scene {
       if (!okVoice || this.gameEnded) return;
 
       tile.bg.setFillStyle(tile.activeColor, 1);
-      tile.bg.setStrokeStyle(5, 0xffffff, 1);
+      tile.bg.setStrokeStyle(5, hc ? 0x000000 : 0xffffff, 1);
 
       this.tweens.add({
         targets: [tile.bg, tile.shine, tile.focus],
@@ -1062,7 +1181,7 @@ class LightsGameScene extends Phaser.Scene {
       if (!okOn || this.gameEnded) return;
 
       tile.bg.setFillStyle(tile.baseColor, 1);
-      tile.bg.setStrokeStyle(3, 0xffffff, baseStrokeAlpha);
+      tile.bg.setStrokeStyle(3, baseStrokeColor, baseStrokeAlpha);
 
       const okOff = await this.wait(lightOffMs, runId);
       if (!okOff || this.gameEnded) return;
@@ -1087,10 +1206,12 @@ class LightsGameScene extends Phaser.Scene {
     if (!tile) return;
 
     const hc = !!this.a11y.highContrast;
+    const theme = getA11yTheme(this.a11y);
+    const baseStrokeColor = hc ? 0x000000 : theme.tileStroke;
     const baseStrokeAlpha = hc ? 1 : 0.20;
 
     tile.bg.setFillStyle(tile.pressColor, 1);
-    tile.bg.setStrokeStyle(5, 0xffffff, 1);
+    tile.bg.setStrokeStyle(5, hc ? 0x000000 : 0xffffff, 1);
 
     this.tweens.add({
       targets: [tile.bg, tile.shine],
@@ -1103,7 +1224,7 @@ class LightsGameScene extends Phaser.Scene {
     this.schedule(160, () => {
       if (!this.scene.isActive()) return;
       tile.bg.setFillStyle(tile.baseColor, 1);
-      tile.bg.setStrokeStyle(3, 0xffffff, baseStrokeAlpha);
+      tile.bg.setStrokeStyle(3, baseStrokeColor, baseStrokeAlpha);
     });
 
     speakIfEnabled(this, tile.colorName, {
@@ -1194,28 +1315,32 @@ class LightsGameScene extends Phaser.Scene {
 
   showOverlayIcon(ok) {
     const W = this.scale.width;
-    const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ts, ui } = getScales(this);
 
-    const overlay = this.add.container(W / 2, 120).setDepth(3000);
+    const overlay = this.add.container(W / 2, 120 * ui).setDepth(3000);
 
     const panel = this.add
-      .rectangle(0, 0, Math.min(560, W * 0.9), 130, hc ? 0xffffff : 0x111827, 1)
-      .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.15);
+      .rectangle(0, 0, Math.min(560, W * 0.9), 130 * ui, theme.surface, 1)
+      .setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y.highContrast ? 1 : 0.18
+      );
 
     const icon = this.add
-      .text(-140, 0, ok ? "✔" : "✖", {
+      .text(-140 * ui, 0, ok ? "✔" : "✖", {
         fontFamily: "Arial",
-        fontSize: `${Math.round(68 * ts)}px`,
-        color: hc ? "#000000" : "#ffffff",
+        fontSize: `${fitFont(68, ts)}px`,
+        color: theme.text,
       })
       .setOrigin(0.5);
 
     const text = this.add
-      .text(40, 0, ok ? "¡Bien!" : "Intenta otra vez", {
+      .text(40 * ui, 0, ok ? "¡Bien!" : "Intenta otra vez", {
         fontFamily: "Arial",
-        fontSize: `${Math.round((ok ? 38 : 32) * ts)}px`,
-        color: hc ? "#000000" : "#ffffff",
+        fontSize: `${fitFont(ok ? 38 : 32, ts)}px`,
+        color: theme.text,
       })
       .setOrigin(0.5);
 
@@ -1294,11 +1419,11 @@ class LightsGameScene extends Phaser.Scene {
 
     const W = this.scale.width;
     const H = this.scale.height;
-    const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ts, ui } = getScales(this);
 
     const overlay = this.add
-      .rectangle(0, 0, W, H, 0x000000, 0.55)
+      .rectangle(0, 0, W, H, theme.overlay, 0.55)
       .setOrigin(0)
       .setDepth(4000)
       .setInteractive();
@@ -1312,11 +1437,15 @@ class LightsGameScene extends Phaser.Scene {
         W / 2,
         H / 2,
         Math.min(600, W * 0.9),
-        300,
-        hc ? 0xffffff : 0x0f172a,
+        Math.round(300 * ui),
+        theme.surface,
         1
       )
-      .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
+      .setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y.highContrast ? 1 : 0.18
+      )
       .setDepth(4001)
       .setInteractive();
 
@@ -1325,10 +1454,10 @@ class LightsGameScene extends Phaser.Scene {
     });
 
     const title = this.add
-      .text(W / 2, H / 2 - 92, "¡Terminaste!", {
+      .text(W / 2, H / 2 - 92 * ui, "¡Terminaste!", {
         fontFamily: "Arial",
-        fontSize: `${Math.round(38 * ts)}px`,
-        color: hc ? "#000000" : "#ffffff",
+        fontSize: `${fitFont(38, ts)}px`,
+        color: theme.text,
       })
       .setOrigin(0.5)
       .setDepth(4002);
@@ -1336,7 +1465,7 @@ class LightsGameScene extends Phaser.Scene {
     const sub = this.add
       .text(
         W / 2,
-        H / 2 - 18,
+        H / 2 - 18 * ui,
         [
           `Puntos: ${this.state.score}`,
           `Errores: ${this.state.wrongRounds}`,
@@ -1344,10 +1473,10 @@ class LightsGameScene extends Phaser.Scene {
         ].join("\n"),
         {
           fontFamily: "Arial",
-          fontSize: `${Math.round(20 * ts)}px`,
-          color: hc ? "#000000" : "#cbd5e1",
+          fontSize: `${fitFont(20, ts)}px`,
+          color: theme.textMuted,
           align: "center",
-          lineSpacing: 10,
+          lineSpacing: Math.round(10 * ui),
           wordWrap: { width: Math.min(500, W * 0.72) },
         }
       )
@@ -1358,7 +1487,8 @@ class LightsGameScene extends Phaser.Scene {
       this,
       "Jugar otra vez",
       () => this.restartGame(),
-      4003
+      4003,
+      { width: 210, height: 52, baseFont: 18, variant: "primary" }
     );
 
     const btnExit = makeTopLeftButton(
@@ -1369,11 +1499,9 @@ class LightsGameScene extends Phaser.Scene {
         stopSpeech();
         this._onExit?.();
       },
-      4003
+      4003,
+      { width: 170, height: 52, baseFont: 18, variant: "danger" }
     );
-
-    btnAgain.setSize(210, 52);
-    btnExit.setSize(170, 52);
 
     this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
 
@@ -1386,14 +1514,18 @@ class LightsGameScene extends Phaser.Scene {
 
     const W = this.scale.width;
     const H = this.scale.height;
+    const { ui } = getScales(this);
 
     this.endModal.overlay.setSize(W, H);
     this.endModal.box.setPosition(W / 2, H / 2);
-    this.endModal.title.setPosition(W / 2, H / 2 - 92);
-    this.endModal.sub.setPosition(W / 2, H / 2 - 8);
+    this.endModal.title.setPosition(W / 2, H / 2 - 92 * ui);
+    this.endModal.sub.setPosition(W / 2, H / 2 - 8 * ui);
 
-    this.endModal.btnAgain.setTL(W / 2 - 230, H / 2 + 82);
-    this.endModal.btnExit.setTL(W / 2 + 20, H / 2 + 82);
+    this.endModal.btnAgain.setSize(Math.round(210 * ui), Math.round(52 * ui));
+    this.endModal.btnExit.setSize(Math.round(170 * ui), Math.round(52 * ui));
+
+    this.endModal.btnAgain.setTL(W / 2 - 230 * ui, H / 2 + 82 * ui);
+    this.endModal.btnExit.setTL(W / 2 + 20 * ui, H / 2 + 82 * ui);
   }
 
   hideEndModal() {
