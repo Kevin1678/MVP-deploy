@@ -4,6 +4,7 @@ import {
   applyA11yToScene,
   speakIfEnabled,
   stopSpeech,
+  getA11yTheme,
   PANEL_GAP,
 } from "./a11yPanel";
 
@@ -36,12 +37,87 @@ function contentLeft(scene) {
   return 16 + panelW + (PANEL_GAP ?? 16);
 }
 
-function makeButton(scene, label, onClick, depth = 10) {
-  let w = 520;
-  let h = 60;
+function getScales(scene) {
+  return {
+    ui: scene?.a11y?.uiScale || 1,
+    ts: scene?.a11y?.textScale || 1,
+  };
+}
+
+function fitFont(base, ts, min = 12) {
+  return Math.max(min, Math.round(base * ts));
+}
+
+function colorToCss(hex) {
+  return `#${hex.toString(16).padStart(6, "0")}`;
+}
+
+function getButtonPalette(scene, variant = "default") {
+  const theme = getA11yTheme(scene.a11y || {});
+  const hc = !!scene.a11y?.highContrast;
+
+  if (variant === "primary") {
+    if (hc) {
+      return {
+        fill: 0x000000,
+        strokeColor: 0x000000,
+        strokeAlpha: 1,
+        textColor: "#ffffff",
+      };
+    }
+    return {
+      fill: theme.primary,
+      strokeColor: theme.tileStroke,
+      strokeAlpha: 0.28,
+      textColor: "#ffffff",
+    };
+  }
+
+  if (variant === "danger") {
+    if (hc) {
+      return {
+        fill: 0x222222,
+        strokeColor: 0x000000,
+        strokeAlpha: 1,
+        textColor: "#ffffff",
+      };
+    }
+    return {
+      fill: 0xdc2626,
+      strokeColor: theme.tileStroke,
+      strokeAlpha: 0.28,
+      textColor: "#ffffff",
+    };
+  }
+
+  return {
+    fill: theme.buttonFill,
+    strokeColor: theme.tileStroke,
+    strokeAlpha: hc ? 1 : theme.buttonStrokeAlpha,
+    textColor: theme.buttonText,
+  };
+}
+
+function styleTextButton(textObj, scene, variant = "default", baseFont = 16) {
+  const palette = getButtonPalette(scene, variant);
+  const { ts } = getScales(scene);
+
+  textObj.setStyle({
+    color: palette.textColor,
+    backgroundColor: colorToCss(palette.fill),
+  });
+
+  textObj.setFontSize(fitFont(baseFont, ts));
+}
+
+function makeButton(scene, label, onClick, depth = 10, opts = {}) {
+  let w = opts.width ?? 520;
+  let h = opts.height ?? 60;
   let x0 = 0;
   let y0 = 0;
   let enabled = true;
+  let variant = opts.variant ?? "default";
+  let baseFont = opts.baseFont ?? 26;
 
   const box = scene.add
     .rectangle(x0, y0, w, h, 0x111827, 1)
@@ -51,9 +127,12 @@ function makeButton(scene, label, onClick, depth = 10) {
 
   const text = scene.add
     .text(x0 + w / 2, y0 + h / 2, label, {
-      fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", Arial',
-      fontSize: "26px",
+      fontFamily:
+        '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", Arial',
+      fontSize: `${baseFont}px`,
       color: "#ffffff",
+      align: "center",
+      wordWrap: { width: Math.max(120, w - 24) },
     })
     .setOrigin(0.5)
     .setDepth(depth + 1);
@@ -71,6 +150,22 @@ function makeButton(scene, label, onClick, depth = 10) {
     onClick?.();
   });
 
+  function refreshTextPos() {
+    text.setPosition(x0 + w / 2, y0 + h / 2);
+    text.setWordWrapWidth(Math.max(120, w - 24));
+  }
+
+  function applyCurrentTheme() {
+    const palette = getButtonPalette(scene, variant);
+    const { ts } = getScales(scene);
+
+    box.setFillStyle(palette.fill, 1);
+    box.setStrokeStyle(2, palette.strokeColor, palette.strokeAlpha);
+    text.setColor(palette.textColor);
+    text.setFontSize(fitFont(baseFont, ts));
+    text.setWordWrapWidth(Math.max(120, w - 24));
+  }
+
   return {
     box,
     text,
@@ -79,6 +174,12 @@ function makeButton(scene, label, onClick, depth = 10) {
     setLabel(next) {
       label = next;
       text.setText(next);
+      refreshTextPos();
+    },
+
+    setVariant(nextVariant) {
+      variant = nextVariant;
+      applyCurrentTheme();
     },
 
     setCenter(cx, cy) {
@@ -94,7 +195,7 @@ function makeButton(scene, label, onClick, depth = 10) {
       y0 = ny;
       box.setPosition(x0, y0);
       hit.setPosition(x0, y0);
-      text.setPosition(x0 + w / 2, y0 + h / 2);
+      refreshTextPos();
     },
 
     setSize(newW, newH) {
@@ -105,14 +206,26 @@ function makeButton(scene, label, onClick, depth = 10) {
       if (hit.input?.hitArea?.setTo) {
         hit.input.hitArea.setTo(0, 0, w, h);
       }
-      text.setPosition(x0 + w / 2, y0 + h / 2);
+      refreshTextPos();
+      applyCurrentTheme();
     },
 
-    setTheme({ fill, strokeAlpha, textColor, fontSize }) {
+    setTheme({
+      fill,
+      strokeAlpha,
+      textColor,
+      fontSize,
+      strokeColor = 0xffffff,
+    }) {
       box.setFillStyle(fill, 1);
-      box.setStrokeStyle(2, 0xffffff, strokeAlpha);
+      box.setStrokeStyle(2, strokeColor, strokeAlpha);
       text.setColor(textColor);
       if (fontSize) text.setFontSize(fontSize);
+      text.setWordWrapWidth(Math.max(120, w - 24));
+    },
+
+    applyTheme() {
+      applyCurrentTheme();
     },
 
     setEnabled(v) {
@@ -212,20 +325,38 @@ class MenuScene extends Phaser.Scene {
       this._onExit?.();
     });
 
-    this.btnEasy = makeButton(this, "Fácil (4 pares)", () => {
-      stopSpeech();
-      this.scene.start("MemoryScene", { pairs: 4 });
-    });
+    this.btnEasy = makeButton(
+      this,
+      "Fácil (4 pares)",
+      () => {
+        stopSpeech();
+        this.scene.start("MemoryScene", { pairs: 4 });
+      },
+      10,
+      { width: 520, height: 60, baseFont: 26 }
+    );
 
-    this.btnMed = makeButton(this, "Medio (6 pares)", () => {
-      stopSpeech();
-      this.scene.start("MemoryScene", { pairs: 6 });
-    });
+    this.btnMed = makeButton(
+      this,
+      "Medio (6 pares)",
+      () => {
+        stopSpeech();
+        this.scene.start("MemoryScene", { pairs: 6 });
+      },
+      10,
+      { width: 520, height: 60, baseFont: 26 }
+    );
 
-    this.btnHard = makeButton(this, "Difícil (8 pares)", () => {
-      stopSpeech();
-      this.scene.start("MemoryScene", { pairs: 8 });
-    });
+    this.btnHard = makeButton(
+      this,
+      "Difícil (8 pares)",
+      () => {
+        stopSpeech();
+        this.scene.start("MemoryScene", { pairs: 8 });
+      },
+      10,
+      { width: 520, height: 60, baseFont: 26 }
+    );
 
     this.a11yPanel = createA11yPanel(this, {
       anchor: "left",
@@ -257,17 +388,26 @@ class MenuScene extends Phaser.Scene {
   handleResize(gameSize) {
     const width = Math.max(
       320,
-      Math.floor(gameSize?.width ?? this.scale.gameSize?.width ?? this.scale.width ?? window.innerWidth)
+      Math.floor(
+        gameSize?.width ??
+          this.scale.gameSize?.width ??
+          this.scale.width ??
+          window.innerWidth
+      )
     );
     const height = Math.max(
       480,
-      Math.floor(gameSize?.height ?? this.scale.gameSize?.height ?? this.scale.height ?? window.innerHeight)
+      Math.floor(
+        gameSize?.height ??
+          this.scale.gameSize?.height ??
+          this.scale.height ??
+          window.innerHeight
+      )
     );
 
     this.cameras.resize(width, height);
     this.cameras.main.setViewport(0, 0, width, height);
     this.cameras.main.setScroll(0, 0);
-    this.cameras.main.setBackgroundColor(0x9eb7e5);
 
     if (this.bg) {
       this.bg.setPosition(0, 0);
@@ -282,49 +422,43 @@ class MenuScene extends Phaser.Scene {
     if (!this.a11y) return;
     applyA11yToScene(this, this.a11y);
 
-    const hc = !!this.a11y.highContrast;
-    const ui = this.a11y.uiScale || 1;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ui, ts } = getScales(this);
 
-    this.bg.setFillStyle(hc ? 0x000000 : 0x9eb7e5, 1);
+    this.cameras.main.setBackgroundColor(theme.sceneBg);
+    this.bg.setFillStyle(theme.sceneBg, 1);
 
-    this.title.setFontSize(Math.round(54 * ts));
-    this.subtitle.setFontSize(Math.round(24 * ts));
-    this.subtitle.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.title.setFontSize(fitFont(54, ts));
+    this.title.setColor(theme.text);
 
-    this.exitBtn.setStyle({
-      color: hc ? "#000000" : "#ffffff",
-      backgroundColor: hc ? "#ffffff" : "#111827",
-    });
-    this.exitBtn.setFontSize(Math.round(16 * ts));
+    this.subtitle.setFontSize(fitFont(24, ts));
+    this.subtitle.setColor(theme.textMuted);
+
+    styleTextButton(this.exitBtn, this, "default", 16);
 
     const w = Math.round(520 * ui);
     const h = Math.round(60 * ui);
 
-    const fill = hc ? 0xffffff : 0x111827;
-    const strokeAlpha = hc ? 1 : 0.14;
-    const textColor = hc ? "#000000" : "#ffffff";
-    const fontSize = Math.round(26 * ts);
-
     [this.btnEasy, this.btnMed, this.btnHard].forEach((b) => {
       b.setSize(w, h);
-      b.setTheme({ fill, strokeAlpha, textColor, fontSize });
+      b.applyTheme();
     });
   }
 
   layout() {
     const W = this.scale.width;
+    const { ui } = getScales(this);
     const left = contentLeft(this);
     const right = 16;
     const cx = left + (W - left - right) / 2;
 
     this.exitBtn.setPosition(W - 16, 16);
 
-    this.title.setPosition(cx, 90);
-    this.subtitle.setPosition(cx, 150);
+    this.title.setPosition(cx, 90 * ui);
+    this.subtitle.setPosition(cx, 150 * ui);
 
-    const startY = 260;
-    const gap = 92;
+    const startY = 260 * ui;
+    const gap = 92 * ui;
 
     this.btnEasy.setCenter(cx, startY + gap * 0);
     this.btnMed.setCenter(cx, startY + gap * 1);
@@ -524,17 +658,26 @@ class MemoryScene extends Phaser.Scene {
   handleResize(gameSize) {
     const width = Math.max(
       320,
-      Math.floor(gameSize?.width ?? this.scale.gameSize?.width ?? this.scale.width ?? window.innerWidth)
+      Math.floor(
+        gameSize?.width ??
+          this.scale.gameSize?.width ??
+          this.scale.width ??
+          window.innerWidth
+      )
     );
     const height = Math.max(
       480,
-      Math.floor(gameSize?.height ?? this.scale.gameSize?.height ?? this.scale.height ?? window.innerHeight)
+      Math.floor(
+        gameSize?.height ??
+          this.scale.gameSize?.height ??
+          this.scale.height ??
+          window.innerHeight
+      )
     );
 
     this.cameras.resize(width, height);
     this.cameras.main.setViewport(0, 0, width, height);
     this.cameras.main.setScroll(0, 0);
-    this.cameras.main.setBackgroundColor(0x9eb7e5);
 
     if (this.bg) {
       this.bg.setPosition(0, 0);
@@ -556,82 +699,110 @@ class MemoryScene extends Phaser.Scene {
     if (!this.a11y) return;
     applyA11yToScene(this, this.a11y);
 
-    const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ts } = getScales(this);
 
-    this.bg.setFillStyle(hc ? 0x000000 : 0x9eb7e5, 1);
+    this.cameras.main.setBackgroundColor(theme.sceneBg);
+    this.bg.setFillStyle(theme.sceneBg, 1);
 
-    this.title.setFontSize(Math.round(24 * ts));
-    this.attemptsText.setFontSize(Math.round(18 * ts));
-    this.timeText.setFontSize(Math.round(18 * ts));
+    this.title.setFontSize(fitFont(24, ts));
+    this.title.setColor(theme.text);
 
-    this.attemptsText.setColor(hc ? "#ffffff" : "#cbd5e1");
-    this.timeText.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.attemptsText.setFontSize(fitFont(18, ts));
+    this.attemptsText.setColor(theme.textMuted);
 
-    const btnStyle = {
-      color: hc ? "#000000" : "#ffffff",
-      backgroundColor: hc ? "#ffffff" : "#111827",
-    };
-    this.menuBtn.setStyle(btnStyle);
-    this.exitBtn.setStyle(btnStyle);
-    this.menuBtn.setFontSize(Math.round(16 * ts));
-    this.exitBtn.setFontSize(Math.round(16 * ts));
+    this.timeText.setFontSize(fitFont(18, ts));
+    this.timeText.setColor(theme.textMuted);
+
+    styleTextButton(this.menuBtn, this, "default", 16);
+    styleTextButton(this.exitBtn, this, "default", 16);
 
     this.cards?.forEach((card) => {
       card.faceDown.clearTint();
-      if (hc) card.faceDown.setTint(0xffffff);
 
-      card.backBorder.setStrokeStyle(2, 0xffffff, hc ? 1 : 0.12);
-      card.faceUp.setFillStyle(hc ? 0xffffff : 0xf8fafc, 1);
-      card.faceUp.setStrokeStyle(2, 0x111827, hc ? 0.9 : 0.25);
-      card.txt.setColor(hc ? "#000000" : "#0b1020");
+      if (this.a11y.highContrast) {
+        card.faceDown.setTint(0xffffff);
+      }
+
+      card.backBorder.setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y.highContrast ? 1 : 0.16
+      );
+      card.faceUp.setFillStyle(theme.surfaceAlt, 1);
+      card.faceUp.setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y.highContrast ? 1 : 0.28
+      );
+      card.txt.setColor(theme.text);
+
+      if (card.focusOutline) {
+        card.focusOutline.setStrokeStyle(
+          4,
+          this.a11y.highContrast ? 0x000000 : 0x22c55e,
+          1
+        );
+      }
     });
 
     if (this.endModal) {
-      const panelFill = hc ? 0xffffff : 0x111827;
-      const panelStroke = hc ? 0x000000 : 0xffffff;
-      const textColor = hc ? "#000000" : "#ffffff";
-      const subColor = hc ? "#000000" : "#cbd5e1";
+      this.endModal.box.setFillStyle(theme.surface, 1);
+      this.endModal.box.setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y.highContrast ? 1 : 0.18
+      );
 
-      this.endModal.box.setFillStyle(panelFill, 1);
-      this.endModal.box.setStrokeStyle(2, panelStroke, hc ? 1 : 0.16);
       this.endModal.t1.setStyle({
         fontFamily: "Arial",
-        fontSize: Math.round(40 * ts),
-        color: textColor,
+        fontSize: `${fitFont(40, ts)}px`,
+        color: theme.text,
       });
+
       this.endModal.t2.setStyle({
         fontFamily: "Arial",
-        fontSize: Math.round(20 * ts),
-        color: subColor,
+        fontSize: `${fitFont(20, ts)}px`,
+        color: theme.textMuted,
       });
 
-      const btnFill = hc ? 0x000000 : 0x0b1220;
-      this.endModal.btnAgain.btnBg.setFillStyle(btnFill, 1);
-      this.endModal.btnAgain.btnBg.setStrokeStyle(2, panelStroke, hc ? 1 : 0.16);
+      const againPalette = getButtonPalette(this, "primary");
+      const exitPalette = getButtonPalette(this, "danger");
+
+      this.endModal.btnAgain.btnBg.setFillStyle(againPalette.fill, 1);
+      this.endModal.btnAgain.btnBg.setStrokeStyle(
+        2,
+        againPalette.strokeColor,
+        againPalette.strokeAlpha
+      );
       this.endModal.btnAgain.btnTx.setStyle({
         fontFamily: "Arial",
-        fontSize: Math.round(18 * ts),
-        color: textColor,
+        fontSize: `${fitFont(18, ts)}px`,
+        color: againPalette.textColor,
       });
 
-      this.endModal.btnExit.btnBg.setFillStyle(btnFill, 1);
-      this.endModal.btnExit.btnBg.setStrokeStyle(2, panelStroke, hc ? 1 : 0.16);
+      this.endModal.btnExit.btnBg.setFillStyle(exitPalette.fill, 1);
+      this.endModal.btnExit.btnBg.setStrokeStyle(
+        2,
+        exitPalette.strokeColor,
+        exitPalette.strokeAlpha
+      );
       this.endModal.btnExit.btnTx.setStyle({
         fontFamily: "Arial",
-        fontSize: Math.round(18 * ts),
-        color: textColor,
+        fontSize: `${fitFont(18, ts)}px`,
+        color: exitPalette.textColor,
       });
     }
   }
 
   layoutTopUI() {
     const W = this.scale.width;
+    const { ui } = getScales(this);
     const left = contentLeft(this);
 
-    this.title.setPosition(left, 16);
-    this.attemptsText.setPosition(left, 48);
-    this.timeText.setPosition(left, 72);
+    this.title.setPosition(left, 16 * ui);
+    this.attemptsText.setPosition(left, 48 * ui);
+    this.timeText.setPosition(left, 72 * ui);
 
     this.menuBtn.setPosition(W - 120, 16);
     this.exitBtn.setPosition(W - 16, 16);
@@ -690,7 +861,11 @@ class MemoryScene extends Phaser.Scene {
       card.focusOutline = this.add
         .rectangle(card.cx, card.cy, 120, 140, 0x000000, 0)
         .setOrigin(0.5)
-        .setStrokeStyle(4, 0x22c55e, 1);
+        .setStrokeStyle(
+          4,
+          this.a11y?.highContrast ? 0x000000 : 0x22c55e,
+          1
+        );
       card.focusOutline.setVisible(false);
     }
 
@@ -768,7 +943,8 @@ class MemoryScene extends Phaser.Scene {
     });
 
     hit.on("pointerdown", () => {
-      if (this.state.locked || card.matched || card.flipped || this.gameEnded) return;
+      if (this.state.locked || card.matched || card.flipped || this.gameEnded)
+        return;
       this.focusIndex = idx;
       this.applyFocus(idx, true);
       this.onCardClick(card);
@@ -795,7 +971,8 @@ class MemoryScene extends Phaser.Scene {
   }
 
   onCardClick(card) {
-    if (this.state.locked || card.matched || card.flipped || this.gameEnded) return;
+    if (this.state.locked || card.matched || card.flipped || this.gameEnded)
+      return;
 
     this.state.flips += 1;
     this.setCardVisual(card, true);
@@ -898,11 +1075,11 @@ class MemoryScene extends Phaser.Scene {
 
     const W = this.scale.width;
     const H = this.scale.height;
-    const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ts, ui } = getScales(this);
 
     const overlay = this.add
-      .rectangle(0, 0, W, H, 0x000000, 0.55)
+      .rectangle(0, 0, W, H, theme.overlay, 0.55)
       .setOrigin(0)
       .setDepth(2000)
       .setInteractive();
@@ -912,16 +1089,15 @@ class MemoryScene extends Phaser.Scene {
     });
 
     const boxW = Math.min(560, W * 0.9);
-    const boxH = 260;
-
-    const panelFill = hc ? 0xffffff : 0x111827;
-    const panelStroke = hc ? 0x000000 : 0xffffff;
-    const textColor = hc ? "#000000" : "#ffffff";
-    const subColor = hc ? "#000000" : "#cbd5e1";
+    const boxH = Math.round(260 * ui);
 
     const box = this.add
-      .rectangle(W / 2, H / 2, boxW, boxH, panelFill, 1)
-      .setStrokeStyle(2, panelStroke, hc ? 1 : 0.16)
+      .rectangle(W / 2, H / 2, boxW, boxH, theme.surface, 1)
+      .setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y.highContrast ? 1 : 0.18
+      )
       .setDepth(2001)
       .setInteractive();
 
@@ -930,39 +1106,40 @@ class MemoryScene extends Phaser.Scene {
     });
 
     const t1 = this.add
-      .text(W / 2, H / 2 - 80, "¡Excelente!", {
+      .text(W / 2, H / 2 - 80 * ui, "¡Excelente!", {
         fontFamily: "Arial",
-        fontSize: Math.round(40 * ts),
-        color: textColor,
+        fontSize: `${fitFont(40, ts)}px`,
+        color: theme.text,
       })
       .setOrigin(0.5)
       .setDepth(2002);
 
     const sec = Math.floor(durationMs / 1000);
     const t2 = this.add
-      .text(W / 2, H / 2 - 25, `Tiempo: ${sec}s   •   Intentos: ${moves}`, {
+      .text(W / 2, H / 2 - 25 * ui, `Tiempo: ${sec}s   •   Intentos: ${moves}`, {
         fontFamily: "Arial",
-        fontSize: Math.round(20 * ts),
-        color: subColor,
+        fontSize: `${fitFont(20, ts)}px`,
+        color: theme.textMuted,
       })
       .setOrigin(0.5)
       .setDepth(2002);
 
-    const createModalBtn = (label, onClick) => {
-      const bw = 220;
-      const bh = 52;
+    const createModalBtn = (label, onClick, variant) => {
+      const bw = Math.round(220 * ui);
+      const bh = Math.round(52 * ui);
+      const palette = getButtonPalette(this, variant);
 
       const btnBg = this.add
-        .rectangle(0, 0, bw, bh, hc ? 0x000000 : 0x0b1220, 1)
+        .rectangle(0, 0, bw, bh, palette.fill, 1)
         .setOrigin(0, 0)
-        .setStrokeStyle(2, panelStroke, hc ? 1 : 0.16)
+        .setStrokeStyle(2, palette.strokeColor, palette.strokeAlpha)
         .setDepth(2003);
 
       const btnTx = this.add
         .text(0, 0, label, {
           fontFamily: "Arial",
-          fontSize: Math.round(18 * ts),
-          color: textColor,
+          fontSize: `${fitFont(18, ts)}px`,
+          color: palette.textColor,
         })
         .setOrigin(0.5)
         .setDepth(2004);
@@ -971,15 +1148,24 @@ class MemoryScene extends Phaser.Scene {
       hit.setInteractive({ useHandCursor: true });
       hit.on("pointerdown", onClick);
 
-      return { btnBg, btnTx, hit, bw, bh };
+      return { btnBg, btnTx, hit, bw, bh, variant };
     };
 
-    const btnAgain = createModalBtn("Jugar otra vez", () => this.restartGame());
-    const btnExit = createModalBtn("Salir", () => {
-      this.hideEndModal();
-      stopSpeech();
-      this._onExit?.();
-    });
+    const btnAgain = createModalBtn(
+      "Jugar otra vez",
+      () => this.restartGame(),
+      "primary"
+    );
+
+    const btnExit = createModalBtn(
+      "Salir",
+      () => {
+        this.hideEndModal();
+        stopSpeech();
+        this._onExit?.();
+      },
+      "danger"
+    );
 
     this.endModal = { overlay, box, t1, t2, btnAgain, btnExit };
     this.layoutEndModal();
@@ -990,11 +1176,12 @@ class MemoryScene extends Phaser.Scene {
 
     const W = this.scale.width;
     const H = this.scale.height;
+    const { ui } = getScales(this);
 
     this.endModal.overlay.setSize(W, H);
     this.endModal.box.setPosition(W / 2, H / 2);
-    this.endModal.t1.setPosition(W / 2, H / 2 - 80);
-    this.endModal.t2.setPosition(W / 2, H / 2 - 25);
+    this.endModal.t1.setPosition(W / 2, H / 2 - 80 * ui);
+    this.endModal.t2.setPosition(W / 2, H / 2 - 25 * ui);
 
     const placeBtn = (btn, cx, cy) => {
       btn.btnBg.setPosition(cx - btn.bw / 2, cy - btn.bh / 2);
@@ -1006,8 +1193,8 @@ class MemoryScene extends Phaser.Scene {
       }
     };
 
-    placeBtn(this.endModal.btnAgain, W / 2 - 130, H / 2 + 70);
-    placeBtn(this.endModal.btnExit, W / 2 + 130, H / 2 + 70);
+    placeBtn(this.endModal.btnAgain, W / 2 - 130 * ui, H / 2 + 70 * ui);
+    placeBtn(this.endModal.btnExit, W / 2 + 130 * ui, H / 2 + 70 * ui);
   }
 
   hideEndModal() {
@@ -1044,9 +1231,11 @@ class MemoryScene extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
+    const { ui, ts } = getScales(this);
+
     const leftPad = contentLeft(this);
     const rightPad = 16;
-    const topPad = 120;
+    const topPad = Math.round(120 * ui);
     const bottomPad = 16;
 
     const areaW = Math.max(220, W - leftPad - rightPad);
@@ -1057,16 +1246,13 @@ class MemoryScene extends Phaser.Scene {
     const rows = Math.ceil(total / cols);
     this.gridCols = cols;
 
-    const gap = 18;
+    const gap = Math.max(10, Math.round(18 * Math.min(ui, 1.15)));
 
     const rawCellW = Math.floor((areaW - gap * (cols - 1)) / cols);
     const rawCellH = Math.floor((areaH - gap * (rows - 1)) / rows);
 
     const cellW = Math.max(50, rawCellW);
     const cellH = Math.max(60, rawCellH);
-
-    const ui = this.a11y.uiScale || 1;
-    const ts = this.a11y.textScale || 1;
 
     let w = Math.floor(cellW * 0.92 * ui);
     let h = Math.floor(cellH * 0.92 * ui);
@@ -1107,7 +1293,9 @@ class MemoryScene extends Phaser.Scene {
       }
 
       card.txt.setPosition(cx, cy);
-      card.txt.setFontSize(Math.max(22, Math.floor(Math.min(w, h) * 0.42 * ts)));
+      card.txt.setFontSize(
+        Math.max(22, Math.floor(Math.min(w, h) * 0.42 * ts))
+      );
 
       if (card.focusOutline) {
         card.focusOutline.setPosition(cx, cy);
@@ -1132,7 +1320,10 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
     const rect = parentEl.getBoundingClientRect();
     return {
       width: Math.max(320, Math.floor(rect.width || window.innerWidth || 900)),
-      height: Math.max(480, Math.floor(rect.height || window.innerHeight || 650)),
+      height: Math.max(
+        480,
+        Math.floor(rect.height || window.innerHeight || 650)
+      ),
     };
   };
 
@@ -1142,7 +1333,11 @@ export function createMemoramaGame(parentId, onFinish, onExit) {
     type: Phaser.AUTO,
     parent: parentId,
     backgroundColor: "#0b1020",
-    scene: [new BootScene(), new MenuScene(onExit), new MemoryScene(onFinish, onExit)],
+    scene: [
+      new BootScene(),
+      new MenuScene(onExit),
+      new MemoryScene(onFinish, onExit),
+    ],
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.NO_CENTER,
