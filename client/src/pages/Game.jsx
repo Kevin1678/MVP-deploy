@@ -16,20 +16,36 @@ function clamp(n, min, max) {
 
 function mapStudentProfileToA11y(studentProfile) {
   const saved = loadA11yPrefs() || defaultA11yPrefs();
-  const fontScale = Number(studentProfile?.fontScale) || 100;
-  const visualCondition = studentProfile?.visualCondition || "NONE";
+
+  if (!studentProfile) {
+    return saved;
+  }
+
+  const visualCondition = studentProfile.visualCondition || "NONE";
   const isLowVision = visualCondition === "LOW_VISION";
 
   let colorMode = "normal";
   if (visualCondition === "PROTANOPIA") colorMode = "protanopia";
   if (visualCondition === "TRITANOPIA") colorMode = "tritanopia";
 
+  const fontScale = Number(studentProfile.fontScale) || 100;
+
   return {
     ...saved,
-    ttsEnabled: Boolean(studentProfile?.textToSpeechEnabled) || isLowVision,
-    highContrast: Boolean(studentProfile?.highContrast) || isLowVision,
+
+    // estos sí salen del perfil del alumno
+    highContrast: Boolean(studentProfile.highContrast) || isLowVision,
+    ttsEnabled: Boolean(studentProfile.textToSpeechEnabled) || isLowVision,
     colorMode,
     textScale: clamp(fontScale / 100, 1, 1.5),
+
+    // estos los conservas del usuario/localStorage
+    uiScale: saved.uiScale ?? 1,
+    panelOpen: saved.panelOpen ?? true,
+
+    // si ya agregaste themeMode en a11yPanel, lo preserva;
+    // si todavía no existe, no estorba.
+    themeMode: saved.themeMode || "dark",
   };
 }
 
@@ -79,6 +95,7 @@ export default function Game() {
         const res = await fetch("/api/results", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             game: game || current.fallbackGame,
             score,
@@ -124,7 +141,10 @@ export default function Game() {
       setLoadingA11y(true);
 
       try {
-        const res = await fetch("/api/auth/me");
+        const res = await fetch("/api/auth/me", {
+          credentials: "include",
+        });
+
         const me = res.ok ? await res.json() : null;
 
         if (me?.role === "STUDENT" && me?.studentProfile) {
@@ -139,12 +159,7 @@ export default function Game() {
       } finally {
         if (cancelled) return;
 
-        destroy = current.factory(
-          "phaser-root",
-          saveResult,
-          exitToCatalog
-        );
-
+        destroy = current.factory("phaser-root", saveResult, exitToCatalog);
         setLoadingA11y(false);
       }
     }
