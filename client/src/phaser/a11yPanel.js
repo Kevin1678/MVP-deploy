@@ -323,8 +323,8 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   root.add([shadow, bg, title, hint]);
 
   function commit() {
-    scene.a11y.uiScale = clamp(scene.a11y.uiScale ?? 1, 0.9, 1.3);
-    scene.a11y.textScale = clamp(scene.a11y.textScale ?? 1, 0.9, 1.3);
+scene.a11y.uiScale = clamp(scene.a11y.uiScale ?? 1, MIN_UI_SCALE, MAX_UI_SCALE);
+scene.a11y.textScale = clamp(scene.a11y.textScale ?? 1, MIN_TEXT_SCALE, MAX_TEXT_SCALE);
 
     saveA11yPrefs({ ...scene.a11y });
     applyA11yToScene(scene, scene.a11y);
