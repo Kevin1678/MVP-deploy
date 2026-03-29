@@ -19,6 +19,7 @@ export function defaultA11yPrefs() {
   return {
     ttsEnabled: false,
     highContrast: false,
+    themeMode: "dark", // dark | light
     colorMode: "normal", // normal | protanopia | tritanopia | grayscale
     uiScale: 1.0,
     textScale: 1.0,
