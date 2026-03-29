@@ -4,6 +4,7 @@ import {
   applyA11yToScene,
   speakIfEnabled,
   stopSpeech,
+  getA11yTheme,
   PANEL_GAP,
 } from "./a11yPanel";
 
@@ -25,12 +26,87 @@ function contentLeft(scene) {
   return 16 + panelW + (PANEL_GAP ?? 16);
 }
 
-function makeTopLeftButton(scene, label, onClick, depth = 10) {
-  let w = 160;
-  let h = 60;
+function getScales(scene) {
+  return {
+    ui: scene?.a11y?.uiScale || 1,
+    ts: scene?.a11y?.textScale || 1,
+  };
+}
+
+function fitFont(base, ts, min = 12) {
+  return Math.max(min, Math.round(base * ts));
+}
+
+function colorToCss(hex) {
+  return `#${hex.toString(16).padStart(6, "0")}`;
+}
+
+function getButtonPalette(scene, variant = "default") {
+  const theme = getA11yTheme(scene.a11y || {});
+  const hc = !!scene.a11y?.highContrast;
+
+  if (variant === "primary") {
+    if (hc) {
+      return {
+        fill: 0x000000,
+        strokeColor: 0x000000,
+        strokeAlpha: 1,
+        textColor: "#ffffff",
+      };
+    }
+    return {
+      fill: theme.primary,
+      strokeColor: theme.tileStroke,
+      strokeAlpha: 0.28,
+      textColor: "#ffffff",
+    };
+  }
+
+  if (variant === "danger") {
+    if (hc) {
+      return {
+        fill: 0x222222,
+        strokeColor: 0x000000,
+        strokeAlpha: 1,
+        textColor: "#ffffff",
+      };
+    }
+    return {
+      fill: 0xdc2626,
+      strokeColor: theme.tileStroke,
+      strokeAlpha: 0.28,
+      textColor: "#ffffff",
+    };
+  }
+
+  return {
+    fill: theme.buttonFill,
+    strokeColor: theme.tileStroke,
+    strokeAlpha: hc ? 1 : theme.buttonStrokeAlpha,
+    textColor: theme.buttonText,
+  };
+}
+
+function styleTextButton(textObj, scene, variant = "default", baseFont = 16) {
+  const palette = getButtonPalette(scene, variant);
+  const { ts } = getScales(scene);
+
+  textObj.setStyle({
+    color: palette.textColor,
+    backgroundColor: colorToCss(palette.fill),
+  });
+
+  textObj.setFontSize(fitFont(baseFont, ts));
+}
+
+function makeTopLeftButton(scene, label, onClick, depth = 10, opts = {}) {
+  let w = opts.width ?? 160;
+  let h = opts.height ?? 60;
   let x0 = 0;
   let y0 = 0;
   let enabled = true;
+  let variant = opts.variant ?? "default";
+  let baseFont = opts.baseFont ?? 28;
 
   const box = scene.add
     .rectangle(x0, y0, w, h, 0x111827, 1)
@@ -41,7 +117,7 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
   const text = scene.add
     .text(x0 + w / 2, y0 + h / 2, label, {
       fontFamily: "Arial",
-      fontSize: "28px",
+      fontSize: `${baseFont}px`,
       color: "#ffffff",
     })
     .setOrigin(0.5)
@@ -60,6 +136,16 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
     onClick?.();
   });
 
+  function applyCurrentTheme() {
+    const palette = getButtonPalette(scene, variant);
+    const { ts } = getScales(scene);
+
+    box.setFillStyle(palette.fill, 1);
+    box.setStrokeStyle(2, palette.strokeColor, palette.strokeAlpha);
+    text.setColor(palette.textColor);
+    text.setFontSize(fitFont(baseFont, ts));
+  }
+
   return {
     box,
     text,
@@ -68,6 +154,11 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
     setLabel(next) {
       label = next;
       text.setText(next);
+    },
+
+    setVariant(nextVariant) {
+      variant = nextVariant;
+      applyCurrentTheme();
     },
 
     setTL(nx, ny) {
@@ -99,11 +190,21 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
       text.setPosition(x0 + w / 2, y0 + h / 2);
     },
 
-    setTheme({ fill, strokeAlpha, textColor, fontSize }) {
+    setTheme({
+      fill,
+      strokeAlpha,
+      textColor,
+      fontSize,
+      strokeColor = 0xffffff,
+    }) {
       box.setFillStyle(fill, 1);
-      box.setStrokeStyle(2, 0xffffff, strokeAlpha);
+      box.setStrokeStyle(2, strokeColor, strokeAlpha);
       text.setColor(textColor);
       if (fontSize) text.setFontSize(fontSize);
+    },
+
+    applyTheme() {
+      applyCurrentTheme();
     },
 
     setVisible(v) {
@@ -138,12 +239,14 @@ function makeTopLeftButton(scene, label, onClick, depth = 10) {
 }
 
 function makeBall(scene, x, y, r, hc = false, index = 0) {
-  const fill = hc ? 0xffffff : 0x60a5fa;
-  const face = hc ? 0x000000 : 0x0b1020;
+  const theme = getA11yTheme(scene.a11y || {});
+  const fill = hc ? 0xffffff : theme.primary;
+  const face = hc ? 0x000000 : theme.sceneBg;
+  const stroke = hc ? 0x000000 : theme.tileStroke;
 
   const ball = scene.add
     .circle(0, 0, r, fill, 1)
-    .setStrokeStyle(Math.max(2, r * 0.1), 0xffffff, 1);
+    .setStrokeStyle(Math.max(2, r * 0.1), stroke, 1);
 
   const shine = scene.add.circle(
     -r * 0.28,
@@ -184,13 +287,15 @@ function makeBall(scene, x, y, r, hc = false, index = 0) {
   return { container, ball, shine, eyes, r };
 }
 
-function recolorBall(parts, r, hc = false) {
-  const fill = hc ? 0xffffff : 0x60a5fa;
-  const face = hc ? 0x000000 : 0x0b1020;
+function recolorBall(parts, scene, r, hc = false) {
+  const theme = getA11yTheme(scene.a11y || {});
+  const fill = hc ? 0xffffff : theme.primary;
+  const face = hc ? 0x000000 : theme.sceneBg;
+  const stroke = hc ? 0x000000 : theme.tileStroke;
 
   parts.ball.setRadius(r);
   parts.ball.setFillStyle(fill, 1);
-  parts.ball.setStrokeStyle(Math.max(2, r * 0.1), 0xffffff, 1);
+  parts.ball.setStrokeStyle(Math.max(2, r * 0.1), stroke, 1);
 
   parts.shine.setPosition(-r * 0.28, -r * 0.28);
   parts.shine.setRadius(r * 0.42);
@@ -229,47 +334,74 @@ class CountPickMenuScene extends Phaser.Scene {
   }
 
   create() {
-    this.bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020).setOrigin(0);
+    this.bg = this.add
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
+      .setOrigin(0);
 
-    this.title = this.add.text(0, 0, "Contar y elegir", {
-      fontFamily: "Arial",
-      fontSize: "50px",
-      color: "#ffffff",
-    }).setOrigin(0.5);
+    this.title = this.add
+      .text(0, 0, "Contar y elegir", {
+        fontFamily: "Arial",
+        fontSize: "50px",
+        color: "#ffffff",
+      })
+      .setOrigin(0.5);
 
-    this.subtitle = this.add.text(0, 0, "Elige dificultad", {
-      fontFamily: "Arial",
-      fontSize: "24px",
-      color: "#cbd5e1",
-    }).setOrigin(0.5);
+    this.subtitle = this.add
+      .text(0, 0, "Elige dificultad", {
+        fontFamily: "Arial",
+        fontSize: "24px",
+        color: "#cbd5e1",
+      })
+      .setOrigin(0.5);
 
-    this.exitBtn = this.add.text(0, 0, "Salir", {
-      fontFamily: "Arial",
-      fontSize: "16px",
-      color: "#ffffff",
-      backgroundColor: "#111827",
-      padding: { left: 10, right: 10, top: 8, bottom: 8 },
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    this.exitBtn = this.add
+      .text(0, 0, "Salir", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        backgroundColor: "#111827",
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
 
     this.exitBtn.on("pointerdown", () => {
       stopSpeech();
       this._onExit?.();
     });
 
-    this.btnEasy = makeTopLeftButton(this, "Fácil (5 rondas)", () => {
-      stopSpeech();
-      this.scene.start("CountPickGameScene", { roundsTotal: 5 });
-    });
+    this.btnEasy = makeTopLeftButton(
+      this,
+      "Fácil (5 rondas)",
+      () => {
+        stopSpeech();
+        this.scene.start("CountPickGameScene", { roundsTotal: 5 });
+      },
+      10,
+      { width: 420, height: 60, baseFont: 24 }
+    );
 
-    this.btnMed = makeTopLeftButton(this, "Medio (10 rondas)", () => {
-      stopSpeech();
-      this.scene.start("CountPickGameScene", { roundsTotal: 10 });
-    });
+    this.btnMed = makeTopLeftButton(
+      this,
+      "Medio (10 rondas)",
+      () => {
+        stopSpeech();
+        this.scene.start("CountPickGameScene", { roundsTotal: 10 });
+      },
+      10,
+      { width: 420, height: 60, baseFont: 24 }
+    );
 
-    this.btnHard = makeTopLeftButton(this, "Difícil (15 rondas)", () => {
-      stopSpeech();
-      this.scene.start("CountPickGameScene", { roundsTotal: 15 });
-    });
+    this.btnHard = makeTopLeftButton(
+      this,
+      "Difícil (15 rondas)",
+      () => {
+        stopSpeech();
+        this.scene.start("CountPickGameScene", { roundsTotal: 15 });
+      },
+      10,
+      { width: 420, height: 60, baseFont: 24 }
+    );
 
     this.a11yPanel = createA11yPanel(this, {
       anchor: "left",
@@ -301,17 +433,26 @@ class CountPickMenuScene extends Phaser.Scene {
   handleResize(gameSize) {
     const width = Math.max(
       320,
-      Math.floor(gameSize?.width ?? this.scale.gameSize?.width ?? this.scale.width ?? window.innerWidth)
+      Math.floor(
+        gameSize?.width ??
+          this.scale.gameSize?.width ??
+          this.scale.width ??
+          window.innerWidth
+      )
     );
     const height = Math.max(
       480,
-      Math.floor(gameSize?.height ?? this.scale.gameSize?.height ?? this.scale.height ?? window.innerHeight)
+      Math.floor(
+        gameSize?.height ??
+          this.scale.gameSize?.height ??
+          this.scale.height ??
+          window.innerHeight
+      )
     );
 
     this.cameras.resize(width, height);
     this.cameras.main.setViewport(0, 0, width, height);
     this.cameras.main.setScroll(0, 0);
-    this.cameras.main.setBackgroundColor(0x0b1020);
 
     if (this.bg) {
       this.bg.setPosition(0, 0);
@@ -325,48 +466,43 @@ class CountPickMenuScene extends Phaser.Scene {
   applyTheme() {
     applyA11yToScene(this, this.a11y);
 
-    const hc = !!this.a11y.highContrast;
-    const ui = this.a11y.uiScale || 1;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ui, ts } = getScales(this);
 
-    this.bg.setFillStyle(hc ? 0x000000 : 0x0b1020, 1);
+    this.cameras.main.setBackgroundColor(theme.sceneBg);
+    this.bg.setFillStyle(theme.sceneBg, 1);
 
-    this.title.setFontSize(Math.round(50 * ts));
-    this.subtitle.setFontSize(Math.round(24 * ts));
-    this.subtitle.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.title.setFontSize(fitFont(50, ts));
+    this.title.setColor(theme.text);
 
-    this.exitBtn.setStyle({
-      color: hc ? "#000000" : "#ffffff",
-      backgroundColor: hc ? "#ffffff" : "#111827",
-    });
-    this.exitBtn.setFontSize(Math.round(16 * ts));
+    this.subtitle.setFontSize(fitFont(24, ts));
+    this.subtitle.setColor(theme.textMuted);
 
-    const fill = hc ? 0xffffff : 0x111827;
-    const strokeAlpha = hc ? 1 : 0.14;
-    const textColor = hc ? "#000000" : "#ffffff";
-    const fontSize = Math.round(24 * ts);
+    styleTextButton(this.exitBtn, this, "default", 16);
+
     const bw = Math.round(420 * ui);
     const bh = Math.round(60 * ui);
 
     [this.btnEasy, this.btnMed, this.btnHard].forEach((b) => {
       b.setSize(bw, bh);
-      b.setTheme({ fill, strokeAlpha, textColor, fontSize });
+      b.applyTheme();
     });
   }
 
   layout() {
     const W = this.scale.width;
+    const { ui } = getScales(this);
     const left = contentLeft(this);
     const right = 16;
     const cx = left + (W - left - right) / 2;
 
     this.exitBtn.setPosition(W - 16, 16);
 
-    this.title.setPosition(cx, 90);
-    this.subtitle.setPosition(cx, 150);
+    this.title.setPosition(cx, 90 * ui);
+    this.subtitle.setPosition(cx, 150 * ui);
 
-    const gap = 92;
-    const startY = 260;
+    const gap = 92 * ui;
+    const startY = 260 * ui;
 
     this.btnEasy.setCenter(cx, startY + 0 * gap);
     this.btnMed.setCenter(cx, startY + 1 * gap);
@@ -409,41 +545,61 @@ class CountPickGameScene extends Phaser.Scene {
     this.roundTimer = null;
     this.gameEnded = false;
 
-    this.bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020).setOrigin(0);
+    this.bg = this.add
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
+      .setOrigin(0);
 
-    this.title = this.add.text(0, 0, "Contar y elegir", {
-      fontFamily: "Arial",
-      fontSize: "28px",
-      color: "#ffffff",
-    }).setOrigin(0, 0);
+    this.title = this.add
+      .text(0, 0, "Contar y elegir", {
+        fontFamily: "Arial",
+        fontSize: "28px",
+        color: "#ffffff",
+      })
+      .setOrigin(0, 0);
 
-    this.sub = this.add.text(0, 0, "INSTRUCCIONES: Cuenta las bolitas y elige el número correcto.", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#cbd5e1",
-    }).setOrigin(0, 0);
+    this.sub = this.add
+      .text(
+        0,
+        0,
+        "INSTRUCCIONES: Cuenta las bolitas y elige el número correcto.",
+        {
+          fontFamily: "Arial",
+          fontSize: "18px",
+          color: "#cbd5e1",
+          wordWrap: { width: 800 },
+        }
+      )
+      .setOrigin(0, 0);
 
-    this.stats = this.add.text(0, 0, "Puntos: 0 • Intentos: 0 • Ronda: 0/0", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#cbd5e1",
-    }).setOrigin(0, 0);
+    this.stats = this.add
+      .text(0, 0, "Puntos: 0 • Intentos: 0 • Ronda: 0/0", {
+        fontFamily: "Arial",
+        fontSize: "18px",
+        color: "#cbd5e1",
+      })
+      .setOrigin(0, 0);
 
-    this.menuBtn = this.add.text(0, 0, "Menú", {
-      fontFamily: "Arial",
-      fontSize: "16px",
-      color: "#ffffff",
-      backgroundColor: "#111827",
-      padding: { left: 10, right: 10, top: 8, bottom: 8 },
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    this.menuBtn = this.add
+      .text(0, 0, "Menú", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        backgroundColor: "#111827",
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
 
-    this.exitBtn = this.add.text(0, 0, "Salir", {
-      fontFamily: "Arial",
-      fontSize: "16px",
-      color: "#ffffff",
-      backgroundColor: "#111827",
-      padding: { left: 10, right: 10, top: 8, bottom: 8 },
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    this.exitBtn = this.add
+      .text(0, 0, "Salir", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        backgroundColor: "#111827",
+        padding: { left: 10, right: 10, top: 8, bottom: 8 },
+      })
+      .setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
 
     this.menuBtn.on("pointerdown", () => {
       if (this.gameEnded && this.endModal) return;
@@ -479,7 +635,10 @@ class CountPickGameScene extends Phaser.Scene {
     });
 
     stopSpeech();
-    speakIfEnabled(this, "INSTRUCCIONES: Cuenta las bolitas y elige el número correcto.");
+    speakIfEnabled(
+      this,
+      "INSTRUCCIONES: Cuenta las bolitas y elige el número correcto."
+    );
 
     this._resizeHandler = (gameSize) => this.handleResize(gameSize);
     this.scale.on("resize", this._resizeHandler);
@@ -511,17 +670,26 @@ class CountPickGameScene extends Phaser.Scene {
   handleResize(gameSize) {
     const width = Math.max(
       320,
-      Math.floor(gameSize?.width ?? this.scale.gameSize?.width ?? this.scale.width ?? window.innerWidth)
+      Math.floor(
+        gameSize?.width ??
+          this.scale.gameSize?.width ??
+          this.scale.width ??
+          window.innerWidth
+      )
     );
     const height = Math.max(
       480,
-      Math.floor(gameSize?.height ?? this.scale.gameSize?.height ?? this.scale.height ?? window.innerHeight)
+      Math.floor(
+        gameSize?.height ??
+          this.scale.gameSize?.height ??
+          this.scale.height ??
+          window.innerHeight
+      )
     );
 
     this.cameras.resize(width, height);
     this.cameras.main.setViewport(0, 0, width, height);
     this.cameras.main.setScroll(0, 0);
-    this.cameras.main.setBackgroundColor(0x0b1020);
 
     if (this.bg) {
       this.bg.setPosition(0, 0);
@@ -538,87 +706,89 @@ class CountPickGameScene extends Phaser.Scene {
   applyTheme() {
     applyA11yToScene(this, this.a11y);
 
-    const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ui, ts } = getScales(this);
 
-    this.bg.setFillStyle(hc ? 0x000000 : 0x0b1020, 1);
+    this.cameras.main.setBackgroundColor(theme.sceneBg);
+    this.bg.setFillStyle(theme.sceneBg, 1);
 
-    this.title.setFontSize(Math.round(28 * ts));
-    this.sub.setFontSize(Math.round(18 * ts));
-    this.stats.setFontSize(Math.round(18 * ts));
+    this.title.setFontSize(fitFont(28, ts));
+    this.title.setColor(theme.text);
 
-    this.sub.setColor(hc ? "#ffffff" : "#cbd5e1");
-    this.stats.setColor(hc ? "#ffffff" : "#cbd5e1");
+    this.sub.setFontSize(fitFont(18, ts));
+    this.sub.setColor(theme.textMuted);
 
-    this.menuBtn.setStyle({
-      color: hc ? "#000000" : "#ffffff",
-      backgroundColor: hc ? "#ffffff" : "#111827",
-    });
-    this.exitBtn.setStyle({
-      color: hc ? "#000000" : "#ffffff",
-      backgroundColor: hc ? "#ffffff" : "#111827",
-    });
+    this.stats.setFontSize(fitFont(18, ts));
+    this.stats.setColor(theme.textMuted);
 
-    this.menuBtn.setFontSize(Math.round(16 * ts));
-    this.exitBtn.setFontSize(Math.round(16 * ts));
+    styleTextButton(this.menuBtn, this, "default", 16);
+    styleTextButton(this.exitBtn, this, "default", 16);
 
-    const fill = hc ? 0xffffff : 0x111827;
-    const strokeAlpha = hc ? 1 : 0.14;
-    const textColor = hc ? "#000000" : "#ffffff";
-    const fontSize = Math.round(28 * ts);
-
+    const choiceFont = fitFont(28, ts);
     this.choiceButtons.forEach((b) => {
-      b.setTheme({ fill, strokeAlpha, textColor, fontSize });
+      const palette = getButtonPalette(this, "default");
+      b.setTheme({
+        fill: palette.fill,
+        strokeColor: palette.strokeColor,
+        strokeAlpha: palette.strokeAlpha,
+        textColor: palette.textColor,
+        fontSize: choiceFont,
+      });
     });
 
-    const ui = this.a11y.uiScale || 1;
     const r = Math.round(28 * ui);
-    this.ballParts.forEach((p) => recolorBall(p, r, hc));
+    this.ballParts.forEach((p) => recolorBall(p, this, r, !!this.a11y.highContrast));
 
     if (this.endModal) {
-      this.endModal.box.setFillStyle(hc ? 0xffffff : 0x0f172a, 1);
-      this.endModal.box.setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16);
+      this.endModal.box.setFillStyle(theme.surface, 1);
+      this.endModal.box.setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y.highContrast ? 1 : 0.18
+      );
 
       this.endModal.title.setStyle({
         fontFamily: "Arial",
-        fontSize: `${Math.round(38 * ts)}px`,
-        color: hc ? "#000000" : "#ffffff",
+        fontSize: `${fitFont(38, ts)}px`,
+        color: theme.text,
       });
 
       this.endModal.sub.setStyle({
         fontFamily: "Arial",
-        fontSize: `${Math.round(20 * ts)}px`,
-        color: hc ? "#000000" : "#cbd5e1",
+        fontSize: `${fitFont(20, ts)}px`,
+        color: theme.textMuted,
       });
 
-      const btnAgainFill = hc ? 0x000000 : 0x2563eb;
-      const btnExitFill = hc ? 0x222222 : 0xdc2626;
-      const btnTextColor = "#ffffff";
-      const modalBtnFont = Math.round(18 * ts);
+      const againPalette = getButtonPalette(this, "primary");
+      const exitPalette = getButtonPalette(this, "danger");
 
       this.endModal.btnAgain.setTheme({
-        fill: btnAgainFill,
-        strokeAlpha: 1,
-        textColor: btnTextColor,
-        fontSize: modalBtnFont,
+        fill: againPalette.fill,
+        strokeColor: againPalette.strokeColor,
+        strokeAlpha: againPalette.strokeAlpha,
+        textColor: againPalette.textColor,
+        fontSize: fitFont(18, ts),
       });
 
       this.endModal.btnExit.setTheme({
-        fill: btnExitFill,
-        strokeAlpha: 1,
-        textColor: btnTextColor,
-        fontSize: modalBtnFont,
+        fill: exitPalette.fill,
+        strokeColor: exitPalette.strokeColor,
+        strokeAlpha: exitPalette.strokeAlpha,
+        textColor: exitPalette.textColor,
+        fontSize: fitFont(18, ts),
       });
     }
   }
 
   layout() {
     const W = this.scale.width;
+    const { ui } = getScales(this);
     const left = contentLeft(this);
 
-    this.title.setPosition(left, 16);
-    this.sub.setPosition(left, 52);
-    this.stats.setPosition(left, 80);
+    this.title.setPosition(left, 16 * ui);
+    this.sub.setPosition(left, 52 * ui);
+    this.sub.setWordWrapWidth(Math.max(220, W - left - 180));
+    this.stats.setPosition(left, 92 * ui);
 
     this.menuBtn.setPosition(W - 120, 16);
     this.exitBtn.setPosition(W - 16, 16);
@@ -668,17 +838,22 @@ class CountPickGameScene extends Phaser.Scene {
     while (options.size < 3) options.add(randInt(1, 5));
     const choices = shuffle(Array.from(options));
 
-    const hc = !!this.a11y.highContrast;
-    const ui = this.a11y.uiScale || 1;
+    const { ui } = getScales(this);
     const r = Math.round(28 * ui);
 
     for (let i = 0; i < this.state.target; i++) {
-      const parts = makeBall(this, 0, 0, r, hc, i);
+      const parts = makeBall(this, 0, 0, r, !!this.a11y.highContrast, i);
       this.ballParts.push(parts);
     }
 
     choices.forEach((n) => {
-      const btn = makeTopLeftButton(this, String(n), () => this.pickAnswer(n));
+      const btn = makeTopLeftButton(
+        this,
+        String(n),
+        () => this.pickAnswer(n),
+        10,
+        { width: 150, height: 62, baseFont: 28 }
+      );
       this.choiceButtons.push(btn);
     });
 
@@ -686,6 +861,7 @@ class CountPickGameScene extends Phaser.Scene {
       `Puntos: ${this.state.score} • Intentos: ${this.state.attempts} • Ronda: ${this.state.round}/${this.roundsTotal}`
     );
 
+    this.applyTheme();
     this.layoutBalls();
     this.layoutChoices();
   }
@@ -693,10 +869,10 @@ class CountPickGameScene extends Phaser.Scene {
   layoutBalls() {
     const left = contentLeft(this);
     const W = this.scale.width;
-    const ui = this.a11y.uiScale || 1;
+    const { ui } = getScales(this);
     const r = Math.round(28 * ui);
 
-    const topY = 170;
+    const topY = 180 * ui;
     const cols = 3;
     const gapX = 28 * ui;
     const gapY = 36 * ui;
@@ -713,7 +889,7 @@ class CountPickGameScene extends Phaser.Scene {
       const x = startX + col * (cellW + gapX) + cellW / 2;
       const y = topY + row * (cellH + gapY) + cellH / 2;
 
-      recolorBall(p, r, !!this.a11y.highContrast);
+      recolorBall(p, this, r, !!this.a11y.highContrast);
       p.container.setPosition(x, y);
     });
   }
@@ -723,14 +899,16 @@ class CountPickGameScene extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    const ui = this.a11y.uiScale || 1;
+    const { ui } = getScales(this);
     const btnW = Math.round(150 * ui);
     const btnH = Math.round(62 * ui);
     const gap = Math.round(18 * ui);
 
-    const totalW = this.choiceButtons.length * btnW + (this.choiceButtons.length - 1) * gap;
+    const totalW =
+      this.choiceButtons.length * btnW +
+      (this.choiceButtons.length - 1) * gap;
     const startX = left + Math.max(0, (W - left - 16 - totalW) / 2);
-    const y = H - 120;
+    const y = H - 120 * ui;
 
     this.choiceButtons.forEach((b, i) => {
       b.setSize(btnW, btnH);
@@ -740,26 +918,34 @@ class CountPickGameScene extends Phaser.Scene {
 
   animateCorrect() {
     const W = this.scale.width;
-    const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ts, ui } = getScales(this);
 
-    const overlay = this.add.container(W / 2, 120).setDepth(3000);
+    const overlay = this.add.container(W / 2, 120 * ui).setDepth(3000);
 
     const panel = this.add
-      .rectangle(0, 0, Math.min(520, W * 0.82), 110, hc ? 0xffffff : 0x111827, 1)
-      .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.15);
+      .rectangle(0, 0, Math.min(520, W * 0.82), 110 * ui, theme.surface, 1)
+      .setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y.highContrast ? 1 : 0.18
+      );
 
-    const icon = this.add.text(-120, 0, "✔", {
-      fontFamily: "Arial",
-      fontSize: `${Math.round(70 * ts)}px`,
-      color: hc ? "#000000" : "#ffffff",
-    }).setOrigin(0.5);
+    const icon = this.add
+      .text(-120 * ui, 0, "✔", {
+        fontFamily: "Arial",
+        fontSize: `${fitFont(70, ts)}px`,
+        color: theme.text,
+      })
+      .setOrigin(0.5);
 
-    const text = this.add.text(40, 0, "¡Bien hecho!", {
-      fontFamily: "Arial",
-      fontSize: `${Math.round(36 * ts)}px`,
-      color: hc ? "#000000" : "#ffffff",
-    }).setOrigin(0.5);
+    const text = this.add
+      .text(40 * ui, 0, "¡Bien hecho!", {
+        fontFamily: "Arial",
+        fontSize: `${fitFont(36, ts)}px`,
+        color: theme.text,
+      })
+      .setOrigin(0.5);
 
     overlay.add([panel, icon, text]);
     overlay.setAlpha(0);
@@ -777,26 +963,34 @@ class CountPickGameScene extends Phaser.Scene {
 
   animateWrong() {
     const W = this.scale.width;
-    const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ts, ui } = getScales(this);
 
-    const overlay = this.add.container(W / 2, 120).setDepth(3000);
+    const overlay = this.add.container(W / 2, 120 * ui).setDepth(3000);
 
     const panel = this.add
-      .rectangle(0, 0, Math.min(560, W * 0.86), 120, hc ? 0xffffff : 0x111827, 1)
-      .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.15);
+      .rectangle(0, 0, Math.min(560, W * 0.86), 120 * ui, theme.surface, 1)
+      .setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y.highContrast ? 1 : 0.18
+      );
 
-    const icon = this.add.text(-140, 0, "✖", {
-      fontFamily: "Arial",
-      fontSize: `${Math.round(64 * ts)}px`,
-      color: hc ? "#000000" : "#ffffff",
-    }).setOrigin(0.5);
+    const icon = this.add
+      .text(-140 * ui, 0, "✖", {
+        fontFamily: "Arial",
+        fontSize: `${fitFont(64, ts)}px`,
+        color: theme.text,
+      })
+      .setOrigin(0.5);
 
-    const text = this.add.text(36, 0, "Intenta otra vez", {
-      fontFamily: "Arial",
-      fontSize: `${Math.round(32 * ts)}px`,
-      color: hc ? "#000000" : "#ffffff",
-    }).setOrigin(0.5);
+    const text = this.add
+      .text(36 * ui, 0, "Intenta otra vez", {
+        fontFamily: "Arial",
+        fontSize: `${fitFont(32, ts)}px`,
+        color: theme.text,
+      })
+      .setOrigin(0.5);
 
     overlay.add([panel, icon, text]);
     overlay.setAlpha(0);
@@ -897,11 +1091,11 @@ class CountPickGameScene extends Phaser.Scene {
 
     const W = this.scale.width;
     const H = this.scale.height;
-    const hc = !!this.a11y.highContrast;
-    const ts = this.a11y.textScale || 1;
+    const theme = getA11yTheme(this.a11y);
+    const { ts, ui } = getScales(this);
 
     const overlay = this.add
-      .rectangle(0, 0, W, H, 0x000000, 0.55)
+      .rectangle(0, 0, W, H, theme.overlay, 0.55)
       .setOrigin(0)
       .setDepth(4000)
       .setInteractive();
@@ -911,8 +1105,19 @@ class CountPickGameScene extends Phaser.Scene {
     });
 
     const box = this.add
-      .rectangle(W / 2, H / 2, Math.min(560, W * 0.88), 250, hc ? 0xffffff : 0x0f172a, 1)
-      .setStrokeStyle(2, hc ? 0x000000 : 0xffffff, hc ? 1 : 0.16)
+      .rectangle(
+        W / 2,
+        H / 2,
+        Math.min(560, W * 0.88),
+        250 * ui,
+        theme.surface,
+        1
+      )
+      .setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y.highContrast ? 1 : 0.18
+      )
       .setDepth(4001)
       .setInteractive();
 
@@ -921,10 +1126,10 @@ class CountPickGameScene extends Phaser.Scene {
     });
 
     const title = this.add
-      .text(W / 2, H / 2 - 70, "¡Terminaste!", {
+      .text(W / 2, H / 2 - 70 * ui, "¡Terminaste!", {
         fontFamily: "Arial",
-        fontSize: `${Math.round(38 * ts)}px`,
-        color: hc ? "#000000" : "#ffffff",
+        fontSize: `${fitFont(38, ts)}px`,
+        color: theme.text,
       })
       .setOrigin(0.5)
       .setDepth(4002);
@@ -932,12 +1137,12 @@ class CountPickGameScene extends Phaser.Scene {
     const sub = this.add
       .text(
         W / 2,
-        H / 2 - 18,
+        H / 2 - 18 * ui,
         `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
         {
           fontFamily: "Arial",
-          fontSize: `${Math.round(20 * ts)}px`,
-          color: hc ? "#000000" : "#cbd5e1",
+          fontSize: `${fitFont(20, ts)}px`,
+          color: theme.textMuted,
         }
       )
       .setOrigin(0.5)
@@ -947,7 +1152,8 @@ class CountPickGameScene extends Phaser.Scene {
       this,
       "Jugar otra vez",
       () => this.restartGame(),
-      4003
+      4003,
+      { width: 210, height: 52, baseFont: 18, variant: "primary" }
     );
 
     const btnExit = makeTopLeftButton(
@@ -958,11 +1164,9 @@ class CountPickGameScene extends Phaser.Scene {
         stopSpeech();
         this._onExit?.();
       },
-      4003
+      4003,
+      { width: 170, height: 52, baseFont: 18, variant: "danger" }
     );
-
-    btnAgain.setSize(210, 52);
-    btnExit.setSize(170, 52);
 
     this.endModal = {
       overlay,
@@ -992,14 +1196,18 @@ class CountPickGameScene extends Phaser.Scene {
 
     const W = this.scale.width;
     const H = this.scale.height;
+    const { ui } = getScales(this);
 
     this.endModal.overlay.setSize(W, H);
     this.endModal.box.setPosition(W / 2, H / 2);
-    this.endModal.title.setPosition(W / 2, H / 2 - 70);
-    this.endModal.sub.setPosition(W / 2, H / 2 - 18);
+    this.endModal.title.setPosition(W / 2, H / 2 - 70 * ui);
+    this.endModal.sub.setPosition(W / 2, H / 2 - 18 * ui);
 
-    this.endModal.btnAgain.setTL(W / 2 - 230, H / 2 + 46);
-    this.endModal.btnExit.setTL(W / 2 + 20, H / 2 + 46);
+    this.endModal.btnAgain.setSize(Math.round(210 * ui), Math.round(52 * ui));
+    this.endModal.btnExit.setSize(Math.round(170 * ui), Math.round(52 * ui));
+
+    this.endModal.btnAgain.setTL(W / 2 - 230 * ui, H / 2 + 46 * ui);
+    this.endModal.btnExit.setTL(W / 2 + 20 * ui, H / 2 + 46 * ui);
   }
 
   hideEndModal() {
@@ -1032,7 +1240,10 @@ export function createCountPickGame(parentId, onFinish, onExit) {
     const rect = parentEl.getBoundingClientRect();
     return {
       width: Math.max(320, Math.floor(rect.width || window.innerWidth || 900)),
-      height: Math.max(480, Math.floor(rect.height || window.innerHeight || 650)),
+      height: Math.max(
+        480,
+        Math.floor(rect.height || window.innerHeight || 650)
+      ),
     };
   };
 
@@ -1042,7 +1253,10 @@ export function createCountPickGame(parentId, onFinish, onExit) {
     type: Phaser.AUTO,
     parent: parentId,
     backgroundColor: "#0b1020",
-    scene: [new CountPickMenuScene(onExit), new CountPickGameScene(onFinish, onExit)],
+    scene: [
+      new CountPickMenuScene(onExit),
+      new CountPickGameScene(onFinish, onExit),
+    ],
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.NO_CENTER,
