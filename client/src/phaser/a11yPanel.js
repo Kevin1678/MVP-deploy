@@ -387,60 +387,48 @@ scene.a11y.textScale = clamp(scene.a11y.textScale ?? 1, MIN_TEXT_SCALE, MAX_TEXT
     refresh();
   });
 
-  const btnProtan = makeBtn(scene, pad + 138, 244, 124, 42, "Protan.", () => {
-    scene.a11y.colorMode = "protanopia";
-    commit();
-    refresh();
-  });
-
-  const btnTritan = makeBtn(scene, pad, 294, 124, 42, "Tritan.", () => {
-    scene.a11y.colorMode = "tritanopia";
-    commit();
-    refresh();
-  });
-
   const btnGray = makeBtn(scene, pad + 138, 294, 124, 42, "Grises", () => {
     scene.a11y.colorMode = "grayscale";
     commit();
     refresh();
   });
 
-  const labelSize = scene.add.text(pad, 350, "Tamaño", {
-    fontFamily: "Arial",
-    fontSize: "13px",
-    color: "#cbd5e1",
-  });
+const labelSize = scene.add.text(pad, 220, "Tamaño", {
+  fontFamily: "Arial",
+  fontSize: "13px",
+  color: "#cbd5e1",
+});
 
-  const btnAminus = makeBtn(scene, pad, 374, 124, 42, "T-", () => {
-    scene.a11y.textScale = clamp(scene.a11y.textScale - 0.1, 0.9, 1.3);
-    commit();
-    refresh();
-  });
+const btnAminus = makeBtn(scene, pad, 244, 124, 42, "T-", () => {
+  scene.a11y.textScale = clamp(scene.a11y.textScale - 0.1, MIN_TEXT_SCALE, MAX_TEXT_SCALE);
+  commit();
+  refresh();
+});
 
-  const btnAplus = makeBtn(scene, pad + 138, 374, 124, 42, "T+", () => {
-    scene.a11y.textScale = clamp(scene.a11y.textScale + 0.1, 0.9, 1.3);
-    commit();
-    refresh();
-  });
+const btnAplus = makeBtn(scene, pad + 138, 244, 124, 42, "T+", () => {
+  scene.a11y.textScale = clamp(scene.a11y.textScale + 0.1, MIN_TEXT_SCALE, MAX_TEXT_SCALE);
+  commit();
+  refresh();
+});
 
-  const btnUIminus = makeBtn(scene, pad, 426, 124, 42, "UI-", () => {
-    scene.a11y.uiScale = clamp(scene.a11y.uiScale - 0.1, 0.9, 1.3);
-    commit();
-    refresh();
-  });
+const btnUIminus = makeBtn(scene, pad, 294, 124, 42, "UI-", () => {
+  scene.a11y.uiScale = clamp(scene.a11y.uiScale - 0.1, MIN_UI_SCALE, MAX_UI_SCALE);
+  commit();
+  refresh();
+});
 
-  const btnUIplus = makeBtn(scene, pad + 138, 426, 124, 42, "UI+", () => {
-    scene.a11y.uiScale = clamp(scene.a11y.uiScale + 0.1, 0.9, 1.3);
-    commit();
-    refresh();
-  });
+const btnUIplus = makeBtn(scene, pad + 138, 294, 124, 42, "UI+", () => {
+  scene.a11y.uiScale = clamp(scene.a11y.uiScale + 0.1, MIN_UI_SCALE, MAX_UI_SCALE);
+  commit();
+  refresh();
+});
 
-  const btnReset = makeBtn(scene, pad, 486, PANEL_OPEN_W - 2 * pad, 46, "Restablecer", () => {
-    scene.a11y = { ...defaultA11yPrefs() };
-    stopSpeech();
-    commit();
-    refresh();
-  });
+const btnReset = makeBtn(scene, pad, 354, PANEL_OPEN_W - 2 * pad, 46, "Restablecer", () => {
+  scene.a11y = { ...defaultA11yPrefs() };
+  stopSpeech();
+  commit();
+  refresh();
+});
 
   root.add([
     toggle.box, toggle.text, toggle.hit,
