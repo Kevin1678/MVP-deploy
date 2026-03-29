@@ -489,39 +489,29 @@ const btnReset = makeBtn(scene, pad, 354, PANEL_OPEN_W - 2 * pad, 46, "Restablec
     const strokeA = hc ? 1 : 0.16;
 
     [
-      toggle,
-      btnTTS,
-      btnHC,
-      btnNormal,
-      btnProtan,
-      btnTritan,
-      btnGray,
-      btnAminus,
-      btnAplus,
-      btnUIminus,
-      btnUIplus,
-      btnReset,
-    ].forEach((b) => b.setStyle(btnFill, btnText, strokeA));
+  toggle,
+  btnTTS,
+  btnHC,
+  btnAminus,
+  btnAplus,
+  btnUIminus,
+  btnUIplus,
+  btnReset,
+].forEach((b) => b.setStyle(btnFill, btnText, strokeA));
 
-    title.setVisible(open);
-    hint.setVisible(open);
-    labelFilter.setVisible(open);
-    labelSize.setVisible(open);
+title.setVisible(open);
+hint.setVisible(open);
+labelSize.setVisible(open);
 
-    [
-      btnTTS,
-      btnHC,
-      btnNormal,
-      btnProtan,
-      btnTritan,
-      btnGray,
-      btnAminus,
-      btnAplus,
-      btnUIminus,
-      btnUIplus,
-      btnReset,
-    ].forEach((b) => b.setVisible(open));
-
+[
+  btnTTS,
+  btnHC,
+  btnAminus,
+  btnAplus,
+  btnUIminus,
+  btnUIplus,
+  btnReset,
+].forEach((b) => b.setVisible(open));
     toggle.setPos(panelW - 112, 14);
 
     place();
