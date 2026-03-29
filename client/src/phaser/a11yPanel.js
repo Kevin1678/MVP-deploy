@@ -122,6 +122,82 @@ function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
+export function getA11yTheme(a11y = {}) {
+  const hc = !!a11y.highContrast;
+  const isLight = a11y.themeMode === "light";
+
+  if (hc) {
+    return {
+      panelBg: 0xffffff,
+      panelStroke: 0x000000,
+      panelShadow: false,
+      sceneBg: 0xffffff,
+      surface: 0xffffff,
+      surfaceAlt: 0xf3f4f6,
+      card: 0xffffff,
+      primary: 0x000000,
+      accent: 0x000000,
+      text: "#000000",
+      textMuted: "#000000",
+      buttonFill: 0xffffff,
+      buttonText: "#000000",
+      buttonStrokeAlpha: 1,
+      tileStroke: 0x000000,
+      overlay: 0x000000,
+    };
+  }
+
+  if (isLight) {
+    return {
+      panelBg: 0xf3f6fb,
+      panelStroke: 0x1f2937,
+      panelShadow: true,
+      sceneBg: 0xeaf1ff,
+      surface: 0xffffff,
+      surfaceAlt: 0xe5e7eb,
+      card: 0xffffff,
+      primary: 0x2563eb,
+      accent: 0x1d4ed8,
+      text: "#111827",
+      textMuted: "#374151",
+      buttonFill: 0xe5e7eb,
+      buttonText: "#111827",
+      buttonStrokeAlpha: 0.22,
+      tileStroke: 0x1f2937,
+      overlay: 0x000000,
+    };
+  }
+
+  return {
+    panelBg: 0x0a1222,
+    panelStroke: 0xffffff,
+    panelShadow: true,
+    sceneBg: 0x0b1020,
+    surface: 0x111827,
+    surfaceAlt: 0xf8fafc,
+    card: 0x111827,
+    primary: 0x60a5fa,
+    accent: 0x2563eb,
+    text: "#ffffff",
+    textMuted: "#cbd5e1",
+    buttonFill: 0x111827,
+    buttonText: "#ffffff",
+    buttonStrokeAlpha: 0.16,
+    tileStroke: 0xffffff,
+    overlay: 0x000000,
+  };
+}
+
+export function applyThemeToScene(scene) {
+  if (!scene) return;
+  const theme = getA11yTheme(scene.a11y || {});
+  scene.__a11yTheme = theme;
+
+  if (typeof scene.refreshA11yTheme === "function") {
+    scene.refreshA11yTheme(theme);
+  }
+}
+
 // Matrices 4x5 para ColorMatrix
 const CVD = {
   protanopia: [
@@ -253,7 +329,6 @@ function makeBtn(scene, x, y, w, h, label, onClick) {
 
   const hit = scene.add.zone(x, y, w, h).setOrigin(0, 0);
   hit.setInteractive({ useHandCursor: true });
-
   hit.on("pointerdown", onClick);
 
   const setLabel = (t) => text.setText(t);
@@ -316,7 +391,6 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
 
   const pad = 14;
   const headerH = 64;
-
   const root = scene.add.container(0, 0).setDepth(9999);
 
   const shadow = scene.add
@@ -357,6 +431,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
 
     saveA11yPrefs({ ...scene.a11y });
     applyA11yToScene(scene, scene.a11y);
+    applyThemeToScene(scene);
 
     if (typeof onChange === "function") onChange(scene.a11y);
   }
@@ -488,37 +563,28 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     toggle.box,
     toggle.text,
     toggle.hit,
-
     btnTTS.box,
     btnTTS.text,
     btnTTS.hit,
-
     btnHC.box,
     btnHC.text,
     btnHC.hit,
-
     btnTheme.box,
     btnTheme.text,
     btnTheme.hit,
-
     labelSize,
-
     btnAminus.box,
     btnAminus.text,
     btnAminus.hit,
-
     btnAplus.box,
     btnAplus.text,
     btnAplus.hit,
-
     btnUIminus.box,
     btnUIminus.text,
     btnUIminus.hit,
-
     btnUIplus.box,
     btnUIplus.text,
     btnUIplus.hit,
-
     btnReset.box,
     btnReset.text,
     btnReset.hit,
@@ -546,58 +612,23 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
       scene.a11y.themeMode === "light" ? "Modo: Claro" : "Modo: Oscuro"
     );
 
-    const hc = !!scene.a11y.highContrast;
-    const isLight = scene.a11y.themeMode === "light";
-
+    const theme = getA11yTheme(scene.a11y);
     const panelW = getWidth();
     const panelH = open ? scene.scale.height - 32 : headerH;
 
     bg.setSize(panelW, panelH);
     shadow.setSize(panelW, panelH);
+    bg.setFillStyle(theme.panelBg, scene.a11y.highContrast ? 1 : 0.96);
+    bg.setStrokeStyle(
+      2,
+      theme.panelStroke,
+      scene.a11y.highContrast ? 1 : theme.buttonStrokeAlpha
+    );
+    shadow.setVisible(theme.panelShadow);
 
-    let panelFill = 0x0a1222;
-    let panelAlpha = 0.92;
-    let panelStroke = 0xffffff;
-    let panelStrokeAlpha = 0.14;
-    let titleColor = "#ffffff";
-    let muted = "#cbd5e1";
-    let btnFill = 0x111827;
-    let btnText = "#ffffff";
-    let strokeA = 0.16;
-    let showShadow = true;
-
-    if (isLight) {
-      panelFill = 0xf3f6fb;
-      panelAlpha = 0.98;
-      panelStroke = 0x1f2937;
-      panelStrokeAlpha = 0.22;
-      titleColor = "#111827";
-      muted = "#374151";
-      btnFill = 0xe5e7eb;
-      btnText = "#111827";
-      strokeA = 0.22;
-    }
-
-    if (hc) {
-      panelFill = 0xffffff;
-      panelAlpha = 1;
-      panelStroke = 0x000000;
-      panelStrokeAlpha = 1;
-      titleColor = "#000000";
-      muted = "#000000";
-      btnFill = 0xffffff;
-      btnText = "#000000";
-      strokeA = 1;
-      showShadow = false;
-    }
-
-    bg.setFillStyle(panelFill, panelAlpha);
-    bg.setStrokeStyle(2, panelStroke, panelStrokeAlpha);
-    shadow.setVisible(showShadow);
-
-    title.setColor(titleColor);
-    hint.setColor(muted);
-    labelSize.setColor(muted);
+    title.setColor(theme.text);
+    hint.setColor(theme.textMuted);
+    labelSize.setColor(theme.textMuted);
 
     [
       toggle,
@@ -609,7 +640,9 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
       btnUIminus,
       btnUIplus,
       btnReset,
-    ].forEach((b) => b.setStyle(btnFill, btnText, strokeA));
+    ].forEach((b) =>
+      b.setStyle(theme.buttonFill, theme.buttonText, theme.buttonStrokeAlpha)
+    );
 
     title.setVisible(open);
     hint.setVisible(open);
