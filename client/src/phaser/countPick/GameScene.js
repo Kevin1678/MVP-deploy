@@ -6,7 +6,7 @@ import {
   stopSpeech,
   getA11yTheme,
 } from "../a11yPanel";
-import { randInt, shuffle, contentLeft, getScales, fitFont, styleTextButton } from "../shared/common";
+import { randInt, shuffle, contentLeft, getScales, fitFont, styleTextButton, getButtonPalette } from "../shared/common";
 import { makeTopLeftButton, makeBall, recolorBall } from "./ui";
 
 export class CountPickGameScene extends Phaser.Scene {
