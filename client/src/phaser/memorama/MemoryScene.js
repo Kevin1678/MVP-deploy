@@ -722,23 +722,52 @@ export class MemoryScene extends Phaser.Scene {
     const H = this.scale.height;
     const { ui } = getScales(this);
 
+    const gap = Math.round(40 * ui);
+    const padX = Math.round(34 * ui);
+    const buttonRowW = this.endModal.btnAgain.bw + gap + this.endModal.btnExit.bw;
+    const maxBoxW = Math.max(360, Math.round(W * 0.92));
+    const desiredBoxW = Math.max(
+      Math.round(560 * ui),
+      Math.ceil(this.endModal.t1.width) + padX * 2,
+      Math.ceil(this.endModal.t2.width) + padX * 2,
+      buttonRowW + padX * 2
+    );
+    const stackButtons = desiredBoxW > maxBoxW;
+    const boxW = stackButtons ? maxBoxW : Math.min(maxBoxW, desiredBoxW);
+    const boxH = Math.round((stackButtons ? 340 : 260) * ui);
+
     this.endModal.overlay.setSize(W, H);
+    this.endModal.box.setSize(boxW, boxH);
     this.endModal.box.setPosition(W / 2, H / 2);
     this.endModal.t1.setPosition(W / 2, H / 2 - 80 * ui);
     this.endModal.t2.setPosition(W / 2, H / 2 - 25 * ui);
+    this.endModal.t2.setWordWrapWidth(Math.max(220, boxW - padX * 2));
 
-    const placeBtn = (btn, cx, cy) => {
-      btn.btnBg.setPosition(cx - btn.bw / 2, cy - btn.bh / 2);
-      btn.btnTx.setPosition(cx, cy);
-      btn.hit.setPosition(cx - btn.bw / 2, cy - btn.bh / 2);
+    const placeBtn = (btn, left, top) => {
+      btn.btnBg.setPosition(left, top);
+      btn.btnTx.setPosition(left + btn.bw / 2, top + btn.bh / 2);
+      btn.hit.setPosition(left, top);
       btn.hit.setSize(btn.bw, btn.bh);
       if (btn.hit.input?.hitArea?.setTo) {
         btn.hit.input.hitArea.setTo(0, 0, btn.bw, btn.bh);
       }
     };
 
-    placeBtn(this.endModal.btnAgain, W / 2 - 130 * ui, H / 2 + 70 * ui);
-    placeBtn(this.endModal.btnExit, W / 2 + 130 * ui, H / 2 + 70 * ui);
+    if (stackButtons) {
+      const btnW = Math.max(190, Math.min(boxW - padX * 2, Math.round(260 * ui)));
+      this.endModal.btnAgain.bw = btnW;
+      this.endModal.btnExit.bw = btnW;
+      const firstY = H / 2 + 50 * ui;
+      const secondY = firstY + 70 * ui;
+      placeBtn(this.endModal.btnAgain, W / 2 - btnW / 2, firstY - this.endModal.btnAgain.bh / 2);
+      placeBtn(this.endModal.btnExit, W / 2 - btnW / 2, secondY - this.endModal.btnExit.bh / 2);
+      return;
+    }
+
+    const startX = W / 2 - buttonRowW / 2;
+    const buttonsTop = H / 2 + 70 * ui - this.endModal.btnAgain.bh / 2;
+    placeBtn(this.endModal.btnAgain, startX, buttonsTop);
+    placeBtn(this.endModal.btnExit, startX + this.endModal.btnAgain.bw + gap, H / 2 + 70 * ui - this.endModal.btnExit.bh / 2);
   }
 
   hideEndModal() {
