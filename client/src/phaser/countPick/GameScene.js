@@ -696,16 +696,53 @@ export class CountPickGameScene extends Phaser.Scene {
     const H = this.scale.height;
     const { ui } = getScales(this);
 
+    const gap = Math.round(40 * ui);
+    const padX = Math.round(34 * ui);
+    const againW = Math.round(210 * ui);
+    const exitW = Math.round(170 * ui);
+    const btnH = Math.round(52 * ui);
+
     this.endModal.overlay.setSize(W, H);
+    this.endModal.btnAgain.setSize(againW, btnH);
+    this.endModal.btnExit.setSize(exitW, btnH);
+
+    const buttonRowW = againW + gap + exitW;
+    const maxBoxW = Math.max(340, Math.round(W * 0.92));
+    const desiredBoxW = Math.max(
+      Math.round(560 * ui),
+      Math.ceil(this.endModal.title.width) + padX * 2,
+      Math.ceil(this.endModal.sub.width) + padX * 2,
+      buttonRowW + padX * 2
+    );
+
+    const stackButtons = desiredBoxW > maxBoxW;
+    const boxW = stackButtons ? maxBoxW : Math.min(maxBoxW, desiredBoxW);
+    const boxH = Math.round((stackButtons ? 320 : 250) * ui);
+
+    this.endModal.box.setSize(boxW, boxH);
     this.endModal.box.setPosition(W / 2, H / 2);
+
     this.endModal.title.setPosition(W / 2, H / 2 - 70 * ui);
     this.endModal.sub.setPosition(W / 2, H / 2 - 18 * ui);
+    this.endModal.sub.setWordWrapWidth(Math.max(180, boxW - padX * 2));
 
-    this.endModal.btnAgain.setSize(Math.round(210 * ui), Math.round(52 * ui));
-    this.endModal.btnExit.setSize(Math.round(170 * ui), Math.round(52 * ui));
+    if (stackButtons) {
+      const stackedW = Math.max(180, Math.min(boxW - padX * 2, Math.round(280 * ui)));
+      const firstY = H / 2 + 36 * ui;
+      const secondY = firstY + 68 * ui;
 
-    this.endModal.btnAgain.setTL(W / 2 - 230 * ui, H / 2 + 46 * ui);
-    this.endModal.btnExit.setTL(W / 2 + 20 * ui, H / 2 + 46 * ui);
+      this.endModal.btnAgain.setSize(stackedW, btnH);
+      this.endModal.btnExit.setSize(stackedW, btnH);
+      this.endModal.btnAgain.setTL(W / 2 - stackedW / 2, firstY - btnH / 2);
+      this.endModal.btnExit.setTL(W / 2 - stackedW / 2, secondY - btnH / 2);
+      return;
+    }
+
+    const startX = W / 2 - buttonRowW / 2;
+    const buttonsY = H / 2 + 46 * ui;
+
+    this.endModal.btnAgain.setTL(startX, buttonsY - btnH / 2);
+    this.endModal.btnExit.setTL(startX + againW + gap, buttonsY - btnH / 2);
   }
 
   hideEndModal() {
