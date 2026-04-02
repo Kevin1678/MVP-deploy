@@ -6,7 +6,7 @@ import {
   stopSpeech,
   getA11yTheme,
 } from "../a11yPanel";
-import { shuffle, contentLeft, getScales, fitFont, styleTextButton } from "../shared/common";
+import { shuffle, contentLeft, getScales, fitFont, styleTextButton, getButtonPalette } from "../shared/common";
 import { SYMBOLS } from "./constants";
 import { makeButton } from "./ui";
 
