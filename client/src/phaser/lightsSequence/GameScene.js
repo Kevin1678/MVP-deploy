@@ -13,6 +13,7 @@ import {
   layoutEndModal as layoutSharedEndModal,
   destroyEndModal,
 } from "../shared/ui/endModal";
+import { createPanel } from "../shared/ui/panel";
 import { makeTopLeftButton, makeGridTile } from "./ui";
 
 export class LightsGameScene extends Phaser.Scene {
@@ -769,13 +770,15 @@ export class LightsGameScene extends Phaser.Scene {
 
     const overlay = this.add.container(W / 2, 120 * ui).setDepth(3000);
 
-    const panel = this.add
-      .rectangle(0, 0, Math.min(560, W * 0.9), 130 * ui, theme.surface, 1)
-      .setStrokeStyle(
-        2,
-        theme.tileStroke,
-        this.a11y.highContrast ? 1 : 0.18
-      );
+    const panel = createPanel(
+      this,
+      {
+        width: Math.min(560, W * 0.9),
+        height: 130 * ui,
+        strokeAlpha: this.a11y.highContrast ? 1 : 0.18,
+        lineWidth: 2,
+      }
+    ).rect;
 
     const icon = this.add
       .text(-140 * ui, 0, ok ? "✔" : "✖", {
