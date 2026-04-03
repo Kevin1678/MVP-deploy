@@ -1,6 +1,7 @@
 import { getA11yTheme } from "../../a11yPanel";
 import { fitFont, getScales } from "../common";
 import { createTextButton } from "./button";
+import { createPanel } from "./panel";
 
 function normalizeBodyText(config) {
   if (typeof config.bodyText === "string") return config.bodyText;
@@ -38,10 +39,18 @@ export function createEndModal(scene, config) {
     event?.stopPropagation?.();
   });
 
-  const box = scene.add
-    .rectangle(W / 2, H / 2, 100, 100, theme.surface, 1)
-    .setDepth(depth + 1)
-    .setInteractive();
+  const box = createPanel(
+    scene,
+    {
+      width: 100,
+      height: 100,
+      strokeAlpha: scene.a11y?.highContrast ? 1 : 0.18,
+      lineWidth: 2,
+    },
+    depth + 1
+  );
+  box.setCenter(W / 2, H / 2);
+  box.setInteractive();
 
   box.on("pointerdown", (pointer, localX, localY, event) => {
     event?.stopPropagation?.();
@@ -113,12 +122,13 @@ export function applyEndModalTheme(scene, modal) {
   const cfg = modal.config;
 
   modal.overlay.setFillStyle(theme.overlay, cfg.overlayAlpha ?? 0.55);
-  modal.box.setFillStyle(theme.surface, 1);
-  modal.box.setStrokeStyle(
-    2,
-    theme.tileStroke,
-    scene.a11y?.highContrast ? 1 : 0.18
-  );
+  modal.box.applyTheme({
+    fill: theme.surface,
+    fillAlpha: 1,
+    strokeColor: theme.tileStroke,
+    strokeAlpha: scene.a11y?.highContrast ? 1 : 0.18,
+    lineWidth: 2,
+  });
 
   modal.title.setStyle({
     fontFamily: "Arial",
@@ -209,7 +219,7 @@ export function layoutEndModal(scene, modal) {
   const buttonsTop = bodyY + bodyH / 2 + gapY;
 
   modal.box.setSize(boxW, boxH);
-  modal.box.setPosition(W / 2, H / 2);
+  modal.box.setCenter(W / 2, H / 2);
   modal.title.setPosition(W / 2, titleY);
   modal.body.setPosition(W / 2, bodyY);
 
