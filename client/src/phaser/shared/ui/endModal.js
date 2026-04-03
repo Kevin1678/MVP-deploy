@@ -1,5 +1,6 @@
 import { getA11yTheme } from "../../a11yPanel";
-import { fitFont, getButtonPalette, getScales } from "../common";
+import { fitFont, getScales } from "../common";
+import { createTextButton } from "./button";
 
 function normalizeBodyText(config) {
   if (typeof config.bodyText === "string") return config.bodyText;
@@ -8,88 +9,16 @@ function normalizeBodyText(config) {
 }
 
 function createModalButton(scene, opts, depth) {
-  let x0 = 0;
-  let y0 = 0;
-  let w = opts.width ?? 210;
-  let h = opts.height ?? 52;
-
-  const bg = scene.add
-    .rectangle(x0, y0, w, h, 0x111827, 1)
-    .setOrigin(0, 0)
-    .setDepth(depth)
-    .setStrokeStyle(2, 0xffffff, 0.14);
-
-  const text = scene.add
-    .text(x0 + w / 2, y0 + h / 2, opts.label ?? "Botón", {
-      fontFamily: "Arial",
-      fontSize: `${opts.baseFont ?? 18}px`,
-      color: "#ffffff",
-      align: "center",
-      wordWrap: { width: Math.max(100, w - 20) },
-    })
-    .setOrigin(0.5)
-    .setDepth(depth + 1);
-
-  const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0).setDepth(depth + 2);
-  hit.setInteractive({ useHandCursor: true });
-  hit.on("pointerdown", () => {
-    opts.onClick?.();
-  });
-
-  const refreshText = () => {
-    text.setPosition(x0 + w / 2, y0 + h / 2);
-    text.setWordWrapWidth(Math.max(100, w - 20));
-  };
-
-  return {
-    bg,
-    text,
-    hit,
+  return createTextButton(scene, opts.label ?? "Botón", opts.onClick, depth, {
+    width: opts.width ?? 210,
+    height: opts.height ?? 52,
     variant: opts.variant ?? "default",
     baseFont: opts.baseFont ?? 18,
-    widthHint: opts.width ?? 210,
-    heightHint: opts.height ?? 52,
-
-    setSize(nextW, nextH) {
-      w = nextW;
-      h = nextH;
-      bg.setSize(w, h);
-      hit.setSize(w, h);
-      if (hit.input?.hitArea?.setTo) {
-        hit.input.hitArea.setTo(0, 0, w, h);
-      }
-      refreshText();
-    },
-
-    setTL(nextX, nextY) {
-      x0 = nextX;
-      y0 = nextY;
-      bg.setPosition(x0, y0);
-      hit.setPosition(x0, y0);
-      refreshText();
-    },
-
-    applyTheme(sceneRef) {
-      const palette = getButtonPalette(sceneRef, this.variant);
-      const { ts } = getScales(sceneRef);
-
-      bg.setFillStyle(palette.fill, 1);
-      bg.setStrokeStyle(2, palette.strokeColor, palette.strokeAlpha);
-      text.setStyle({
-        fontFamily: "Arial",
-        fontSize: `${fitFont(this.baseFont, ts)}px`,
-        color: palette.textColor,
-        align: "center",
-      });
-      text.setWordWrapWidth(Math.max(100, w - 20));
-    },
-
-    destroy() {
-      bg.destroy();
-      text.destroy();
-      hit.destroy();
-    },
-  };
+    fontFamily: opts.fontFamily ?? "Arial",
+    wrapMin: 100,
+    textPadX: 20,
+    hoverSpeak: false,
+  });
 }
 
 export function createEndModal(scene, config) {
@@ -206,8 +135,8 @@ export function applyEndModalTheme(scene, modal) {
     lineSpacing: cfg.bodyLineSpacing ?? 0,
   });
 
-  modal.primaryButton.applyTheme(scene);
-  modal.secondaryButton.applyTheme(scene);
+  modal.primaryButton.applyTheme();
+  modal.secondaryButton.applyTheme();
 }
 
 export function layoutEndModal(scene, modal) {
@@ -254,7 +183,10 @@ export function layoutEndModal(scene, modal) {
   if (stackButtons) {
     primaryW = Math.max(
       180,
-      Math.min(boxW - padX * 2, Math.round(Math.max(modal.primaryButton.widthHint, modal.secondaryButton.widthHint) * ui))
+      Math.min(
+        boxW - padX * 2,
+        Math.round(Math.max(modal.primaryButton.widthHint, modal.secondaryButton.widthHint) * ui)
+      )
     );
     secondaryW = primaryW;
     buttonsBlockH = btnH * 2 + gapY;
