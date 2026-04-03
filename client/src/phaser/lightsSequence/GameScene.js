@@ -7,6 +7,12 @@ import {
   getA11yTheme,
 } from "../a11yPanel";
 import { clamp, randInt, contentLeft, getScales, fitFont, styleTextButton, getButtonPalette } from "../shared/common";
+import {
+  createEndModal,
+  applyEndModalTheme,
+  layoutEndModal as layoutSharedEndModal,
+  destroyEndModal,
+} from "../shared/ui/endModal";
 import { makeTopLeftButton, makeGridTile } from "./ui";
 
 export class LightsGameScene extends Phaser.Scene {
@@ -276,43 +282,7 @@ export class LightsGameScene extends Phaser.Scene {
     });
 
     if (this.endModal) {
-      this.endModal.box.setFillStyle(theme.surface, 1);
-      this.endModal.box.setStrokeStyle(
-        2,
-        theme.tileStroke,
-        hc ? 1 : 0.18
-      );
-
-      this.endModal.title.setStyle({
-        fontFamily: "Arial",
-        fontSize: `${fitFont(38, ts)}px`,
-        color: theme.text,
-      });
-
-      this.endModal.sub.setStyle({
-        fontFamily: "Arial",
-        fontSize: `${fitFont(20, ts)}px`,
-        color: theme.textMuted,
-      });
-
-      const againPalette = getButtonPalette(this, "primary");
-      const exitPalette = getButtonPalette(this, "danger");
-
-      this.endModal.btnAgain.setTheme({
-        fill: againPalette.fill,
-        strokeColor: againPalette.strokeColor,
-        strokeAlpha: againPalette.strokeAlpha,
-        textColor: againPalette.textColor,
-        fontSize: fitFont(18, ts),
-      });
-
-      this.endModal.btnExit.setTheme({
-        fill: exitPalette.fill,
-        strokeColor: exitPalette.strokeColor,
-        strokeAlpha: exitPalette.strokeAlpha,
-        textColor: exitPalette.textColor,
-        fontSize: fitFont(18, ts),
-      });
+      applyEndModalTheme(this, this.endModal);
     }
 
     this.updateRepeatButtonState();
@@ -896,190 +866,55 @@ export class LightsGameScene extends Phaser.Scene {
   showEndModal() {
     if (this.endModal) return;
 
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const theme = getA11yTheme(this.a11y);
-    const { ts, ui } = getScales(this);
-
-    const overlay = this.add
-      .rectangle(0, 0, W, H, theme.overlay, 0.55)
-      .setOrigin(0)
-      .setDepth(4000)
-      .setInteractive();
-
-    overlay.on("pointerdown", (pointer, localX, localY, event) => {
-      event?.stopPropagation?.();
-    });
-
-    const box = this.add
-      .rectangle(
-        W / 2,
-        H / 2,
-        Math.min(600, W * 0.9),
-        Math.round(300 * ui),
-        theme.surface,
-        1
-      )
-      .setStrokeStyle(
-        2,
-        theme.tileStroke,
-        this.a11y.highContrast ? 1 : 0.18
-      )
-      .setDepth(4001)
-      .setInteractive();
-
-    box.on("pointerdown", (pointer, localX, localY, event) => {
-      event?.stopPropagation?.();
-    });
-
-    const title = this.add
-      .text(W / 2, H / 2 - 92 * ui, "¡Terminaste!", {
-        fontFamily: "Arial",
-        fontSize: `${fitFont(38, ts)}px`,
-        color: theme.text,
-      })
-      .setOrigin(0.5)
-      .setDepth(4002);
-
-    const sub = this.add
-      .text(
-        W / 2,
-        H / 2 - 18 * ui,
-        [
-          `Puntos: ${this.state.score}`,
-          `Errores: ${this.state.wrongRounds}`,
-          `Ayudas usadas: ${this.state.repeatCount}`,
-        ].join("\n"),
-        {
-          fontFamily: "Arial",
-          fontSize: `${fitFont(20, ts)}px`,
-          color: theme.textMuted,
-          align: "center",
-          lineSpacing: Math.round(10 * ui),
-          wordWrap: { width: Math.min(500, W * 0.72) },
-        }
-      )
-      .setOrigin(0.5)
-      .setDepth(4002);
-
-    const btnAgain = makeTopLeftButton(
-      this,
-      "Jugar otra vez",
-      () => this.restartGame(),
-      4003,
-      { width: 210, height: 52, baseFont: 18, variant: "primary" }
-    );
-
-    const btnExit = makeTopLeftButton(
-      this,
-      "Salir",
-      () => {
-        this.hideEndModal();
-        stopSpeech();
-        this._onExit?.();
+    this.endModal = createEndModal(this, {
+      depth: 4000,
+      title: "¡Terminaste!",
+      bodyLines: [
+        `Puntos: ${this.state.score}`,
+        `Errores: ${this.state.wrongRounds}`,
+        `Ayudas usadas: ${this.state.repeatCount}`,
+      ],
+      preferredBoxWidth: 600,
+      minBoxWidth: 360,
+      maxBoxWidthPct: 0.92,
+      minBoxHeight: 300,
+      bodyWrapMin: 220,
+      titleBaseFont: 38,
+      bodyBaseFont: 20,
+      bodyAlign: "center",
+      bodyLineSpacing: Math.round(10 * (this.a11y?.uiScale || 1)),
+      primaryButton: {
+        label: "Jugar otra vez",
+        variant: "primary",
+        width: 210,
+        height: 52,
+        baseFont: 18,
+        onClick: () => this.restartGame(),
       },
-      4003,
-      { width: 170, height: 52, baseFont: 18, variant: "danger" }
-    );
-
-    this.endModal = { overlay, box, title, sub, btnAgain, btnExit };
-
-    this.applyTheme();
-    this.layoutEndModal();
+      secondaryButton: {
+        label: "Salir",
+        variant: "danger",
+        width: 170,
+        height: 52,
+        baseFont: 18,
+        onClick: () => {
+          this.hideEndModal();
+          stopSpeech();
+          this._onExit?.();
+        },
+      },
+    });
   }
 
   layoutEndModal() {
-    if (!this.endModal) return;
-
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const { ui } = getScales(this);
-
-    const gapX = Math.round(40 * ui);
-    const gapY = Math.round(22 * ui);
-    const padX = Math.round(34 * ui);
-    const padTop = Math.round(28 * ui);
-    const padBottom = Math.round(28 * ui);
-    const againDefaultW = Math.round(210 * ui);
-    const exitDefaultW = Math.round(170 * ui);
-    const btnH = Math.round(52 * ui);
-
-    this.endModal.overlay.setSize(W, H);
-
-    const maxBoxW = Math.max(360, Math.round(W * 0.92));
-    const desiredRowW = againDefaultW + gapX + exitDefaultW + padX * 2;
-    const desiredTextW = Math.max(
-      Math.ceil(this.endModal.title.width) + padX * 2,
-      Math.ceil(this.endModal.sub.width) + padX * 2,
-      Math.round(600 * ui)
-    );
-
-    let boxW = Math.min(maxBoxW, Math.max(desiredRowW, desiredTextW));
-    let stackButtons = false;
-
-    if (desiredRowW > maxBoxW) {
-      stackButtons = true;
-      boxW = maxBoxW;
+    if (this.endModal) {
+      this.endModal.config.bodyLineSpacing = Math.round(10 * (this.a11y?.uiScale || 1));
     }
-
-    this.endModal.sub.setWordWrapWidth(Math.max(220, boxW - padX * 2));
-
-    let againW = againDefaultW;
-    let exitW = exitDefaultW;
-    let buttonsBlockH = btnH;
-
-    if (stackButtons) {
-      againW = Math.max(190, Math.min(boxW - padX * 2, Math.round(300 * ui)));
-      exitW = againW;
-      buttonsBlockH = btnH * 2 + gapY;
-      this.endModal.btnAgain.setSize(againW, btnH);
-      this.endModal.btnExit.setSize(exitW, btnH);
-    } else {
-      this.endModal.btnAgain.setSize(againW, btnH);
-      this.endModal.btnExit.setSize(exitW, btnH);
-    }
-
-    const titleH = Math.ceil(this.endModal.title.height);
-    const subH = Math.ceil(this.endModal.sub.height);
-    const boxH = Math.max(
-      Math.round(300 * ui),
-      padTop + titleH + gapY + subH + gapY + buttonsBlockH + padBottom
-    );
-
-    const boxTop = H / 2 - boxH / 2;
-    const titleY = boxTop + padTop + titleH / 2;
-    const subY = titleY + titleH / 2 + gapY + subH / 2;
-    const buttonsTop = subY + subH / 2 + gapY;
-
-    this.endModal.box.setSize(boxW, boxH);
-    this.endModal.box.setPosition(W / 2, H / 2);
-    this.endModal.title.setPosition(W / 2, titleY);
-    this.endModal.sub.setPosition(W / 2, subY);
-
-    if (stackButtons) {
-      const left = W / 2 - againW / 2;
-      this.endModal.btnAgain.setTL(left, buttonsTop);
-      this.endModal.btnExit.setTL(left, buttonsTop + btnH + gapY);
-      return;
-    }
-
-    const rowW = againW + gapX + exitW;
-    const startX = W / 2 - rowW / 2;
-    this.endModal.btnAgain.setTL(startX, buttonsTop);
-    this.endModal.btnExit.setTL(startX + againW + gapX, buttonsTop);
+    layoutSharedEndModal(this, this.endModal);
   }
 
   hideEndModal() {
-    if (!this.endModal) return;
-
-    const m = this.endModal;
-    m.overlay.destroy();
-    m.box.destroy();
-    m.title.destroy();
-    m.sub.destroy();
-    m.btnAgain.destroy();
-    m.btnExit.destroy();
-    this.endModal = null;
+    this.endModal = destroyEndModal(this.endModal);
   }
 
   restartGame() {
