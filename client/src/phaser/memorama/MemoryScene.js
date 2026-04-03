@@ -6,9 +6,14 @@ import {
   stopSpeech,
   getA11yTheme,
 } from "../a11yPanel";
-import { shuffle, contentLeft, getScales, fitFont, styleTextButton, getButtonPalette } from "../shared/common";
+import { shuffle, contentLeft, getScales, fitFont, styleTextButton } from "../shared/common";
 import { SYMBOLS } from "./constants";
-import { makeButton } from "./ui";
+import {
+  createEndModal,
+  applyEndModalTheme,
+  layoutEndModal as layoutSharedEndModal,
+  destroyEndModal,
+} from "../shared/ui/endModal";
 
 export class MemoryScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
@@ -291,51 +296,7 @@ export class MemoryScene extends Phaser.Scene {
     });
 
     if (this.endModal) {
-      this.endModal.box.setFillStyle(theme.surface, 1);
-      this.endModal.box.setStrokeStyle(
-        2,
-        theme.tileStroke,
-        this.a11y.highContrast ? 1 : 0.18
-      );
-
-      this.endModal.t1.setStyle({
-        fontFamily: "Arial",
-        fontSize: `${fitFont(40, ts)}px`,
-        color: theme.text,
-      });
-
-      this.endModal.t2.setStyle({
-        fontFamily: "Arial",
-        fontSize: `${fitFont(20, ts)}px`,
-        color: theme.textMuted,
-      });
-
-      const againPalette = getButtonPalette(this, "primary");
-      const exitPalette = getButtonPalette(this, "danger");
-
-      this.endModal.btnAgain.btnBg.setFillStyle(againPalette.fill, 1);
-      this.endModal.btnAgain.btnBg.setStrokeStyle(
-        2,
-        againPalette.strokeColor,
-        againPalette.strokeAlpha
-      );
-      this.endModal.btnAgain.btnTx.setStyle({
-        fontFamily: "Arial",
-        fontSize: `${fitFont(18, ts)}px`,
-        color: againPalette.textColor,
-      });
-
-      this.endModal.btnExit.btnBg.setFillStyle(exitPalette.fill, 1);
-      this.endModal.btnExit.btnBg.setStrokeStyle(
-        2,
-        exitPalette.strokeColor,
-        exitPalette.strokeAlpha
-      );
-      this.endModal.btnExit.btnTx.setStyle({
-        fontFamily: "Arial",
-        fontSize: `${fitFont(18, ts)}px`,
-        color: exitPalette.textColor,
-      });
+      applyEndModalTheme(this, this.endModal);
     }
   }
 
@@ -617,222 +578,48 @@ export class MemoryScene extends Phaser.Scene {
   showEndModal({ durationMs, moves }) {
     if (this.endModal) return;
 
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const theme = getA11yTheme(this.a11y);
-    const { ts, ui } = getScales(this);
-
-    const overlay = this.add
-      .rectangle(0, 0, W, H, theme.overlay, 0.55)
-      .setOrigin(0)
-      .setDepth(2000)
-      .setInteractive();
-
-    overlay.on("pointerdown", (pointer, localX, localY, event) => {
-      event?.stopPropagation?.();
-    });
-
-    const boxW = Math.min(560, W * 0.9);
-    const boxH = Math.round(260 * ui);
-
-    const box = this.add
-      .rectangle(W / 2, H / 2, boxW, boxH, theme.surface, 1)
-      .setStrokeStyle(
-        2,
-        theme.tileStroke,
-        this.a11y.highContrast ? 1 : 0.18
-      )
-      .setDepth(2001)
-      .setInteractive();
-
-    box.on("pointerdown", (pointer, localX, localY, event) => {
-      event?.stopPropagation?.();
-    });
-
-    const t1 = this.add
-      .text(W / 2, H / 2 - 80 * ui, "¡Excelente!", {
-        fontFamily: "Arial",
-        fontSize: `${fitFont(40, ts)}px`,
-        color: theme.text,
-      })
-      .setOrigin(0.5)
-      .setDepth(2002);
-
     const sec = Math.floor(durationMs / 1000);
-    const t2 = this.add
-      .text(W / 2, H / 2 - 25 * ui, `Tiempo: ${sec}s   •   Intentos: ${moves}`, {
-        fontFamily: "Arial",
-        fontSize: `${fitFont(20, ts)}px`,
-        color: theme.textMuted,
-      })
-      .setOrigin(0.5)
-      .setDepth(2002);
 
-    const createModalBtn = (label, onClick, variant) => {
-      const bw = Math.round(220 * ui);
-      const bh = Math.round(52 * ui);
-      const palette = getButtonPalette(this, variant);
-
-      const btnBg = this.add
-        .rectangle(0, 0, bw, bh, palette.fill, 1)
-        .setOrigin(0, 0)
-        .setStrokeStyle(2, palette.strokeColor, palette.strokeAlpha)
-        .setDepth(2003);
-
-      const btnTx = this.add
-        .text(0, 0, label, {
-          fontFamily: "Arial",
-          fontSize: `${fitFont(18, ts)}px`,
-          color: palette.textColor,
-        })
-        .setOrigin(0.5)
-        .setDepth(2004);
-
-      const hit = this.add.zone(0, 0, bw, bh).setOrigin(0, 0).setDepth(2005);
-      hit.setInteractive({ useHandCursor: true });
-      hit.on("pointerdown", onClick);
-
-      return { btnBg, btnTx, hit, bw, bh, variant };
-    };
-
-    const btnAgain = createModalBtn(
-      "Jugar otra vez",
-      () => this.restartGame(),
-      "primary"
-    );
-
-    const btnExit = createModalBtn(
-      "Salir",
-      () => {
-        this.hideEndModal();
-        stopSpeech();
-        this._onExit?.();
+    this.endModal = createEndModal(this, {
+      depth: 2000,
+      title: "¡Excelente!",
+      bodyText: `Tiempo: ${sec}s   •   Intentos: ${moves}`,
+      preferredBoxWidth: 560,
+      minBoxWidth: 360,
+      maxBoxWidthPct: 0.92,
+      minBoxHeight: 260,
+      bodyWrapMin: 220,
+      titleBaseFont: 40,
+      bodyBaseFont: 20,
+      primaryButton: {
+        label: "Jugar otra vez",
+        variant: "primary",
+        width: 220,
+        height: 52,
+        baseFont: 18,
+        onClick: () => this.restartGame(),
       },
-      "danger"
-    );
-
-    this.endModal = { overlay, box, t1, t2, btnAgain, btnExit };
-    this.layoutEndModal();
+      secondaryButton: {
+        label: "Salir",
+        variant: "danger",
+        width: 220,
+        height: 52,
+        baseFont: 18,
+        onClick: () => {
+          this.hideEndModal();
+          stopSpeech();
+          this._onExit?.();
+        },
+      },
+    });
   }
 
   layoutEndModal() {
-    if (!this.endModal) return;
-
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const { ui } = getScales(this);
-
-    const gapX = Math.round(40 * ui);
-    const gapY = Math.round(22 * ui);
-    const padX = Math.round(34 * ui);
-    const padTop = Math.round(28 * ui);
-    const padBottom = Math.round(28 * ui);
-
-    const againDefaultW = Math.round(220 * ui);
-    const exitDefaultW = Math.round(220 * ui);
-    const btnH = Math.round(52 * ui);
-
-    this.endModal.overlay.setSize(W, H);
-
-    const maxBoxW = Math.max(360, Math.round(W * 0.92));
-    const desiredRowW = againDefaultW + gapX + exitDefaultW + padX * 2;
-    const desiredTextW = Math.max(
-      Math.ceil(this.endModal.t1.width) + padX * 2,
-      Math.ceil(this.endModal.t2.width) + padX * 2,
-      Math.round(560 * ui)
-    );
-
-    let boxW = Math.min(maxBoxW, Math.max(desiredRowW, desiredTextW));
-    let stackButtons = false;
-
-    if (desiredRowW > maxBoxW) {
-      stackButtons = true;
-      boxW = maxBoxW;
-    }
-
-    this.endModal.t2.setWordWrapWidth(Math.max(220, boxW - padX * 2));
-
-    const titleH = Math.ceil(this.endModal.t1.height);
-    const subH = Math.ceil(this.endModal.t2.height);
-
-    let againW = againDefaultW;
-    let exitW = exitDefaultW;
-    let buttonsBlockH = btnH;
-
-    if (stackButtons) {
-      againW = Math.max(190, Math.min(boxW - padX * 2, Math.round(280 * ui)));
-      exitW = againW;
-      buttonsBlockH = btnH * 2 + gapY;
-    }
-
-    const boxH = Math.max(
-      Math.round(260 * ui),
-      padTop + titleH + gapY + subH + gapY + buttonsBlockH + padBottom
-    );
-
-    const boxTop = H / 2 - boxH / 2;
-    const titleY = boxTop + padTop + titleH / 2;
-    const subY = titleY + titleH / 2 + gapY + subH / 2;
-    const buttonsTop = subY + subH / 2 + gapY;
-
-    this.endModal.box.setSize(boxW, boxH);
-    this.endModal.box.setPosition(W / 2, H / 2);
-    this.endModal.t1.setPosition(W / 2, titleY);
-    this.endModal.t2.setPosition(W / 2, subY);
-
-    const placeBtn = (btn, left, top, width) => {
-      btn.bw = width;
-      btn.btnBg.setSize(width, btn.bh);
-      btn.btnBg.setPosition(left, top);
-      btn.btnTx.setPosition(left + width / 2, top + btn.bh / 2);
-      btn.hit.setPosition(left, top);
-      btn.hit.setSize(width, btn.bh);
-      if (btn.hit.input?.hitArea?.setTo) {
-        btn.hit.input.hitArea.setTo(0, 0, width, btn.bh);
-      }
-    };
-
-    if (stackButtons) {
-      const left = W / 2 - againW / 2;
-      placeBtn(this.endModal.btnAgain, left, buttonsTop, againW);
-      placeBtn(this.endModal.btnExit, left, buttonsTop + btnH + gapY, exitW);
-      return;
-    }
-
-    const rowW = againW + gapX + exitW;
-    const startX = W / 2 - rowW / 2;
-    placeBtn(this.endModal.btnAgain, startX, buttonsTop, againW);
-    placeBtn(this.endModal.btnExit, startX + againW + gapX, buttonsTop, exitW);
+    layoutSharedEndModal(this, this.endModal);
   }
 
   hideEndModal() {
-    if (!this.endModal) return;
-
-    const { overlay, box, t1, t2, btnAgain, btnExit } = this.endModal;
-
-    try {
-      overlay.destroy();
-      box.destroy();
-      t1.destroy();
-      t2.destroy();
-      btnAgain.btnBg.destroy();
-      btnAgain.btnTx.destroy();
-      btnAgain.hit.destroy();
-      btnExit.btnBg.destroy();
-      btnExit.btnTx.destroy();
-      btnExit.hit.destroy();
-    } catch {}
-
-    this.endModal = null;
-  }
-
-  restartGame() {
-    this.cancelPendingTimers();
-    stopSpeech();
-    this.hideEndModal();
-    this.finalResult = null;
-    this.gameEnded = false;
-    this.scene.restart({ pairs: this.pairs });
+    this.endModal = destroyEndModal(this.endModal);
   }
 
   layoutCards() {
