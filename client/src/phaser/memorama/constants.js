@@ -12,3 +12,10 @@ export const SYMBOLS = [
   { symbol: "🌸", label: "flor" },
   { symbol: "☕️", label: "taza" },
 ];
+
+
+export const MEMORAMA_DIFFICULTIES = [
+  { label: "Fácil (4 pares)", pairs: 4 },
+  { label: "Medio (6 pares)", pairs: 6 },
+  { label: "Difícil (8 pares)", pairs: 8 },
+];

@@ -1,7 +1,7 @@
 import { createResponsiveGame } from "../shared/gameFactory";
-import { BootScene } from "./BootScene";
-import { MenuScene } from "./MenuScene";
-import { MemoryScene } from "./MemoryScene";
+import { BootScene } from "./scenes/BootScene";
+import { MenuScene } from "./scenes/MenuScene";
+import { MemoryScene } from "./scenes/GameScene";
 
 export function createMemoramaGame(parentId, onFinish, onExit) {
   return createResponsiveGame(
