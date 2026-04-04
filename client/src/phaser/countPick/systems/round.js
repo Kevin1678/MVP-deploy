@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { speakIfEnabled } from "../../a11yPanel";
 import { getScales, contentLeft, fitFont, getButtonPalette } from "../../shared/common";
-import { makeTopLeftButton, makeBall, recolorBall } from "../ui";
+import { makeTopLeftButton, makeBall, recolorBall } from "../ui/buttons";
 import { createRoundData } from "./state";
 import { showCorrectFeedback, showWrongFeedback } from "./feedback";
 

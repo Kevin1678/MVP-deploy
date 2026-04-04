@@ -1,6 +1,6 @@
 import { createResponsiveGame } from "../shared/gameFactory";
-import { CountPickMenuScene } from "./MenuScene";
-import { CountPickGameScene } from "./GameScene";
+import { CountPickMenuScene } from "./scenes/MenuScene";
+import { CountPickGameScene } from "./scenes/GameScene";
 
 export function createCountPickGame(parentId, onFinish, onExit) {
   return createResponsiveGame(
