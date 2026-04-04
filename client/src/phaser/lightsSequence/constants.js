@@ -9,3 +9,28 @@ export const TILE_DEFS = [
   { hex: "#5CFAC7", colorName: "turquesa" },
   { hex: "#FAF37F", colorName: "amarillo claro" },
 ];
+
+
+export const LIGHTS_DIFFICULTIES = [
+  {
+    label: "Fácil (3 pasos)",
+    steps: 3,
+    speedMs: 650,
+    roundsTotal: 5,
+    difficulty: "easy",
+  },
+  {
+    label: "Medio (4 pasos)",
+    steps: 4,
+    speedMs: 520,
+    roundsTotal: 7,
+    difficulty: "medium",
+  },
+  {
+    label: "Difícil (5 pasos)",
+    steps: 5,
+    speedMs: 420,
+    roundsTotal: 10,
+    difficulty: "hard",
+  },
+];

@@ -1,5 +1,5 @@
 import { contentLeft, getScales, fitFont, styleTextButton } from "../../shared/common";
-import { makeTopLeftButton } from "../ui";
+import { makeTopLeftButton } from "./buttons";
 
 export function createTopUi(scene) {
   scene.title = scene.add

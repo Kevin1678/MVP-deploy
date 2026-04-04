@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { speakIfEnabled } from "../../a11yPanel";
 import { contentLeft, getScales } from "../../shared/common";
-import { makeGridTile } from "../ui";
+import { makeGridTile } from "../ui/buttons";
 import { layoutRepeatButton } from "../ui/topBar";
 
 export function buildGrid(scene) {

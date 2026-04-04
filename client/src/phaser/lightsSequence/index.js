@@ -1,6 +1,6 @@
 import { createResponsiveGame } from "../shared/gameFactory";
-import { LightsMenuScene } from "./MenuScene";
-import { LightsGameScene } from "./GameScene";
+import { LightsMenuScene } from "./scenes/MenuScene";
+import { LightsGameScene } from "./scenes/GameScene";
 
 export function createLightsSequenceGame(parentId, onFinish, onExit) {
   return createResponsiveGame(
