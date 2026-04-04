@@ -1,3 +1,11 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
 .teacher-shell {
   --teacher-scale: 1;
   --bg: #0b1120;
@@ -19,7 +27,7 @@
   --font-xl: calc(1.45rem * var(--teacher-scale));
   --font-2xl: calc(1.9rem * var(--teacher-scale));
 
-  min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-columns: 280px 1fr;
   background: linear-gradient(180deg, var(--bg) 0%, #10192d 100%);
@@ -44,17 +52,18 @@
 .teacher-sidebar {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 24px;
-  padding: 20px 16px;
+  padding: 20px 16px 36px;
   background: rgba(15, 23, 42, 0.75);
   border-right: 1px solid var(--border);
   backdrop-filter: blur(10px);
 
   position: sticky;
   top: 0;
-  height: 94.8vh;
-  overflow-y: auto;
+  height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .teacher-shell--light .teacher-sidebar {
@@ -102,7 +111,6 @@
 
 .teacher-sidebar__nav {
   display: flex;
-  height: 40%;
   flex-direction: column;
   gap: 12px;
 }
@@ -147,7 +155,7 @@
 }
 
 .teacher-sidebar__tools {
-  height: 28%;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -192,6 +200,8 @@
   flex-direction: column;
   height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .teacher-mobilebar {
@@ -200,11 +210,21 @@
 
 .teacher-content {
   padding: 28px;
+  box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
+  html,
+  body,
+  #root {
+    overflow: auto;
+  }
+
   .teacher-shell {
+    height: auto;
+    min-height: 100vh;
     grid-template-columns: 1fr;
+    overflow: visible;
   }
 
   .teacher-shell:has(.teacher-sidebar--collapsed) {
@@ -212,12 +232,21 @@
   }
 
   .teacher-sidebar {
+    position: relative;
+    top: auto;
+    height: auto;
+    overflow: visible;
     border-right: 0;
     border-bottom: 1px solid var(--border);
   }
 
   .teacher-sidebar--collapsed {
     width: 100%;
+  }
+
+  .teacher-main {
+    height: auto;
+    overflow: visible;
   }
 
   .teacher-mobilebar {
