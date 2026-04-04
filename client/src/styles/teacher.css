@@ -24,6 +24,7 @@
   grid-template-columns: 280px 1fr;
   background: linear-gradient(180deg, var(--bg) 0%, #10192d 100%);
   color: var(--text);
+  overflow: hidden;
 }
 
 .teacher-shell--light {
@@ -49,6 +50,11 @@
   background: rgba(15, 23, 42, 0.75);
   border-right: 1px solid var(--border);
   backdrop-filter: blur(10px);
+
+  position: sticky;
+  top: 0;
+  height: 94.8vh;
+  overflow-y: auto;
 }
 
 .teacher-shell--light .teacher-sidebar {
@@ -96,6 +102,7 @@
 
 .teacher-sidebar__nav {
   display: flex;
+  height: 40%;
   flex-direction: column;
   gap: 12px;
 }
@@ -140,6 +147,7 @@
 }
 
 .teacher-sidebar__tools {
+  height: 28%;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -182,6 +190,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .teacher-mobilebar {
