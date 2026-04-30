@@ -108,10 +108,6 @@ export default function GamesMenu() {
           <button className="secondaryBtn" onClick={() => navigate("/admin")}>
             Panel
           </button>
-          <button className="secondaryBtn" onClick={() => navigate("/games")}>
-            Regresar
-          </button>
-        </div>
       </div>
 
       <div className="grid">
