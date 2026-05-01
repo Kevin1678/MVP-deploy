@@ -165,17 +165,6 @@ export default function Login() {
             <span className="login-prefs__label">Accesibilidad rápida</span>
 
             <div className="login-prefs__actions">
-              <button
-                type="button"
-                className="login-chip"
-                onClick={() =>
-                  setTextSize((v) => (v === "large" ? "normal" : "large"))
-                }
-                aria-pressed={textSize === "large"}
-                title="Cambiar tamaño de texto"
-              >
-                {textSize === "large" ? "Texto normal" : "Texto grande"}
-              </button>
 
               <button
                 type="button"
