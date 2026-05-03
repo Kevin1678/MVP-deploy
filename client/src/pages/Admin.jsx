@@ -20,13 +20,23 @@ function fullName(user) {
     .join(" ");
 }
 
-const INITIAL_FORM = {
+const INITIAL_CREATE_FORM = {
   firstName: "",
   lastNameP: "",
   lastNameM: "",
   email: "",
   password: "",
   role: "TEACHER",
+};
+
+const INITIAL_EDIT_FORM = {
+  id: "",
+  firstName: "",
+  lastNameP: "",
+  lastNameM: "",
+  email: "",
+  password: "",
+  role: "",
 };
 
 export default function Admin() {
@@ -44,12 +54,20 @@ export default function Admin() {
   });
 
   const [view, setView] = useState("overview");
-  const [form, setForm] = useState(INITIAL_FORM);
+  const [createForm, setCreateForm] = useState(INITIAL_CREATE_FORM);
+  const [editForm, setEditForm] = useState(INITIAL_EDIT_FORM);
+
   const [msg, setMsg] = useState("");
+  const [editMsg, setEditMsg] = useState("");
+
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
   const [adminName, setAdminName] = useState("ADMIN");
+  const [search, setSearch] = useState("");
+  const [filterRole, setFilterRole] = useState("ALL");
 
   useEffect(() => {
     localStorage.setItem("admin-theme", theme);
@@ -81,7 +99,7 @@ export default function Admin() {
         setAdminName(name.toUpperCase());
       }
     } catch {
-      // no bloquea la interfaz
+      // no bloquea
     }
   }
 
@@ -118,7 +136,7 @@ export default function Admin() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(form),
+        body: JSON.stringify(createForm),
       });
 
       const data = await res.json().catch(() => null);
@@ -129,16 +147,78 @@ export default function Admin() {
       }
 
       setMsg("✅ Usuario creado correctamente");
-      setForm((prev) => ({
-        ...INITIAL_FORM,
+      setCreateForm((prev) => ({
+        ...INITIAL_CREATE_FORM,
         role: prev.role,
       }));
+
       await loadUsers();
       setView("overview");
     } catch {
       setMsg("No se pudo conectar para crear el usuario.");
     } finally {
       setCreating(false);
+    }
+  }
+
+  function startEditUser(user) {
+    setEditMsg("");
+    setEditForm({
+      id: user.id,
+      firstName: user.firstName || "",
+      lastNameP: user.lastNameP || "",
+      lastNameM: user.lastNameM || "",
+      email: user.email || "",
+      password: "",
+      role: user.role || "",
+    });
+    setView("edit");
+  }
+
+  async function updateUser(e) {
+    e.preventDefault();
+
+    if (!editForm.id) {
+      setEditMsg("Selecciona un usuario para editar.");
+      return;
+    }
+
+    setEditMsg("");
+    setUpdating(true);
+
+    try {
+      const payload = {
+        firstName: editForm.firstName,
+        lastNameP: editForm.lastNameP,
+        lastNameM: editForm.lastNameM,
+        email: editForm.email,
+      };
+
+      if (editForm.password.trim()) {
+        payload.password = editForm.password;
+      }
+
+      const res = await fetch(`/api/admin/users/${editForm.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setEditMsg(data?.message || "No se pudo actualizar el usuario.");
+        return;
+      }
+
+      setEditMsg("✅ Usuario actualizado correctamente");
+      setEditForm((prev) => ({ ...prev, password: "" }));
+      await loadUsers();
+    } catch {
+      setEditMsg("No se pudo conectar para actualizar el usuario.");
+    } finally {
+      setUpdating(false);
     }
   }
 
@@ -149,7 +229,7 @@ export default function Admin() {
         credentials: "include",
       });
     } catch {
-      // no bloquea la salida
+      // no bloquea
     } finally {
       nav("/", { replace: true });
     }
@@ -177,6 +257,34 @@ export default function Admin() {
       parents: grouped.PARENT.length,
     };
   }, [users, grouped]);
+
+  const filteredUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    return users.filter((u) => {
+      const matchesRole = filterRole === "ALL" ? true : u.role === filterRole;
+
+      if (!matchesRole) return false;
+      if (!term) return true;
+
+      const haystack = [
+        u.id,
+        u.email,
+        u.role,
+        u.firstName,
+        u.lastNameP,
+        u.lastNameM,
+        u.fatherName,
+        u.motherName,
+        u.childrenText,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(term);
+    });
+  }, [users, search, filterRole]);
 
   return (
     <div
@@ -225,6 +333,15 @@ export default function Admin() {
           >
             <span className="admin-nav__icon">➕</span>
             {sidebarOpen && <span>Registrar usuarios</span>}
+          </button>
+
+          <button
+            type="button"
+            className={`admin-nav__item ${view === "edit" ? "active" : ""}`}
+            onClick={() => setView("edit")}
+          >
+            <span className="admin-nav__icon">✏️</span>
+            {sidebarOpen && <span>Modificar usuarios</span>}
           </button>
         </nav>
 
@@ -294,22 +411,41 @@ export default function Admin() {
         </header>
 
         <main className="admin-content">
-          {view === "overview" ? (
+          {view === "overview" && (
             <AdminOverview
               adminName={adminName}
               grouped={grouped}
               summary={summary}
               loadUsers={loadUsers}
               loadingUsers={loadingUsers}
+              startEditUser={startEditUser}
             />
-          ) : (
+          )}
+
+          {view === "create" && (
             <AdminCreateView
-              form={form}
-              setForm={setForm}
+              form={createForm}
+              setForm={setCreateForm}
               createUser={createUser}
               creating={creating}
               msg={msg}
               summary={summary}
+            />
+          )}
+
+          {view === "edit" && (
+            <AdminEditView
+              users={filteredUsers}
+              search={search}
+              setSearch={setSearch}
+              filterRole={filterRole}
+              setFilterRole={setFilterRole}
+              editForm={editForm}
+              setEditForm={setEditForm}
+              updateUser={updateUser}
+              updating={updating}
+              editMsg={editMsg}
+              startEditUser={startEditUser}
             />
           )}
         </main>
@@ -324,6 +460,7 @@ function AdminOverview({
   summary,
   loadUsers,
   loadingUsers,
+  startEditUser,
 }) {
   return (
     <section className="admin-page">
@@ -363,13 +500,20 @@ function AdminOverview({
           title="Alumnos"
           role="STUDENT"
           users={grouped.STUDENT}
+          onEdit={startEditUser}
         />
         <UserSection
           title="Maestros"
           role="TEACHER"
           users={grouped.TEACHER}
+          onEdit={startEditUser}
         />
-        <UserSection title="Padres" role="PARENT" users={grouped.PARENT} />
+        <UserSection
+          title="Padres"
+          role="PARENT"
+          users={grouped.PARENT}
+          onEdit={startEditUser}
+        />
       </section>
     </section>
   );
@@ -504,12 +648,174 @@ function AdminCreateView({
             </div>
 
             <p className="admin-helper-text">
-              No metas aquí alumnos. Este panel queda mejor si se enfoca solo en
+              No metas aquí alumnos. Este panel funciona mejor si se enfoca en
               administración general: docentes, padres y consulta global de
               usuarios.
             </p>
           </section>
         </aside>
+      </div>
+    </section>
+  );
+}
+
+function AdminEditView({
+  users,
+  search,
+  setSearch,
+  filterRole,
+  setFilterRole,
+  editForm,
+  setEditForm,
+  updateUser,
+  updating,
+  editMsg,
+  startEditUser,
+}) {
+  return (
+    <section className="admin-page">
+      <header className="admin-page__header">
+        <div>
+          <h2>Modificar usuarios</h2>
+          <p>Selecciona un usuario y actualiza sus datos principales.</p>
+        </div>
+      </header>
+
+      <div className="admin-edit-grid">
+        <section className="admin-panel-card">
+          <div className="admin-panel-card__top">
+            <h3>Buscar usuario</h3>
+            <span>{users.length} resultado(s)</span>
+          </div>
+
+          <div className="admin-edit-toolbar">
+            <input
+              className="admin-search-input"
+              placeholder="Buscar por nombre, correo o ID"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+
+            <select
+              className="admin-role-filter"
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+            >
+              <option value="ALL">Todos</option>
+              <option value="STUDENT">Alumnos</option>
+              <option value="TEACHER">Maestros</option>
+              <option value="PARENT">Padres</option>
+            </select>
+          </div>
+
+          <div className="admin-edit-list">
+            {users.length === 0 ? (
+              <div className="admin-empty-state">Sin coincidencias.</div>
+            ) : (
+              users.map((u) => (
+                <button
+                  type="button"
+                  key={u.id}
+                  className={`admin-edit-user ${
+                    Number(editForm.id) === Number(u.id)
+                      ? "admin-edit-user--active"
+                      : ""
+                  }`}
+                  onClick={() => startEditUser(u)}
+                >
+                  <div className="admin-edit-user__main">
+                    <strong>{fullName(u)}</strong>
+                    <span>{u.email}</span>
+                  </div>
+
+                  <div className="admin-edit-user__meta">
+                    <span>{u.role}</span>
+                    <span>ID {u.id}</span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="admin-panel-card">
+          <div className="admin-panel-card__top">
+            <h3>Editar usuario</h3>
+            <span>{editForm.id ? `ID ${editForm.id}` : "Selecciona uno"}</span>
+          </div>
+
+          {!editForm.id ? (
+            <div className="admin-empty-state">
+              Primero elige un usuario desde la lista de la izquierda.
+            </div>
+          ) : (
+            <form onSubmit={updateUser} className="admin-form">
+              <div className="admin-field">
+                <label>Nombre(s)</label>
+                <input
+                  value={editForm.firstName}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, firstName: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>Apellido paterno</label>
+                <input
+                  value={editForm.lastNameP}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, lastNameP: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>Apellido materno</label>
+                <input
+                  value={editForm.lastNameM}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, lastNameM: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>Correo</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, email: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="admin-field">
+                <label>Rol</label>
+                <input value={editForm.role} disabled />
+              </div>
+
+              <div className="admin-field">
+                <label>Nueva contraseña (opcional)</label>
+                <input
+                  type="password"
+                  value={editForm.password}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, password: e.target.value })
+                  }
+                  placeholder="Déjala vacía para no cambiarla"
+                />
+              </div>
+
+              <button className="admin-primary-btn" disabled={updating}>
+                {updating ? "Guardando..." : "Guardar cambios"}
+              </button>
+
+              {editMsg && <div className="admin-notice">{editMsg}</div>}
+            </form>
+          )}
+        </section>
       </div>
     </section>
   );
@@ -524,10 +830,10 @@ function SummaryCard({ title, value }) {
   );
 }
 
-function UserSection({ title, role, users }) {
+function UserSection({ title, role, users, onEdit }) {
   const isStudent = role === "STUDENT";
   const isParent = role === "PARENT";
-  const colSpan = isStudent ? 6 : isParent ? 5 : 4;
+  const colSpan = isStudent ? 7 : isParent ? 6 : 5;
 
   return (
     <div className="admin-user-section">
@@ -555,6 +861,7 @@ function UserSection({ title, role, users }) {
 
               <th>Email</th>
               <th>Rol</th>
+              <th>Acciones</th>
             </tr>
           </thead>
 
@@ -575,6 +882,15 @@ function UserSection({ title, role, users }) {
 
                 <td>{u.email}</td>
                 <td>{u.role}</td>
+                <td>
+                  <button
+                    type="button"
+                    className="admin-row-btn"
+                    onClick={() => onEdit(u)}
+                  >
+                    Editar
+                  </button>
+                </td>
               </tr>
             ))}
 
