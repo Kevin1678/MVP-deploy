@@ -13,11 +13,21 @@ const createUserSchema = z.object({
   lastNameM: z.string().optional().or(z.literal("")),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(["TEACHER", "PARENT", "STUDENT"])
+  role: z.enum(["TEACHER", "PARENT", "STUDENT"]),
+});
+
+const updateUserSchema = z.object({
+  firstName: z.string().min(2),
+  lastNameP: z.string().min(2),
+  lastNameM: z.string().optional().or(z.literal("")),
+  email: z.string().email(),
+  password: z.string().optional().or(z.literal("")),
 });
 
 function fullName(user) {
-  return [user.firstName, user.lastNameP, user.lastNameM].filter(Boolean).join(" ");
+  return [user.firstName, user.lastNameP, user.lastNameM]
+    .filter(Boolean)
+    .join(" ");
 }
 
 router.post("/users", requireAuth, requireRole("ADMIN"), async (req, res) => {
@@ -43,14 +53,14 @@ router.post("/users", requireAuth, requireRole("ADMIN"), async (req, res) => {
         lastNameM: lastNameM || null,
         email,
         passwordHash,
-        role: Role[role]
-      }
+        role: Role[role],
+      },
     });
 
     return res.status(201).json({
       id: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
     });
   } catch (e) {
     console.error("Create user error:", e);
@@ -80,10 +90,10 @@ router.get("/users", requireAuth, requireRole("ADMIN"), async (req, res) => {
                 firstName: true,
                 lastNameP: true,
                 lastNameM: true,
-                email: true
-              }
-            }
-          }
+                email: true,
+              },
+            },
+          },
         },
 
         childLinks: {
@@ -95,12 +105,12 @@ router.get("/users", requireAuth, requireRole("ADMIN"), async (req, res) => {
                 firstName: true,
                 lastNameP: true,
                 lastNameM: true,
-                email: true
-              }
-            }
-          }
-        }
-      }
+                email: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     const mapped = users.map((user) => {
@@ -127,7 +137,7 @@ router.get("/users", requireAuth, requireRole("ADMIN"), async (req, res) => {
         motherName: motherLink ? fullName(motherLink.parent) : "—",
 
         childrenNames,
-        childrenText: childrenNames.length ? childrenNames.join(", ") : "—"
+        childrenText: childrenNames.length ? childrenNames.join(", ") : "—",
       };
     });
 
@@ -135,6 +145,77 @@ router.get("/users", requireAuth, requireRole("ADMIN"), async (req, res) => {
   } catch (error) {
     console.error("GET /admin/users error:", error);
     res.status(500).json({ message: "Error interno" });
+  }
+});
+
+router.put("/users/:id", requireAuth, requireRole("ADMIN"), async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ message: "ID inválido" });
+  }
+
+  const parsed = updateUserSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Datos inválidos" });
+  }
+
+  const { firstName, lastNameP, lastNameM, email, password } = parsed.data;
+
+  try {
+    const existingUser = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    const emailOwner = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (emailOwner && emailOwner.id !== id) {
+      return res.status(409).json({ message: "Ese email ya existe" });
+    }
+
+    const data = {
+      firstName,
+      lastNameP,
+      lastNameM: lastNameM || null,
+      email,
+    };
+
+    if (password && password.trim()) {
+      data.passwordHash = await bcrypt.hash(password.trim(), 10);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        firstName: true,
+        lastNameP: true,
+        lastNameM: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    return res.json({
+      message: "Usuario actualizado correctamente",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("PUT /admin/users/:id error:", error);
+    return res.status(500).json({ message: "Error interno" });
   }
 });
 
