@@ -9,9 +9,12 @@ import {
 import { applyA11yToScene, destroyA11yFx } from "./effects";
 import { createA11yPanelButton } from "./panelButton";
 import { defaultA11yPrefs, loadA11yPrefs, saveA11yPrefs } from "./prefs";
-import { stopSpeech } from "./speech";
+import { speakIfEnabled, stopSpeech } from "./speech";
 import { applyThemeToScene, getA11yTheme } from "./theme";
 import { clamp } from "./utils";
+
+const MIN_TTS_VOLUME = 0;
+const MAX_TTS_VOLUME = 1;
 
 export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const loaded = loadA11yPrefs();
@@ -22,7 +25,14 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     ...(scene.a11y || {}),
   };
 
-  scene.a11y = { ...basePrefs };
+  scene.a11y = {
+    ...basePrefs,
+    ttsVolume: clamp(
+      basePrefs.ttsVolume ?? 1,
+      MIN_TTS_VOLUME,
+      MAX_TTS_VOLUME
+    ),
+  };
 
   const pad = 14;
   const headerH = 64;
@@ -58,10 +68,17 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
       MIN_UI_SCALE,
       MAX_UI_SCALE
     );
+
     scene.a11y.textScale = clamp(
       scene.a11y.textScale ?? 1,
       MIN_TEXT_SCALE,
       MAX_TEXT_SCALE
+    );
+
+    scene.a11y.ttsVolume = clamp(
+      scene.a11y.ttsVolume ?? 1,
+      MIN_TTS_VOLUME,
+      MAX_TTS_VOLUME
     );
 
     saveA11yPrefs({ ...scene.a11y });
@@ -94,7 +111,11 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     scene.a11y.ttsEnabled ? "Voz: Encendido" : "Voz: Apagado",
     () => {
       scene.a11y.ttsEnabled = !scene.a11y.ttsEnabled;
-      if (!scene.a11y.ttsEnabled) stopSpeech();
+
+      if (!scene.a11y.ttsEnabled) {
+        stopSpeech();
+      }
+
       commit();
       refresh();
     }
@@ -124,6 +145,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     () => {
       scene.a11y.themeMode =
         scene.a11y.themeMode === "light" ? "dark" : "light";
+
       commit();
       refresh();
     }
@@ -135,59 +157,197 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     color: "#cbd5e1",
   });
 
-  const btnAminus = createA11yPanelButton(scene, pad, 300, 124, 42, "T-", () => {
-    scene.a11y.textScale = clamp(
-      (scene.a11y.textScale ?? 1) - 0.1,
-      MIN_TEXT_SCALE,
-      MAX_TEXT_SCALE
-    );
-    commit();
-    refresh();
+  const btnAminus = createA11yPanelButton(
+    scene,
+    pad,
+    300,
+    124,
+    42,
+    "T-",
+    () => {
+      scene.a11y.textScale = clamp(
+        (scene.a11y.textScale ?? 1) - 0.1,
+        MIN_TEXT_SCALE,
+        MAX_TEXT_SCALE
+      );
+
+      commit();
+      refresh();
+    }
+  );
+
+  const btnAplus = createA11yPanelButton(
+    scene,
+    pad + 138,
+    300,
+    124,
+    42,
+    "T+",
+    () => {
+      scene.a11y.textScale = clamp(
+        (scene.a11y.textScale ?? 1) + 0.1,
+        MIN_TEXT_SCALE,
+        MAX_TEXT_SCALE
+      );
+
+      commit();
+      refresh();
+    }
+  );
+
+  const btnUIminus = createA11yPanelButton(
+    scene,
+    pad,
+    350,
+    124,
+    42,
+    "UI-",
+    () => {
+      scene.a11y.uiScale = clamp(
+        (scene.a11y.uiScale ?? 1) - 0.1,
+        MIN_UI_SCALE,
+        MAX_UI_SCALE
+      );
+
+      commit();
+      refresh();
+    }
+  );
+
+  const btnUIplus = createA11yPanelButton(
+    scene,
+    pad + 138,
+    350,
+    124,
+    42,
+    "UI+",
+    () => {
+      scene.a11y.uiScale = clamp(
+        (scene.a11y.uiScale ?? 1) + 0.1,
+        MIN_UI_SCALE,
+        MAX_UI_SCALE
+      );
+
+      commit();
+      refresh();
+    }
+  );
+
+  const volumeLabelY = 410;
+  const volumeBarY = 458;
+  const volumeBarX = pad;
+  const volumeBarW = PANEL_OPEN_W - 2 * pad;
+  const volumeBarH = 10;
+  const volumeKnobSize = 22;
+
+  const labelVolume = scene.add.text(pad, volumeLabelY, "Volumen narrador", {
+    fontFamily: "Arial",
+    fontSize: "13px",
+    color: "#cbd5e1",
   });
 
-  const btnAplus = createA11yPanelButton(scene, pad + 138, 300, 124, 42, "T+", () => {
-    scene.a11y.textScale = clamp(
-      (scene.a11y.textScale ?? 1) + 0.1,
-      MIN_TEXT_SCALE,
-      MAX_TEXT_SCALE
-    );
-    commit();
-    refresh();
-  });
+  const volumeValue = scene.add
+    .text(PANEL_OPEN_W - pad, volumeLabelY, "100%", {
+      fontFamily: "Arial",
+      fontSize: "13px",
+      color: "#cbd5e1",
+    })
+    .setOrigin(1, 0);
 
-  const btnUIminus = createA11yPanelButton(scene, pad, 350, 124, 42, "UI-", () => {
-    scene.a11y.uiScale = clamp(
-      (scene.a11y.uiScale ?? 1) - 0.1,
-      MIN_UI_SCALE,
-      MAX_UI_SCALE
-    );
-    commit();
-    refresh();
-  });
+  const volumeTrackBg = scene.add
+    .rectangle(volumeBarX, volumeBarY, volumeBarW, volumeBarH, 0x334155, 1)
+    .setOrigin(0, 0.5);
 
-  const btnUIplus = createA11yPanelButton(scene, pad + 138, 350, 124, 42, "UI+", () => {
-    scene.a11y.uiScale = clamp(
-      (scene.a11y.uiScale ?? 1) + 0.1,
-      MIN_UI_SCALE,
-      MAX_UI_SCALE
-    );
+  const volumeTrackFill = scene.add
+    .rectangle(volumeBarX, volumeBarY, volumeBarW, volumeBarH, 0x38bdf8, 1)
+    .setOrigin(0, 0.5);
+
+  const volumeKnob = scene.add
+    .circle(volumeBarX + volumeBarW, volumeBarY, volumeKnobSize / 2, 0xffffff, 1)
+    .setStrokeStyle(2, 0x0f172a, 1);
+
+  const volumeHit = scene.add
+    .zone(volumeBarX, volumeBarY - 18, volumeBarW, 36)
+    .setOrigin(0, 0)
+    .setInteractive({ useHandCursor: true });
+
+  let draggingVolume = false;
+
+  function setVolumeFromPointer(pointer) {
+    if (!scene.a11y.panelOpen) return;
+
+    const localX = pointer.worldX - root.x;
+    const rawValue = (localX - volumeBarX) / volumeBarW;
+
+    scene.a11y.ttsVolume = clamp(rawValue, MIN_TTS_VOLUME, MAX_TTS_VOLUME);
+
     commit();
-    refresh();
+    refreshVolume();
+  }
+
+  function startVolumeDrag(pointer) {
+    draggingVolume = true;
+    setVolumeFromPointer(pointer);
+  }
+
+  function moveVolumeDrag(pointer) {
+    if (!draggingVolume) return;
+    setVolumeFromPointer(pointer);
+  }
+
+  function stopVolumeDrag() {
+    if (!draggingVolume) return;
+
+    draggingVolume = false;
+
+    const percent = Math.round((scene.a11y.ttsVolume ?? 1) * 100);
+
+    stopSpeech();
+
+    speakIfEnabled(scene, `Volumen del narrador ${percent} por ciento`, {
+    delayMs: 80,
+    minGapMs: 0,
   });
+}
+
+  volumeHit.on("pointerdown", startVolumeDrag);
+  volumeHit.on("pointermove", moveVolumeDrag);
+  volumeHit.on("pointerup", stopVolumeDrag);
+  volumeHit.on("pointerout", stopVolumeDrag);
+
+  scene.input.on("pointerup", stopVolumeDrag);
+
+  function refreshVolume() {
+    const volume = clamp(
+      scene.a11y.ttsVolume ?? 1,
+      MIN_TTS_VOLUME,
+      MAX_TTS_VOLUME
+    );
+
+    const percent = Math.round(volume * 100);
+    const fillW = Math.max(1, volumeBarW * volume);
+    const knobX = volumeBarX + volumeBarW * volume;
+
+    volumeValue.setText(`${percent}%`);
+    volumeTrackFill.setSize(fillW, volumeBarH);
+    volumeKnob.setPosition(knobX, volumeBarY);
+  }
 
   const btnReset = createA11yPanelButton(
     scene,
     pad,
-    410,
+    500,
     PANEL_OPEN_W - 2 * pad,
     46,
     "Restablecer",
     () => {
       const panelOpen = scene.a11y.panelOpen;
+
       scene.a11y = {
-        ...basePrefs,
+        ...defaultA11yPrefs(),
         panelOpen,
       };
+
       stopSpeech();
       commit();
       refresh();
@@ -198,28 +358,44 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     toggle.box,
     toggle.text,
     toggle.hit,
+
     btnTTS.box,
     btnTTS.text,
     btnTTS.hit,
+
     btnHC.box,
     btnHC.text,
     btnHC.hit,
+
     btnTheme.box,
     btnTheme.text,
     btnTheme.hit,
+
     labelSize,
+
     btnAminus.box,
     btnAminus.text,
     btnAminus.hit,
+
     btnAplus.box,
     btnAplus.text,
     btnAplus.hit,
+
     btnUIminus.box,
     btnUIminus.text,
     btnUIminus.hit,
+
     btnUIplus.box,
     btnUIplus.text,
     btnUIplus.hit,
+
+    labelVolume,
+    volumeValue,
+    volumeTrackBg,
+    volumeTrackFill,
+    volumeKnob,
+    volumeHit,
+
     btnReset.box,
     btnReset.text,
     btnReset.hit,
@@ -232,6 +408,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   function place() {
     const w = scene.scale.width;
     const x = anchor === "left" ? 16 : w - getWidth() - 16;
+
     root.setPosition(x, 16);
   }
 
@@ -239,10 +416,15 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     const open = !!scene.a11y.panelOpen;
 
     toggle.setLabel(open ? "Ocultar" : "Mostrar");
-    btnTTS.setLabel(scene.a11y.ttsEnabled ? "Voz: Encendido" : "Voz: Apagado");
+
+    btnTTS.setLabel(
+      scene.a11y.ttsEnabled ? "Voz: Encendido" : "Voz: Apagado"
+    );
+
     btnHC.setLabel(
       scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal"
     );
+
     btnTheme.setLabel(
       scene.a11y.themeMode === "light" ? "Modo: Claro" : "Modo: Oscuro"
     );
@@ -253,17 +435,27 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
 
     bg.setSize(panelW, panelH);
     shadow.setSize(panelW, panelH);
+
     bg.setFillStyle(theme.panelBg, scene.a11y.highContrast ? 1 : 0.96);
+
     bg.setStrokeStyle(
       2,
       theme.panelStroke,
       scene.a11y.highContrast ? 1 : theme.buttonStrokeAlpha
     );
+
     shadow.setVisible(theme.panelShadow);
 
     title.setColor(theme.text);
     hint.setColor(theme.textMuted);
     labelSize.setColor(theme.textMuted);
+    labelVolume.setColor(theme.textMuted);
+    volumeValue.setColor(theme.textMuted);
+
+    volumeTrackBg.setFillStyle(theme.buttonFill, 0.65);
+    volumeTrackFill.setFillStyle(theme.buttonText, 1);
+    volumeKnob.setFillStyle(theme.text, 1);
+    volumeKnob.setStrokeStyle(2, theme.panelStroke, 1);
 
     [
       toggle,
@@ -275,13 +467,23 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
       btnUIminus,
       btnUIplus,
       btnReset,
-    ].forEach((b) =>
-      b.setStyle(theme.buttonFill, theme.buttonText, theme.buttonStrokeAlpha)
-    );
+    ].forEach((button) => {
+      button.setStyle(
+        theme.buttonFill,
+        theme.buttonText,
+        theme.buttonStrokeAlpha
+      );
+    });
 
     title.setVisible(open);
     hint.setVisible(open);
     labelSize.setVisible(open);
+    labelVolume.setVisible(open);
+    volumeValue.setVisible(open);
+    volumeTrackBg.setVisible(open);
+    volumeTrackFill.setVisible(open);
+    volumeKnob.setVisible(open);
+    volumeHit.setVisible(open);
 
     [
       btnTTS,
@@ -292,10 +494,13 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
       btnUIminus,
       btnUIplus,
       btnReset,
-    ].forEach((b) => b.setVisible(open));
+    ].forEach((button) => {
+      button.setVisible(open);
+    });
 
     toggle.setPos(panelW - 112, 14);
 
+    refreshVolume();
     place();
   }
 
@@ -311,12 +516,18 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   scene.scale.on("resize", resizeHandler);
 
   let cleaned = false;
+
   const cleanup = () => {
     if (cleaned) return;
+
     cleaned = true;
 
     try {
       scene.scale.off("resize", resizeHandler);
+    } catch {}
+
+    try {
+      scene.input.off("pointerup", stopVolumeDrag);
     } catch {}
 
     destroyA11yFx(scene);
