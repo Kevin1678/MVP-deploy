@@ -106,7 +106,7 @@ export default function GamesMenu() {
 
         <div className="menuActions">
           <button className="secondaryBtn" onClick={() => navigate("/admin")}>
-            Panel
+            Cerrar Sesión
           </button>
         </div>
       </div>
