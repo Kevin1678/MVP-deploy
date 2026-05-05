@@ -1,6 +1,18 @@
+import { MAX_TTS_VOLUME, MIN_TTS_VOLUME } from "./constants";
+
 let speechTimer = null;
 let speechToken = 0;
 let lastSpeechAt = 0;
+
+function safeClamp(value, min, max) {
+  const numberValue = Number(value);
+
+  if (Number.isNaN(numberValue)) {
+    return max;
+  }
+
+  return Math.max(min, Math.min(max, numberValue));
+}
 
 export function stopSpeech() {
   try {
@@ -26,7 +38,14 @@ export function speakIfEnabled(scene, text, options = {}) {
       rate = 1,
       pitch = 1,
       lang = "es-MX",
+      volume,
     } = options;
+
+    const ttsVolume = safeClamp(
+      volume ?? scene?.a11y?.ttsVolume ?? 1,
+      MIN_TTS_VOLUME,
+      MAX_TTS_VOLUME
+    );
 
     const now = Date.now();
     const sinceLast = now - lastSpeechAt;
@@ -49,24 +68,29 @@ export function speakIfEnabled(scene, text, options = {}) {
       if (myToken !== speechToken) return;
 
       try {
-        const u = new SpeechSynthesisUtterance(String(text));
-        u.lang = lang;
-        u.rate = rate;
-        u.pitch = pitch;
+        const utterance = new SpeechSynthesisUtterance(String(text));
 
-        u.onstart = () => {
+        utterance.lang = lang;
+        utterance.rate = rate;
+        utterance.pitch = pitch;
+
+        // Este es el punto clave.
+        // Si esta línea no existe, la barra nunca afectará el volumen real.
+        utterance.volume = ttsVolume;
+
+        utterance.onstart = () => {
           lastSpeechAt = Date.now();
         };
 
-        u.onend = () => {
+        utterance.onend = () => {
           lastSpeechAt = Date.now();
         };
 
-        u.onerror = () => {
+        utterance.onerror = () => {
           lastSpeechAt = Date.now();
         };
 
-        window.speechSynthesis?.speak(u);
+        window.speechSynthesis?.speak(utterance);
       } catch {}
     }, waitMs);
   } catch {}
