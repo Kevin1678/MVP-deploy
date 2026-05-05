@@ -38,7 +38,7 @@
 
 .parent-dashboard__cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(145px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -51,6 +51,8 @@
   border-radius: 14px;
   padding: 15px 16px;
   box-shadow: var(--shadow);
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .parent-card__label {
@@ -91,29 +93,31 @@
 
 .parent-table-wrap {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .parent-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 680px;
+  min-width: 620px;
 }
 
 .parent-table thead th {
   text-align: left;
-  font-size: calc(var(--font-sm) * 0.93);
+  font-size: calc(var(--font-sm) * 0.9);
   color: var(--muted);
-  padding: 10px 12px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--border);
 }
 
 .parent-table tbody td {
-  padding: 10px 12px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
-  font-size: calc(var(--font-sm) * 0.94);
-  vertical-align: top;
+  font-size: calc(var(--font-sm) * 0.92);
+  vertical-align: middle;
 }
 
 .parent-table tbody tr:hover {
@@ -124,6 +128,37 @@
   background: rgba(15, 23, 42, 0.03);
 }
 
+/* Actividad reciente principal: aprox. 5 filas visibles + scroll */
+.parent-panel--compact .parent-table-wrap {
+  max-height: 255px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.parent-panel--compact .parent-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+}
+
+.parent-panel--compact .parent-table thead tr {
+  height: 38px;
+}
+
+.parent-panel--compact .parent-table tbody tr {
+  height: 40px;
+}
+
+.parent-panel--compact .parent-table tbody td {
+  white-space: nowrap;
+}
+
+.parent-panel--compact .parent-table th:last-child,
+.parent-panel--compact .parent-table td:last-child {
+  min-width: 190px;
+}
+
 .parent-children {
   display: flex;
   flex-direction: column;
@@ -132,6 +167,7 @@
 
 .parent-child-card {
   padding: 16px;
+  overflow: hidden;
 }
 
 .parent-child-card__header {
@@ -161,7 +197,7 @@
 
 .parent-child-stats {
   display: grid;
-  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -171,6 +207,7 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px 12px;
+  min-width: 0;
 }
 
 .parent-child-stat span {
@@ -188,8 +225,13 @@
 
 .parent-child-sections {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 14px;
+  align-items: start;
+}
+
+.parent-child-sections > * {
+  min-width: 0;
 }
 
 .parent-empty {
@@ -216,15 +258,11 @@
 
 @media (max-width: 1180px) {
   .parent-dashboard__cards {
-    grid-template-columns: repeat(2, minmax(145px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .parent-child-stats {
-    grid-template-columns: repeat(3, minmax(120px, 1fr));
-  }
-
-  .parent-child-sections {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -234,7 +272,7 @@
   }
 
   .parent-child-stats {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .parent-card,
@@ -242,10 +280,22 @@
   .parent-child-card {
     padding: 14px;
   }
+
+  .parent-panel--compact .parent-table-wrap {
+    max-height: 235px;
+  }
 }
 
 @media (max-width: 520px) {
   .parent-child-stats {
     grid-template-columns: 1fr;
+  }
+
+  .parent-table {
+    min-width: 560px;
+  }
+
+  .parent-panel--compact .parent-table-wrap {
+    max-height: 215px;
   }
 }
