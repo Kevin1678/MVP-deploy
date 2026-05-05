@@ -13,6 +13,10 @@ export const MAX_UI_SCALE = 1.3;
 export const MIN_TEXT_SCALE = 1.0;
 export const MAX_TEXT_SCALE = 1.5;
 
+export const MIN_TTS_VOLUME = 0;
+export const MAX_TTS_VOLUME = 1;
+export const TTS_VOLUME_STEP = 0.1;
+
 // Matrices 4x5 para ColorMatrix
 export const CVD = {
   protanopia: [
