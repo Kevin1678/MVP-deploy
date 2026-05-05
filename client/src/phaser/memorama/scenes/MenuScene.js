@@ -1,12 +1,8 @@
 import Phaser from "phaser";
-import { createA11yPanel } from "../../panel";
-import { applyA11yToScene } from "../../effects";
-import {
-  speakIfEnabled,
-  stopSpeech,
-  createCaptionsOverlay,
-} from "../../speech";
-import { getA11yTheme } from "../../theme";
+import { createA11yPanel } from "../../a11y/panel";
+import { applyA11yToScene } from "../../a11y/effects";
+import { createCaptionsOverlay, stopSpeech } from "../../a11y/speech";
+import { getA11yTheme } from "../../a11y/theme";
 import {
   contentLeft,
   getScales,
