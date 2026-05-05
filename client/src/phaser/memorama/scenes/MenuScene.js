@@ -9,6 +9,7 @@ import {
 import { contentLeft, getScales, fitFont, styleTextButton } from "../../shared/common";
 import { makeButton } from "../ui/buttons";
 import { MEMORAMA_DIFFICULTIES } from "../constants";
+import { createCaptionsOverlay } from "./speech";
 
 export class MenuScene extends Phaser.Scene {
   constructor(onExit) {
@@ -86,6 +87,8 @@ export class MenuScene extends Phaser.Scene {
 
     this.events.once("shutdown", () => this.cleanupScene());
     this.events.once("destroy", () => this.cleanupScene());
+
+    createCaptionsOverlay(this);
   }
 
   cleanupScene() {
@@ -93,7 +96,7 @@ export class MenuScene extends Phaser.Scene {
       this.scale.off("resize", this._resizeHandler);
       this._resizeHandler = null;
     }
-    stopSpeech();
+    stopSpeech(this);
   }
 
   handleResize(gameSize) {
