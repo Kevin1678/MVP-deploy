@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "../styles/parentDashboard.css";
+import "../styles/parentChildren.css";
 
 function formatDate(value) {
   if (!value) return "Sin registros";
