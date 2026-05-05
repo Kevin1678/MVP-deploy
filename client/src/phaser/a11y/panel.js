@@ -1,7 +1,9 @@
 import {
   MAX_TEXT_SCALE,
+  MAX_TTS_VOLUME,
   MAX_UI_SCALE,
   MIN_TEXT_SCALE,
+  MIN_TTS_VOLUME,
   MIN_UI_SCALE,
   PANEL_CLOSED_W,
   PANEL_OPEN_W,
@@ -9,12 +11,13 @@ import {
 import { applyA11yToScene, destroyA11yFx } from "./effects";
 import { createA11yPanelButton } from "./panelButton";
 import { defaultA11yPrefs, loadA11yPrefs, saveA11yPrefs } from "./prefs";
-import { speakIfEnabled, stopSpeech } from "./speech";
+import {
+  hideCaption,
+  speakIfEnabled,
+  stopSpeech,
+} from "./speech";
 import { applyThemeToScene, getA11yTheme } from "./theme";
 import { clamp } from "./utils";
-
-const MIN_TTS_VOLUME = 0;
-const MAX_TTS_VOLUME = 1;
 
 export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const loaded = loadA11yPrefs();
@@ -85,6 +88,10 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     applyA11yToScene(scene, scene.a11y);
     applyThemeToScene(scene);
 
+    if (scene.__captionsOverlay) {
+      scene.__captionsOverlay.layout?.();
+    }
+
     if (typeof onChange === "function") onChange(scene.a11y);
   }
 
@@ -113,7 +120,28 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
       scene.a11y.ttsEnabled = !scene.a11y.ttsEnabled;
 
       if (!scene.a11y.ttsEnabled) {
-        stopSpeech();
+        stopSpeech(scene);
+      }
+
+      commit();
+      refresh();
+    }
+  );
+
+  const btnCaptions = createA11yPanelButton(
+    scene,
+    pad,
+    158,
+    PANEL_OPEN_W - 2 * pad,
+    46,
+    scene.a11y.captionsEnabled
+      ? "Subtítulos: Encendidos"
+      : "Subtítulos: Apagados",
+    () => {
+      scene.a11y.captionsEnabled = !scene.a11y.captionsEnabled;
+
+      if (!scene.a11y.captionsEnabled) {
+        hideCaption(scene);
       }
 
       commit();
@@ -124,7 +152,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const btnHC = createA11yPanelButton(
     scene,
     pad,
-    158,
+    214,
     PANEL_OPEN_W - 2 * pad,
     46,
     scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal",
@@ -138,7 +166,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const btnTheme = createA11yPanelButton(
     scene,
     pad,
-    214,
+    270,
     PANEL_OPEN_W - 2 * pad,
     46,
     scene.a11y.themeMode === "light" ? "Modo: Claro" : "Modo: Oscuro",
@@ -151,7 +179,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     }
   );
 
-  const labelSize = scene.add.text(pad, 276, "Tamaño", {
+  const labelSize = scene.add.text(pad, 332, "Tamaño", {
     fontFamily: "Arial",
     fontSize: "13px",
     color: "#cbd5e1",
@@ -160,7 +188,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const btnAminus = createA11yPanelButton(
     scene,
     pad,
-    300,
+    356,
     124,
     42,
     "T-",
@@ -179,7 +207,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const btnAplus = createA11yPanelButton(
     scene,
     pad + 138,
-    300,
+    356,
     124,
     42,
     "T+",
@@ -198,7 +226,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const btnUIminus = createA11yPanelButton(
     scene,
     pad,
-    350,
+    406,
     124,
     42,
     "UI-",
@@ -217,7 +245,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const btnUIplus = createA11yPanelButton(
     scene,
     pad + 138,
-    350,
+    406,
     124,
     42,
     "UI+",
@@ -233,8 +261,8 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     }
   );
 
-  const volumeLabelY = 410;
-  const volumeBarY = 458;
+  const volumeLabelY = 466;
+  const volumeBarY = 514;
   const volumeBarX = pad;
   const volumeBarW = PANEL_OPEN_W - 2 * pad;
   const volumeBarH = 10;
@@ -263,7 +291,13 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     .setOrigin(0, 0.5);
 
   const volumeKnob = scene.add
-    .circle(volumeBarX + volumeBarW, volumeBarY, volumeKnobSize / 2, 0xffffff, 1)
+    .circle(
+      volumeBarX + volumeBarW,
+      volumeBarY,
+      volumeKnobSize / 2,
+      0xffffff,
+      1
+    )
     .setStrokeStyle(2, 0x0f172a, 1);
 
   const volumeHit = scene.add
@@ -302,13 +336,13 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
 
     const percent = Math.round((scene.a11y.ttsVolume ?? 1) * 100);
 
-    stopSpeech();
+    stopSpeech(scene);
 
     speakIfEnabled(scene, `Volumen del narrador ${percent} por ciento`, {
-    delayMs: 80,
-    minGapMs: 0,
-  });
-}
+      delayMs: 80,
+      minGapMs: 0,
+    });
+  }
 
   volumeHit.on("pointerdown", startVolumeDrag);
   volumeHit.on("pointermove", moveVolumeDrag);
@@ -336,7 +370,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const btnReset = createA11yPanelButton(
     scene,
     pad,
-    500,
+    556,
     PANEL_OPEN_W - 2 * pad,
     46,
     "Restablecer",
@@ -348,7 +382,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
         panelOpen,
       };
 
-      stopSpeech();
+      stopSpeech(scene);
       commit();
       refresh();
     }
@@ -362,6 +396,10 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     btnTTS.box,
     btnTTS.text,
     btnTTS.hit,
+
+    btnCaptions.box,
+    btnCaptions.text,
+    btnCaptions.hit,
 
     btnHC.box,
     btnHC.text,
@@ -421,6 +459,12 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
       scene.a11y.ttsEnabled ? "Voz: Encendido" : "Voz: Apagado"
     );
 
+    btnCaptions.setLabel(
+      scene.a11y.captionsEnabled
+        ? "Subtítulos: Encendidos"
+        : "Subtítulos: Apagados"
+    );
+
     btnHC.setLabel(
       scene.a11y.highContrast ? "Contraste: ALTO" : "Contraste: normal"
     );
@@ -460,6 +504,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
     [
       toggle,
       btnTTS,
+      btnCaptions,
       btnHC,
       btnTheme,
       btnAminus,
@@ -487,6 +532,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
 
     [
       btnTTS,
+      btnCaptions,
       btnHC,
       btnTheme,
       btnAminus,
@@ -502,6 +548,10 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
 
     refreshVolume();
     place();
+
+    if (scene.__captionsOverlay) {
+      scene.__captionsOverlay.layout?.();
+    }
   }
 
   place();
@@ -530,6 +580,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
       scene.input.off("pointerup", stopVolumeDrag);
     } catch {}
 
+    stopSpeech(scene);
     destroyA11yFx(scene);
   };
 
