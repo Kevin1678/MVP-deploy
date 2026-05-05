@@ -17,6 +17,10 @@ export const MIN_TTS_VOLUME = 0;
 export const MAX_TTS_VOLUME = 1;
 export const TTS_VOLUME_STEP = 0.1;
 
+export const DEFAULT_CAPTION_MIN_MS = 1200;
+export const DEFAULT_CAPTION_EXTRA_PER_CHAR_MS = 38;
+export const DEFAULT_CAPTION_MAX_MS = 4200;
+
 // Matrices 4x5 para ColorMatrix
 export const CVD = {
   protanopia: [
