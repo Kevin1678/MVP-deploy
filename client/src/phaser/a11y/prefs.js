@@ -8,6 +8,7 @@ export function defaultA11yPrefs() {
     colorMode: "normal", // normal | protanopia | tritanopia | grayscale
     uiScale: 1.0,
     textScale: 1.0,
+    ttsVolume: 1.0,
     panelOpen: true,
   };
 }
