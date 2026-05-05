@@ -3,6 +3,7 @@ import { LS_KEY } from "./constants";
 export function defaultA11yPrefs() {
   return {
     ttsEnabled: false,
+    captionsEnabled: true,
     highContrast: false,
     themeMode: "dark", // dark | light
     colorMode: "normal", // normal | protanopia | tritanopia | grayscale
