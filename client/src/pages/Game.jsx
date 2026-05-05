@@ -11,41 +11,63 @@ import {
 } from "../phaser/a11yPanel";
 
 function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
+  const value = Number(n);
+
+  if (Number.isNaN(value)) return min;
+
+  return Math.max(min, Math.min(max, value));
+}
+
+function getSavedA11yPrefs() {
+  return {
+    ...defaultA11yPrefs(),
+    ...(loadA11yPrefs() || {}),
+  };
 }
 
 function mapStudentProfileToA11y(studentProfile) {
-  const saved = loadA11yPrefs() || defaultA11yPrefs();
+  const saved = getSavedA11yPrefs();
 
   if (!studentProfile) {
-    return saved;
+    return {
+      ...saved,
+      ttsVolume: clamp(saved.ttsVolume ?? 1, 0, 1),
+    };
   }
 
   const visualCondition = studentProfile.visualCondition || "NONE";
   const isLowVision = visualCondition === "LOW_VISION";
 
   let colorMode = "normal";
-  if (visualCondition === "PROTANOPIA") colorMode = "protanopia";
-  if (visualCondition === "TRITANOPIA") colorMode = "tritanopia";
+
+  if (visualCondition === "PROTANOPIA") {
+    colorMode = "protanopia";
+  }
+
+  if (visualCondition === "TRITANOPIA") {
+    colorMode = "tritanopia";
+  }
 
   const fontScale = Number(studentProfile.fontScale) || 100;
 
   return {
     ...saved,
 
-    // estos sí salen del perfil del alumno
+    // Estos valores sí vienen del perfil del alumno.
     highContrast: Boolean(studentProfile.highContrast) || isLowVision,
     ttsEnabled: Boolean(studentProfile.textToSpeechEnabled) || isLowVision,
     colorMode,
     textScale: clamp(fontScale / 100, 1, 1.5),
 
-    // estos los conservas del usuario/localStorage
-    uiScale: saved.uiScale ?? 1,
+    // Estos valores se conservan del usuario/localStorage.
+    // No deben reiniciarse cada vez que se abre un juego.
+    uiScale: clamp(saved.uiScale ?? 1, 0.9, 1.3),
     panelOpen: saved.panelOpen ?? true,
-
-    // si ya agregaste themeMode en a11yPanel, lo preserva;
-    // si todavía no existe, no estorba.
     themeMode: saved.themeMode || "dark",
+
+    // Volumen del narrador.
+    // Se conserva localmente porque el usuario lo modifica a su gusto.
+    ttsVolume: clamp(saved.ttsVolume ?? 1, 0, 1),
   };
 }
 
@@ -89,6 +111,7 @@ export default function Game() {
       metadata,
     }) => {
       if (savingRef.current) return false;
+
       savingRef.current = true;
 
       try {
@@ -147,15 +170,27 @@ export default function Game() {
 
         const me = res.ok ? await res.json() : null;
 
-        if (me?.role === "STUDENT" && me?.studentProfile) {
+        if (me?.role === "STUDENT") {
           const prefs = mapStudentProfileToA11y(me.studentProfile);
           saveA11yPrefs(prefs);
+        } else {
+          const prefs = getSavedA11yPrefs();
+          saveA11yPrefs({
+            ...prefs,
+            ttsVolume: clamp(prefs.ttsVolume ?? 1, 0, 1),
+          });
         }
       } catch (error) {
         console.warn(
           "No se pudo cargar el perfil de accesibilidad del alumno.",
           error
         );
+
+        const prefs = getSavedA11yPrefs();
+        saveA11yPrefs({
+          ...prefs,
+          ttsVolume: clamp(prefs.ttsVolume ?? 1, 0, 1),
+        });
       } finally {
         if (cancelled) return;
 
@@ -210,7 +245,11 @@ export default function Game() {
 
       <div
         id="phaser-root"
-        style={{ width: "100%", height: "100%", position: "relative" }}
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "relative",
+        }}
       />
     </div>
   );
