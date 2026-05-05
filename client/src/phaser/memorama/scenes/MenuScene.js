@@ -1,15 +1,20 @@
 import Phaser from "phaser";
+import { createA11yPanel } from "../../panel";
+import { applyA11yToScene } from "../../effects";
 import {
-  createA11yPanel,
-  applyA11yToScene,
   speakIfEnabled,
   stopSpeech,
-  getA11yTheme,
-} from "../../a11yPanel";
-import { contentLeft, getScales, fitFont, styleTextButton } from "../../shared/common";
+  createCaptionsOverlay,
+} from "../../speech";
+import { getA11yTheme } from "../../theme";
+import {
+  contentLeft,
+  getScales,
+  fitFont,
+  styleTextButton,
+} from "../../shared/common";
 import { makeButton } from "../ui/buttons";
 import { MEMORAMA_DIFFICULTIES } from "../constants";
-import { createCaptionsOverlay } from "./speech";
 
 export class MenuScene extends Phaser.Scene {
   constructor(onExit) {
@@ -51,7 +56,7 @@ export class MenuScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.exitBtn.on("pointerdown", () => {
-      stopSpeech();
+      stopSpeech(this);
       this._onExit?.();
     });
 
@@ -60,15 +65,13 @@ export class MenuScene extends Phaser.Scene {
         this,
         option.label,
         () => {
-          stopSpeech();
+          stopSpeech(this);
           this.scene.start("MemoryScene", { pairs: option.pairs });
         },
         10,
         { width: 520, height: 60, baseFont: 26 }
       )
     );
-
-    [this.btnEasy, this.btnMed, this.btnHard] = this.difficultyButtons;
 
     this.a11yPanel = createA11yPanel(this, {
       anchor: "left",
@@ -77,6 +80,8 @@ export class MenuScene extends Phaser.Scene {
         this.layout();
       },
     });
+
+    createCaptionsOverlay(this);
 
     this.applyTheme();
     this.layout();
@@ -87,8 +92,6 @@ export class MenuScene extends Phaser.Scene {
 
     this.events.once("shutdown", () => this.cleanupScene());
     this.events.once("destroy", () => this.cleanupScene());
-
-    createCaptionsOverlay(this);
   }
 
   cleanupScene() {
@@ -96,6 +99,7 @@ export class MenuScene extends Phaser.Scene {
       this.scale.off("resize", this._resizeHandler);
       this._resizeHandler = null;
     }
+
     stopSpeech(this);
   }
 
@@ -109,6 +113,7 @@ export class MenuScene extends Phaser.Scene {
           window.innerWidth
       )
     );
+
     const height = Math.max(
       480,
       Math.floor(
