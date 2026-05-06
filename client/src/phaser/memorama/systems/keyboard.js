@@ -63,6 +63,7 @@ export function applyFocus(scene, index, silent = false) {
         scene.a11y?.highContrast ? 0x000000 : 0x22c55e,
         1
       );
+
     card.focusOutline.setVisible(false);
   }
 
@@ -79,6 +80,7 @@ export function applyFocus(scene, index, silent = false) {
       : card.flipped
         ? `volteada, ${card.label}`
         : "oculta";
-    scene.say(`Carta fila ${row}, columna ${col}, ${status}`);
+
+    scene.say(`Carta fila ${row}, columna ${col}, ${status}`, false);
   }
 }
