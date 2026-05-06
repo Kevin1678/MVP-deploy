@@ -20,12 +20,14 @@ export function applyCardsTheme(scene, theme) {
       theme.tileStroke,
       scene.a11y.highContrast ? 1 : 0.16
     );
+
     card.faceUp.setFillStyle(theme.surfaceAlt, 1);
     card.faceUp.setStrokeStyle(
       2,
       theme.tileStroke,
       scene.a11y.highContrast ? 1 : 0.28
     );
+
     card.txt.setColor(theme.text);
 
     if (card.focusOutline) {
@@ -99,6 +101,7 @@ export function layoutCards(scene) {
 
     card.hit.setPosition(x0, y0);
     card.hit.setSize(w, h);
+
     if (card.hit.input?.hitArea?.setTo) {
       card.hit.input.hitArea.setTo(0, 0, w, h);
     }
@@ -182,15 +185,19 @@ function createCard(scene, idx, item) {
 
   hit.on("pointerover", () => {
     if (card.matched || card.flipped || scene.gameEnded) return;
+
     const cols = scene.gridCols || 4;
     const row = Math.floor(idx / cols) + 1;
     const col = (idx % cols) + 1;
-    scene.say(`Carta fila ${row}, columna ${col}`);
+
+    scene.say(`Carta fila ${row}, columna ${col}`, false);
   });
 
   hit.on("pointerdown", () => {
-    if (scene.state.locked || card.matched || card.flipped || scene.gameEnded)
+    if (scene.state.locked || card.matched || card.flipped || scene.gameEnded) {
       return;
+    }
+
     scene.focusIndex = idx;
     scene.applyFocus(idx, true);
     scene.onCardClick(card);
