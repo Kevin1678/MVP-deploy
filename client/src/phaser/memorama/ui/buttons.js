@@ -12,5 +12,8 @@ export function makeButton(scene, label, onClick, depth = 10, opts = {}) {
     wrapMin: 120,
     textPadX: 24,
     hoverSpeak: (currentLabel) => currentLabel,
+    hoverSpeakOptions: {
+      showCaptions: false,
+    },
   });
 }
