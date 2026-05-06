@@ -1,4 +1,4 @@
-import { speakIfEnabled } from "../../a11yPanel";
+import { speakIfEnabled } from "../../a11y/speech";
 import { fitFont, getButtonPalette, getScales } from "../common";
 
 export function createTextButton(scene, label, onClick, depth = 10, opts = {}) {
@@ -15,7 +15,11 @@ export function createTextButton(scene, label, onClick, depth = 10, opts = {}) {
   const wrapMin = opts.wrapMin ?? 100;
   const textPadX = opts.textPadX ?? 20;
   const hoverSpeak = opts.hoverSpeak ?? null;
-  const hoverSpeakOptions = opts.hoverSpeakOptions ?? undefined;
+
+  const hoverSpeakOptions = {
+    showCaptions: false,
+    ...(opts.hoverSpeakOptions ?? {}),
+  };
 
   const box = scene.add
     .rectangle(x0, y0, w, h, 0x111827, 1)
@@ -46,8 +50,10 @@ export function createTextButton(scene, label, onClick, depth = 10, opts = {}) {
 
   hit.on("pointerover", () => {
     if (!enabled) return;
+
     const textToSpeak = resolveHoverSpeech();
     if (!textToSpeak) return;
+
     speakIfEnabled(scene, textToSpeak, hoverSpeakOptions);
   });
 
@@ -113,14 +119,22 @@ export function createTextButton(scene, label, onClick, depth = 10, opts = {}) {
       h = newH;
       box.setSize(w, h);
       hit.setSize(w, h);
+
       if (hit.input?.hitArea?.setTo) {
         hit.input.hitArea.setTo(0, 0, w, h);
       }
+
       refreshTextPos();
       applyCurrentTheme();
     },
 
-    setTheme({ fill, strokeAlpha, textColor, fontSize, strokeColor = 0xffffff }) {
+    setTheme({
+      fill,
+      strokeAlpha,
+      textColor,
+      fontSize,
+      strokeColor = 0xffffff,
+    }) {
       box.setFillStyle(fill, 1);
       box.setStrokeStyle(2, strokeColor, strokeAlpha);
       text.setColor(textColor);
@@ -146,12 +160,14 @@ export function createTextButton(scene, label, onClick, depth = 10, opts = {}) {
 
     setEnabled(v) {
       enabled = !!v;
+
       if (enabled) {
         if (!hit.input) hit.setInteractive({ useHandCursor: true });
         if (hit.input) hit.input.cursor = "pointer";
       } else {
         hit.disableInteractive();
       }
+
       box.setAlpha(enabled ? 1 : 0.55);
       text.setAlpha(enabled ? 1 : 0.55);
     },
