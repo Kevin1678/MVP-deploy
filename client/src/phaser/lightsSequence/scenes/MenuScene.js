@@ -1,12 +1,14 @@
 import Phaser from "phaser";
+import { createA11yPanel } from "../../a11y/panel";
+import { applyA11yToScene } from "../../a11y/effects";
+import { createCaptionsOverlay, stopSpeech } from "../../a11y/speech";
+import { getA11yTheme } from "../../a11y/theme";
 import {
-  createA11yPanel,
-  applyA11yToScene,
-  speakIfEnabled,
-  stopSpeech,
-  getA11yTheme,
-} from "../../a11yPanel";
-import { contentLeft, getScales, fitFont, styleTextButton } from "../../shared/common";
+  contentLeft,
+  getScales,
+  fitFont,
+  styleTextButton,
+} from "../../shared/common";
 import { makeTopLeftButton } from "../ui/buttons";
 import { LIGHTS_DIFFICULTIES } from "../constants";
 
@@ -50,7 +52,7 @@ export class LightsMenuScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.exitBtn.on("pointerdown", () => {
-      stopSpeech();
+      stopSpeech(this);
       this._onExit?.();
     });
 
@@ -59,7 +61,7 @@ export class LightsMenuScene extends Phaser.Scene {
         this,
         option.label,
         () => {
-          stopSpeech();
+          stopSpeech(this);
           this.scene.start("LightsGameScene", {
             steps: option.steps,
             speedMs: option.speedMs,
@@ -72,8 +74,6 @@ export class LightsMenuScene extends Phaser.Scene {
       )
     );
 
-    [this.btnEasy, this.btnMed, this.btnHard] = this.difficultyButtons;
-
     this.a11yPanel = createA11yPanel(this, {
       anchor: "left",
       onChange: () => {
@@ -81,6 +81,8 @@ export class LightsMenuScene extends Phaser.Scene {
         this.layout();
       },
     });
+
+    createCaptionsOverlay(this);
 
     this.applyTheme();
     this.layout();
@@ -98,7 +100,8 @@ export class LightsMenuScene extends Phaser.Scene {
       this.scale.off("resize", this._resizeHandler);
       this._resizeHandler = null;
     }
-    stopSpeech();
+
+    stopSpeech(this);
   }
 
   handleResize(gameSize) {
@@ -111,6 +114,7 @@ export class LightsMenuScene extends Phaser.Scene {
           window.innerWidth
       )
     );
+
     const height = Math.max(
       480,
       Math.floor(
