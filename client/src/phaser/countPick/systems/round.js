@@ -1,6 +1,11 @@
 import Phaser from "phaser";
-import { speakIfEnabled } from "../../a11yPanel";
-import { getScales, contentLeft, fitFont, getButtonPalette } from "../../shared/common";
+import { speakIfEnabled } from "../../a11y/speech";
+import {
+  getScales,
+  contentLeft,
+  fitFont,
+  getButtonPalette,
+} from "../../shared/common";
 import { makeTopLeftButton, makeBall, recolorBall } from "../ui/buttons";
 import { createRoundData } from "./state";
 import { showCorrectFeedback, showWrongFeedback } from "./feedback";
@@ -51,7 +56,9 @@ export function applyRoundTheme(scene) {
   });
 
   const r = Math.round(28 * ui);
-  scene.ballParts.forEach((p) => recolorBall(p, scene, r, !!scene.a11y.highContrast));
+  scene.ballParts.forEach((p) =>
+    recolorBall(p, scene, r, !!scene.a11y.highContrast)
+  );
 }
 
 export function layoutBalls(scene) {
