@@ -36,6 +36,7 @@ export function makeTopLeftButton(scene, label, onClick, depth = 10, opts = {}) 
       delayMs: 160,
       minGapMs: 380,
       rate: 0.96,
+      showCaptions: false,
     },
   });
 }
@@ -56,7 +57,7 @@ export function makeGridTile(scene, r, c) {
   const positionName = getTileName(r, c);
 
   const baseColor = hexToNumber(def.hex);
-  const activeColor = mixColors(baseColor, 0xffffff, 0.30);
+  const activeColor = mixColors(baseColor, 0xffffff, 0.3);
   const pressColor = mixColors(baseColor, 0xffffff, 0.18);
 
   const bg = scene.add
@@ -65,7 +66,7 @@ export function makeGridTile(scene, r, c) {
     .setStrokeStyle(3, 0xffffff, 0.18);
 
   const shine = scene.add
-    .rectangle(0, 0, 120, 34, 0xffffff, 0.10)
+    .rectangle(0, 0, 120, 34, 0xffffff, 0.1)
     .setOrigin(0, 0);
 
   const focus = scene.add
