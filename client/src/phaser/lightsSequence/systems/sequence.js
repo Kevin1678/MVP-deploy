@@ -1,4 +1,5 @@
-import { speakIfEnabled, getA11yTheme } from "../../a11yPanel";
+import { speakIfEnabled } from "../../a11y/speech";
+import { getA11yTheme } from "../../a11y/theme";
 import { randInt } from "../../shared/common";
 import { getTile } from "./grid";
 import { showOverlayIcon } from "./feedback";
@@ -46,6 +47,7 @@ export function nextRound(scene, isFirst = false) {
         delayMs: 380,
         minGapMs: 520,
         rate: 0.94,
+        showCaptions: false,
       }
     );
   }
@@ -85,7 +87,7 @@ export async function playSequence(scene, runId) {
   const hc = !!scene.a11y.highContrast;
   const theme = getA11yTheme(scene.a11y);
   const baseStrokeColor = hc ? 0x000000 : theme.tileStroke;
-  const baseStrokeAlpha = hc ? 1 : 0.20;
+  const baseStrokeAlpha = hc ? 1 : 0.2;
 
   updateRepeatButtonState(scene);
 
@@ -93,7 +95,13 @@ export async function playSequence(scene, runId) {
   if (!okStart || scene.gameEnded) return;
 
   for (let i = 0; i < scene.state.sequence.length; i++) {
-    if (!scene.scene.isActive() || scene.gameEnded || runId !== scene.sequenceRunId) return;
+    if (
+      !scene.scene.isActive() ||
+      scene.gameEnded ||
+      runId !== scene.sequenceRunId
+    ) {
+      return;
+    }
 
     const { r, c } = scene.state.sequence[i];
     const tile = getTile(scene, r, c);
@@ -133,7 +141,13 @@ export async function playSequence(scene, runId) {
     if (!okOff || scene.gameEnded) return;
   }
 
-  if (!scene.scene.isActive() || scene.gameEnded || runId !== scene.sequenceRunId) return;
+  if (
+    !scene.scene.isActive() ||
+    scene.gameEnded ||
+    runId !== scene.sequenceRunId
+  ) {
+    return;
+  }
 
   scene.state.locked = false;
   updateRepeatButtonState(scene);
@@ -154,7 +168,7 @@ export function onTilePress(scene, r, c) {
   const hc = !!scene.a11y.highContrast;
   const theme = getA11yTheme(scene.a11y);
   const baseStrokeColor = hc ? 0x000000 : theme.tileStroke;
-  const baseStrokeAlpha = hc ? 1 : 0.20;
+  const baseStrokeAlpha = hc ? 1 : 0.2;
 
   tile.bg.setFillStyle(tile.pressColor, 1);
   tile.bg.setStrokeStyle(5, hc ? 0x000000 : 0xffffff, 1);
@@ -177,6 +191,7 @@ export function onTilePress(scene, r, c) {
     delayMs: 60,
     minGapMs: 320,
     rate: 0.96,
+    showCaptions: false,
   });
 
   const expected = scene.state.sequence[scene.state.inputIndex];
