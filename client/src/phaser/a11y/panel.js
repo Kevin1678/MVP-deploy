@@ -11,11 +11,7 @@ import {
 import { applyA11yToScene, destroyA11yFx } from "./effects";
 import { createA11yPanelButton } from "./panelButton";
 import { defaultA11yPrefs, loadA11yPrefs, saveA11yPrefs } from "./prefs";
-import {
-  hideCaption,
-  speakIfEnabled,
-  stopSpeech,
-} from "./speech";
+import { hideCaption, speakIfEnabled, stopSpeech } from "./speech";
 import { applyThemeToScene, getA11yTheme } from "./theme";
 import { clamp } from "./utils";
 
@@ -561,6 +557,10 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
   const resizeHandler = () => {
     place();
     refresh();
+
+    if (scene.__captionsOverlay) {
+      scene.__captionsOverlay.layout?.();
+    }
   };
 
   scene.scale.on("resize", resizeHandler);
@@ -580,6 +580,7 @@ export function createA11yPanel(scene, { anchor = "left", onChange } = {}) {
       scene.input.off("pointerup", stopVolumeDrag);
     } catch {}
 
+    hideCaption(scene);
     stopSpeech(scene);
     destroyA11yFx(scene);
   };
