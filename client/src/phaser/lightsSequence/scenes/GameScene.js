@@ -1,18 +1,23 @@
 import Phaser from "phaser";
+import { createA11yPanel } from "../../a11y/panel";
+import { applyA11yToScene } from "../../a11y/effects";
 import {
-  createA11yPanel,
-  applyA11yToScene,
+  createCaptionsOverlay,
   speakIfEnabled,
   stopSpeech,
-  getA11yTheme,
-} from "../../a11yPanel";
+} from "../../a11y/speech";
+import { getA11yTheme } from "../../a11y/theme";
 import {
   createEndModal,
   applyEndModalTheme,
   layoutEndModal as layoutSharedEndModal,
   destroyEndModal,
 } from "../../shared/ui/endModal";
-import { resolveLightsConfig, createLightsState, buildFinalResult } from "../systems/state";
+import {
+  resolveLightsConfig,
+  createLightsState,
+  buildFinalResult,
+} from "../systems/state";
 import {
   createTopUi,
   bindTopUiActions,
@@ -21,7 +26,13 @@ import {
   updateStats,
   updateRepeatButtonState,
 } from "../ui/topBar";
-import { buildGrid, applyGridTheme, layoutGrid, applyFocus, setTilesEnabled } from "../systems/grid";
+import {
+  buildGrid,
+  applyGridTheme,
+  layoutGrid,
+  applyFocus,
+  setTilesEnabled,
+} from "../systems/grid";
 import { initKeyboard, teardownKeyboard } from "../systems/input";
 import { nextRound, repeatSequence, onTilePress } from "../systems/sequence";
 
@@ -69,6 +80,7 @@ export class LightsGameScene extends Phaser.Scene {
       },
     });
 
+    createCaptionsOverlay(this);
     initKeyboard(this);
 
     this.applyTheme();
@@ -106,7 +118,7 @@ export class LightsGameScene extends Phaser.Scene {
   }
 
   stopSpeechNow() {
-    stopSpeech();
+    stopSpeech(this);
   }
 
   schedule(delay, callback) {
@@ -308,8 +320,11 @@ export class LightsGameScene extends Phaser.Scene {
 
   layoutEndModal() {
     if (this.endModal) {
-      this.endModal.config.bodyLineSpacing = Math.round(10 * (this.a11y?.uiScale || 1));
+      this.endModal.config.bodyLineSpacing = Math.round(
+        10 * (this.a11y?.uiScale || 1)
+      );
     }
+
     layoutSharedEndModal(this, this.endModal);
   }
 
