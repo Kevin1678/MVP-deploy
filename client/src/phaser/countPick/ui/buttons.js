@@ -1,5 +1,6 @@
 import Phaser from "phaser";
-import { speakIfEnabled, getA11yTheme } from "../../a11yPanel";
+import { speakIfEnabled } from "../../a11y/speech";
+import { getA11yTheme } from "../../a11y/theme";
 import { createTextButton } from "../../shared/ui/button";
 
 export function makeTopLeftButton(scene, label, onClick, depth = 10, opts = {}) {
@@ -49,7 +50,13 @@ export function makeBall(scene, x, y, r, hc = false, index = 0) {
 
   const container = scene.add.container(x, y, [ball, shine, eyes]);
 
-  const announceBall = () => {
+  const announceBallHover = () => {
+    speakIfEnabled(scene, `Bolita número ${index + 1}`, {
+      showCaptions: false,
+    });
+  };
+
+  const announceBallSelect = () => {
     speakIfEnabled(scene, `Bolita número ${index + 1}`);
   };
 
@@ -58,8 +65,8 @@ export function makeBall(scene, x, y, r, hc = false, index = 0) {
     Phaser.Geom.Circle.Contains
   );
 
-  ball.on("pointerover", announceBall);
-  ball.on("pointerdown", announceBall);
+  ball.on("pointerover", announceBallHover);
+  ball.on("pointerdown", announceBallSelect);
 
   return { container, ball, shine, eyes, r };
 }
