@@ -1,11 +1,12 @@
 import Phaser from "phaser";
+import { createA11yPanel } from "../../a11y/panel";
+import { applyA11yToScene } from "../../a11y/effects";
 import {
-  createA11yPanel,
-  applyA11yToScene,
+  createCaptionsOverlay,
   speakIfEnabled,
   stopSpeech,
-  getA11yTheme,
-} from "../../a11yPanel";
+} from "../../a11y/speech";
+import { getA11yTheme } from "../../a11y/theme";
 import {
   createEndModal,
   applyEndModalTheme,
@@ -13,10 +14,15 @@ import {
   destroyEndModal,
 } from "../../shared/ui/endModal";
 import { resolvePairs, createMemoryState } from "../systems/state";
-import { createTopUi, bindTopUiActions, applyTopUiTheme, layoutTopUi } from "../ui/topBar";
+import {
+  createTopUi,
+  bindTopUiActions,
+  applyTopUiTheme,
+  layoutTopUi,
+} from "../ui/topBar";
 import { createDeck, applyCardsTheme, layoutCards } from "../systems/cards";
 import { initKeyboard, teardownKeyboard, applyFocus } from "../systems/keyboard";
-import { handleCardClick, handleWin } from "../systems/gameplay";
+import { handleCardClick } from "../systems/gameplay";
 
 export class MemoryScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
@@ -68,6 +74,7 @@ export class MemoryScene extends Phaser.Scene {
       },
     });
 
+    createCaptionsOverlay(this);
     initKeyboard(this);
 
     this.applyTheme();
@@ -140,6 +147,7 @@ export class MemoryScene extends Phaser.Scene {
           window.innerWidth
       )
     );
+
     const height = Math.max(
       480,
       Math.floor(
@@ -166,12 +174,12 @@ export class MemoryScene extends Phaser.Scene {
     this.applyFocus(this.focusIndex, true);
   }
 
-  say(text) {
-    speakIfEnabled(this, text);
+  say(text, showCaptions = true) {
+    speakIfEnabled(this, text, { showCaptions });
   }
 
   stopSpeechNow() {
-    stopSpeech();
+    stopSpeech(this);
   }
 
   applyTheme() {
@@ -202,7 +210,6 @@ export class MemoryScene extends Phaser.Scene {
   onCardClick(card) {
     handleCardClick(this, card);
   }
-
 
   showEndModal({ durationMs, moves }) {
     if (this.endModal) return;
