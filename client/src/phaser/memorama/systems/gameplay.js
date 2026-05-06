@@ -2,8 +2,9 @@ import { buildFinalResult } from "./state";
 import { setCardVisual } from "./cards";
 
 export function handleCardClick(scene, card) {
-  if (scene.state.locked || card.matched || card.flipped || scene.gameEnded)
+  if (scene.state.locked || card.matched || card.flipped || scene.gameEnded) {
     return;
+  }
 
   scene.state.flips += 1;
   setCardVisual(scene, card, true);
@@ -48,10 +49,12 @@ export function handleCardClick(scene, card) {
 
   scene.schedule(revealDelay, () => {
     if (!scene.scene.isActive()) return;
+
     scene.say(`Incorrecto. Era ${a.label} y ${b.label}`);
 
     scene.schedule(hideDelay, () => {
       if (!scene.scene.isActive()) return;
+
       setCardVisual(scene, a, false);
       setCardVisual(scene, b, false);
       scene.state.first = null;
