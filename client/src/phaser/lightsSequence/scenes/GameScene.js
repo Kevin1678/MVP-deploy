@@ -8,6 +8,11 @@ import {
 } from "../../a11y/speech";
 import { getA11yTheme } from "../../a11y/theme";
 import {
+  contentLeft,
+  getScales,
+  fitFont,
+} from "../../shared/common";
+import {
   createEndModal,
   applyEndModalTheme,
   layoutEndModal as layoutSharedEndModal,
@@ -36,6 +41,12 @@ import {
 import { initKeyboard, teardownKeyboard } from "../systems/input";
 import { nextRound, repeatSequence, onTilePress } from "../systems/sequence";
 
+function titleCase(text) {
+  return String(text || "")
+    .trim()
+    .replace(/\b\p{L}/gu, (m) => m.toUpperCase());
+}
+
 export class LightsGameScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
     super("LightsGameScene");
@@ -43,6 +54,8 @@ export class LightsGameScene extends Phaser.Scene {
     this._onExit = onExit;
     this._resizeHandler = null;
     this._keyHandler = null;
+    this.colorPreviewTimer = null;
+    this.colorPreview = null;
   }
 
   init(data) {
@@ -68,12 +81,14 @@ export class LightsGameScene extends Phaser.Scene {
     createTopUi(this);
     bindTopUiActions(this);
     buildGrid(this);
+    this.createColorPreview();
 
     this.a11yPanel = createA11yPanel(this, {
       anchor: "left",
       onChange: () => {
         this.applyTheme();
         this.layoutTopUI();
+        this.layoutColorPreview();
         this.layoutGrid();
         this.layoutEndModal();
         this.applyFocus(this.state.focusIndex, true);
@@ -85,6 +100,7 @@ export class LightsGameScene extends Phaser.Scene {
 
     this.applyTheme();
     this.layoutTopUI();
+    this.layoutColorPreview();
     this.layoutGrid();
     this.applyFocus(0, true);
     this.updateStats();
@@ -99,9 +115,149 @@ export class LightsGameScene extends Phaser.Scene {
     this.events.once("destroy", () => this.cleanupScene());
   }
 
+  createColorPreview() {
+    this.colorPreview = {
+      bg: this.add
+        .rectangle(0, 0, 220, 58, 0x111827, 0.96)
+        .setOrigin(0.5)
+        .setDepth(2500)
+        .setVisible(false),
+
+      swatch: this.add
+        .rectangle(0, 0, 34, 34, 0xffffff, 1)
+        .setOrigin(0.5)
+        .setDepth(2501)
+        .setVisible(false),
+
+      label: this.add
+        .text(0, 0, "", {
+          fontFamily: "Arial",
+          fontSize: "24px",
+          color: "#ffffff",
+        })
+        .setOrigin(0, 0.5)
+        .setDepth(2502)
+        .setVisible(false),
+
+      fillColor: 0xffffff,
+      labelText: "",
+    };
+  }
+
+  cancelColorPreviewTimer() {
+    if (!this.colorPreviewTimer) return;
+
+    try {
+      this.colorPreviewTimer.remove(false);
+    } catch {}
+
+    this.colorPreviewTimer = null;
+  }
+
+  showColorPreview(colorName, fillColor, autoHideMs = 0) {
+    if (!this.colorPreview) return;
+
+    this.cancelColorPreviewTimer();
+
+    this.colorPreview.labelText = titleCase(colorName);
+    this.colorPreview.fillColor = fillColor;
+
+    this.colorPreview.label.setText(this.colorPreview.labelText);
+    this.colorPreview.swatch.setFillStyle(fillColor, 1);
+
+    this.colorPreview.bg.setVisible(true);
+    this.colorPreview.swatch.setVisible(true);
+    this.colorPreview.label.setVisible(true);
+
+    this.applyColorPreviewTheme();
+    this.layoutColorPreview();
+
+    if (autoHideMs > 0) {
+      this.colorPreviewTimer = this.time.delayedCall(autoHideMs, () => {
+        this.colorPreviewTimer = null;
+        this.hideColorPreview();
+      });
+    }
+  }
+
+  hideColorPreview() {
+    this.cancelColorPreviewTimer();
+
+    if (!this.colorPreview) return;
+
+    this.colorPreview.bg.setVisible(false);
+    this.colorPreview.swatch.setVisible(false);
+    this.colorPreview.label.setVisible(false);
+  }
+
+  applyColorPreviewTheme() {
+    if (!this.colorPreview) return;
+
+    const theme = getA11yTheme(this.a11y || {});
+
+    this.colorPreview.bg
+      .setFillStyle(theme.surface, this.a11y?.highContrast ? 1 : 0.96)
+      .setStrokeStyle(
+        2,
+        theme.tileStroke,
+        this.a11y?.highContrast ? 1 : 0.24
+      );
+
+    this.colorPreview.label.setColor(theme.text);
+    this.colorPreview.swatch.setStrokeStyle(
+      2,
+      theme.tileStroke,
+      this.a11y?.highContrast ? 1 : 0.35
+    );
+    this.colorPreview.swatch.setFillStyle(
+      this.colorPreview.fillColor ?? theme.primary,
+      1
+    );
+  }
+
+  layoutColorPreview() {
+    if (!this.colorPreview) return;
+
+    const { ui, ts } = getScales(this);
+    const W = this.scale.width;
+    const left = contentLeft(this);
+    const right = 16;
+    const cx = left + (W - left - right) / 2;
+
+    const statsBottom = this.stats
+      ? this.stats.y + this.stats.height
+      : 108 * ui;
+
+    const cy = statsBottom + 32 * ui;
+
+    this.colorPreview.label.setFontSize(fitFont(24, ts));
+
+    const swatchSize = Math.round(34 * ui);
+    const gap = Math.round(14 * ui);
+    const padX = Math.round(18 * ui);
+    const boxH = Math.round(58 * ui);
+
+    const textBounds = this.colorPreview.label.getBounds();
+    const textW = Math.max(70, Math.ceil(textBounds.width || 0));
+    const boxW = Math.max(
+      Math.round(190 * ui),
+      textW + swatchSize + gap + padX * 2
+    );
+
+    const leftX = cx - boxW / 2 + padX;
+
+    this.colorPreview.bg.setPosition(cx, cy).setSize(boxW, boxH);
+    this.colorPreview.swatch
+      .setPosition(leftX + swatchSize / 2, cy)
+      .setSize(swatchSize, swatchSize);
+
+    this.colorPreview.label.setPosition(leftX + swatchSize + gap, cy);
+  }
+
   cleanupTransientState() {
     this.cancelPendingTimers();
     this.sequenceRunId += 1;
+    this.hideColorPreview();
     this.hideEndModal();
   }
 
@@ -137,6 +293,7 @@ export class LightsGameScene extends Phaser.Scene {
           resolve(false);
           return;
         }
+
         resolve(true);
       });
     });
@@ -164,6 +321,7 @@ export class LightsGameScene extends Phaser.Scene {
           window.innerWidth
       )
     );
+
     const height = Math.max(
       480,
       Math.floor(
@@ -185,6 +343,7 @@ export class LightsGameScene extends Phaser.Scene {
 
     this.applyTheme();
     this.layoutTopUI();
+    this.layoutColorPreview();
     this.layoutGrid();
     this.layoutEndModal();
     this.applyFocus(this.state.focusIndex, true);
@@ -200,6 +359,7 @@ export class LightsGameScene extends Phaser.Scene {
 
     applyTopUiTheme(this, theme);
     applyGridTheme(this, theme);
+    this.applyColorPreviewTheme();
 
     if (this.endModal) {
       applyEndModalTheme(this, this.endModal);
@@ -254,6 +414,7 @@ export class LightsGameScene extends Phaser.Scene {
     this.sequenceRunId += 1;
     this.setTilesEnabled(false);
     this.updateRepeatButtonState();
+    this.hideColorPreview();
 
     this.menuBtn.disableInteractive();
     this.exitBtn.disableInteractive();
@@ -268,11 +429,15 @@ export class LightsGameScene extends Phaser.Scene {
 
     this.showEndModal();
 
-    speakIfEnabled(this, "Juego terminado. Selecciona Jugar otra vez o Salir.", {
-      delayMs: 180,
-      minGapMs: 500,
-      rate: 0.94,
-    });
+    speakIfEnabled(
+      this,
+      "Juego terminado. Selecciona Jugar otra vez o Salir.",
+      {
+        delayMs: 180,
+        minGapMs: 500,
+        rate: 0.94,
+      }
+    );
   }
 
   showEndModal() {
