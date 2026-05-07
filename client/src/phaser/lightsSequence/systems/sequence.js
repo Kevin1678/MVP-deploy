@@ -10,6 +10,7 @@ export function nextRound(scene, isFirst = false) {
 
   scene.cancelPendingTimers();
   scene.sequenceRunId += 1;
+  scene.hideColorPreview?.();
 
   scene.state.round += 1;
   scene.state.attempts += 1;
@@ -21,9 +22,11 @@ export function nextRound(scene, isFirst = false) {
 
   for (let i = 0; i < scene.steps; i++) {
     let pick;
+
     do {
       pick = { r: randInt(0, 2), c: randInt(0, 2) };
     } while (prev && pick.r === prev.r && pick.c === prev.c);
+
     sequence.push(pick);
     prev = pick;
   }
@@ -67,6 +70,8 @@ export function repeatSequence(scene) {
 
   scene.cancelPendingTimers();
   scene.sequenceRunId += 1;
+  scene.hideColorPreview?.();
+
   scene.state.locked = true;
   scene.state.inputIndex = 0;
   scene.state.repeatCount += 1;
@@ -111,6 +116,12 @@ export async function playSequence(scene, runId) {
     const lightOnMs = Math.max(scene.speedMs, 380);
     const lightOffMs = Math.max(240, scene.speedMs * 0.35);
 
+    scene.showColorPreview?.(
+      tile.colorName,
+      tile.baseColor,
+      voiceLeadMs + lightOnMs + 80
+    );
+
     speakIfEnabled(scene, tile.colorName, {
       delayMs: 40,
       minGapMs: 380,
@@ -151,6 +162,7 @@ export async function playSequence(scene, runId) {
 
   scene.state.locked = false;
   updateRepeatButtonState(scene);
+  scene.hideColorPreview?.();
 
   speakIfEnabled(scene, "Tu turno. Repite la secuencia.", {
     delayMs: 120,
@@ -183,9 +195,12 @@ export function onTilePress(scene, r, c) {
 
   scene.schedule(160, () => {
     if (!scene.scene.isActive()) return;
+
     tile.bg.setFillStyle(tile.baseColor, 1);
     tile.bg.setStrokeStyle(3, baseStrokeColor, baseStrokeAlpha);
   });
+
+  scene.showColorPreview?.(tile.colorName, tile.baseColor, 550);
 
   speakIfEnabled(scene, tile.colorName, {
     delayMs: 60,
@@ -216,6 +231,7 @@ export function successFeedback(scene) {
   scene.state.score += 1;
   updateStats(scene);
   updateRepeatButtonState(scene);
+  scene.hideColorPreview?.();
 
   speakIfEnabled(scene, "Correcto", {
     delayMs: 80,
@@ -242,6 +258,7 @@ export function failFeedback(scene) {
   scene.state.locked = true;
   scene.state.wrongRounds += 1;
   updateRepeatButtonState(scene);
+  scene.hideColorPreview?.();
 
   speakIfEnabled(scene, "Incorrecto", {
     delayMs: 80,
@@ -261,6 +278,7 @@ export function failFeedback(scene) {
 
   scene.schedule(1000, () => {
     if (!scene.scene.isActive() || scene.gameEnded) return;
+
     scene.state.inputIndex = 0;
 
     speakIfEnabled(scene, "Mira otra vez.", {
