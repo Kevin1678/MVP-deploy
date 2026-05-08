@@ -38,7 +38,11 @@ export function createTextButton(scene, label, onClick, depth = 10, opts = {}) {
     .setOrigin(0.5)
     .setDepth(depth + 1);
 
-  const hit = scene.add.zone(x0, y0, w, h).setOrigin(0, 0).setDepth(depth + 2);
+  const hit = scene.add
+    .zone(x0, y0, w, h)
+    .setOrigin(0, 0)
+    .setDepth(depth + 2);
+
   hit.setInteractive({ useHandCursor: true });
 
   function resolveHoverSpeech() {
@@ -76,6 +80,19 @@ export function createTextButton(scene, label, onClick, depth = 10, opts = {}) {
     text.setColor(palette.textColor);
     text.setFontSize(fitFont(baseFont, ts));
     text.setWordWrapWidth(Math.max(wrapMin, w - textPadX));
+  }
+
+  function enableHit() {
+    hit.setInteractive({ useHandCursor: true });
+
+    if (hit.input?.hitArea?.setTo) {
+      hit.input.hitArea.setTo(0, 0, w, h);
+    }
+
+    if (hit.input) {
+      hit.input.cursor = "pointer";
+      hit.input.enabled = true;
+    }
   }
 
   const api = {
@@ -162,10 +179,11 @@ export function createTextButton(scene, label, onClick, depth = 10, opts = {}) {
       enabled = !!v;
 
       if (enabled) {
-        if (!hit.input) hit.setInteractive({ useHandCursor: true });
-        if (hit.input) hit.input.cursor = "pointer";
+        enableHit();
       } else {
-        hit.disableInteractive();
+        if (hit.input) {
+          hit.disableInteractive();
+        }
       }
 
       box.setAlpha(enabled ? 1 : 0.55);
