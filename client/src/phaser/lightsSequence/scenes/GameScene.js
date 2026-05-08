@@ -160,7 +160,7 @@ export class LightsGameScene extends Phaser.Scene {
 
     this.cancelColorPreviewTimer();
 
-    this.colorPreview.labelText = titleCase(colorName);
+    this.colorPreview.labelText = formatColorLabel(colorName);
     this.colorPreview.fillColor = fillColor;
 
     this.colorPreview.label.setText(this.colorPreview.labelText);
