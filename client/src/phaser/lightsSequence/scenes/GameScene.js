@@ -41,10 +41,11 @@ import {
 import { initKeyboard, teardownKeyboard } from "../systems/input";
 import { nextRound, repeatSequence, onTilePress } from "../systems/sequence";
 
-function titleCase(text) {
-  return String(text || "")
-    .trim()
-    .replace(/\b\p{L}/gu, (m) => m.toUpperCase());
+function formatColorLabel(text) {
+  const clean = String(text || "").trim().toLocaleLowerCase("es-MX");
+  if (!clean) return "";
+
+  return clean.charAt(0).toLocaleUpperCase("es-MX") + clean.slice(1);
 }
 
 export class LightsGameScene extends Phaser.Scene {
