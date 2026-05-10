@@ -14,7 +14,7 @@ import {
 } from "../../shared/ui/endModal";
 import {
   createCountPickState,
-  resolveRoundsTotal,
+  resolveCountPickConfig,
   buildFinalResult,
 } from "../systems/state";
 import {
@@ -41,9 +41,13 @@ export class CountPickGameScene extends Phaser.Scene {
     this._resizeHandler = null;
   }
 
-  init(data) {
-    this.roundsTotal = resolveRoundsTotal(data);
-  }
+init(data) {
+  const config = resolveCountPickConfig(data);
+  this.roundsTotal = config.roundsTotal;
+  this.minTarget = config.minTarget;
+  this.maxTarget = config.maxTarget;
+  this.level = config.level;
+}
 
   resetGameState() {
     this.state = createCountPickState();
