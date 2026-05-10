@@ -1,12 +1,32 @@
 import { randInt, shuffle } from "../../shared/common";
 
-export function resolveRoundsTotal(data) {
-  const rounds =
-    typeof data?.roundsTotal === "number" && !Number.isNaN(data.roundsTotal)
-      ? data.roundsTotal
-      : 5;
+export function resolveCountPickConfig(data) {
+  const roundsValue = Number(data?.roundsTotal);
+  const allowedRounds = [6, 8, 10];
+  const roundsTotal = allowedRounds.includes(roundsValue) ? roundsValue : 6;
 
-  return [5, 10, 15].includes(rounds) ? rounds : 5;
+  const rawMin = Number(data?.minTarget);
+  const rawMax = Number(data?.maxTarget);
+
+  const minTarget = Number.isFinite(rawMin) ? rawMin : 3;
+  const maxTarget = Number.isFinite(rawMax) ? rawMax : 6;
+
+  const safeMin = Math.max(1, Math.min(minTarget, maxTarget));
+  const safeMax = Math.max(safeMin, maxTarget);
+
+  let level = "EASY";
+  if (safeMax >= 10) {
+    level = "HARD";
+  } else if (safeMax >= 8) {
+    level = "MEDIUM";
+  }
+
+  return {
+    roundsTotal,
+    minTarget: safeMin,
+    maxTarget: safeMax,
+    level,
+  };
 }
 
 export function createCountPickState() {
@@ -21,33 +41,44 @@ export function createCountPickState() {
   };
 }
 
-export function createRoundData() {
-  const target = randInt(1, 5);
-  const options = new Set([target]);
-  while (options.size < 3) options.add(randInt(1, 5));
+export function createRoundData(minTarget = 3, maxTarget = 6) {
+  const target = randInt(minTarget, maxTarget);
+
+  const candidates = [];
+  for (let n = minTarget; n <= maxTarget; n++) {
+    if (n !== target) {
+      candidates.push(n);
+    }
+  }
+
+  shuffle(candidates);
+
+  const distractors = candidates.slice(0, 2);
 
   return {
     target,
-    choices: shuffle(Array.from(options)),
+    choices: shuffle([target, ...distractors]),
   };
 }
 
 export function buildFinalResult(scene) {
-  let level = "MEDIUM";
-  if (scene.roundsTotal === 5) level = "EASY";
-  if (scene.roundsTotal === 10) level = "MEDIUM";
-  if (scene.roundsTotal === 15) level = "HARD";
+  const accuracy =
+    scene.state.attempts > 0
+      ? Math.round((scene.state.score / scene.state.attempts) * 100)
+      : 0;
 
   return {
     game: "countPick",
     score: scene.state.score,
     moves: scene.state.attempts,
     durationMs: Date.now() - scene.state.startTime,
-    level,
-    accuracy: scene.state.score,
+    level: scene.level || "MEDIUM",
+    accuracy,
     attempts: scene.state.attempts,
     metadata: {
       roundsTotal: scene.roundsTotal,
+      minTarget: scene.minTarget,
+      maxTarget: scene.maxTarget,
       correctAnswers: scene.state.score,
       wrongAnswers: scene.state.wrongAnswers,
     },
