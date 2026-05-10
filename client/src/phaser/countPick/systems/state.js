@@ -29,6 +29,11 @@ export function resolveCountPickConfig(data) {
   };
 }
 
+// Compatibilidad con código viejo
+export function resolveRoundsTotal(data) {
+  return resolveCountPickConfig(data).roundsTotal;
+}
+
 export function createCountPickState() {
   return {
     startTime: Date.now(),
