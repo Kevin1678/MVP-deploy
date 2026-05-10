@@ -62,9 +62,12 @@ export class CountPickMenuScene extends Phaser.Scene {
         option.label,
         () => {
           stopSpeech(this);
-          this.scene.start("CountPickGameScene", {
-            roundsTotal: option.roundsTotal,
-          });
+this.scene.start("CountPickGameScene", {
+  roundsTotal: option.roundsTotal,
+  minTarget: option.minTarget,
+  maxTarget: option.maxTarget,
+  difficulty: option.key,
+});
         },
         10,
         { width: 420, height: 60, baseFont: 24 }
