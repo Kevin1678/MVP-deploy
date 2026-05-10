@@ -43,27 +43,69 @@ export function createCountPickState() {
     wrongAnswers: 0,
     target: 0,
     locked: false,
+    lastTarget: null,
+    lastChoicesKey: null,
   };
 }
 
-export function createRoundData(minTarget = 3, maxTarget = 6) {
-  const target = randInt(minTarget, maxTarget);
+function buildChoicesKey(choices) {
+  return [...choices].sort((a, b) => a - b).join("-");
+}
 
-  const candidates = [];
+function buildRoundOnce(minTarget, maxTarget, blockedTarget = null) {
+  const allTargets = [];
+
   for (let n = minTarget; n <= maxTarget; n++) {
-    if (n !== target) {
-      candidates.push(n);
-    }
+    allTargets.push(n);
   }
 
-  shuffle(candidates);
+  let availableTargets = allTargets;
 
-  const distractors = candidates.slice(0, 2);
+  if (allTargets.length > 1 && blockedTarget !== null) {
+    availableTargets = allTargets.filter((n) => n !== blockedTarget);
+  }
+
+  const target =
+    availableTargets[randInt(0, availableTargets.length - 1)];
+
+  const distractorsPool = allTargets.filter((n) => n !== target);
+  shuffle(distractorsPool);
+
+  const distractors = distractorsPool.slice(0, 2);
+  const choices = shuffle([target, ...distractors]);
 
   return {
     target,
-    choices: shuffle([target, ...distractors]),
+    choices,
+    choicesKey: buildChoicesKey(choices),
   };
+}
+
+export function createRoundData(
+  minTarget = 3,
+  maxTarget = 6,
+  lastTarget = null,
+  lastChoicesKey = null
+) {
+  let best = null;
+
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const round = buildRoundOnce(minTarget, maxTarget, lastTarget);
+
+    const repeatsTarget = lastTarget !== null && round.target === lastTarget;
+    const repeatsChoices =
+      lastChoicesKey !== null && round.choicesKey === lastChoicesKey;
+
+    if (!repeatsTarget && !repeatsChoices) {
+      return round;
+    }
+
+    if (!best) {
+      best = round;
+    }
+  }
+
+  return best || buildRoundOnce(minTarget, maxTarget, lastTarget);
 }
 
 export function buildFinalResult(scene) {
