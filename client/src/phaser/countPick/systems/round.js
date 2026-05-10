@@ -126,7 +126,7 @@ export function setupNextRound(scene) {
   scene.state.round += 1;
   scene.state.locked = false;
 
-  const { target, choices } = createRoundData();
+  const { target, choices } = createRoundData(scene.minTarget, scene.maxTarget);
   scene.state.target = target;
 
   const { ui } = getScales(scene);
