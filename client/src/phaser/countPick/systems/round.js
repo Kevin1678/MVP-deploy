@@ -126,8 +126,16 @@ export function setupNextRound(scene) {
   scene.state.round += 1;
   scene.state.locked = false;
 
-  const { target, choices } = createRoundData(scene.minTarget, scene.maxTarget);
-  scene.state.target = target;
+  const { target, choices, choicesKey } = createRoundData(
+  scene.minTarget,
+  scene.maxTarget,
+  scene.state.lastTarget,
+  scene.state.lastChoicesKey
+);
+
+scene.state.target = target;
+scene.state.lastTarget = target;
+scene.state.lastChoicesKey = choicesKey;
 
   const { ui } = getScales(scene);
   const r = Math.round(28 * ui);
