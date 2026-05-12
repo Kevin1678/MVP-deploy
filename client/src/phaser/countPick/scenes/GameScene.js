@@ -41,16 +41,20 @@ export class CountPickGameScene extends Phaser.Scene {
     this._resizeHandler = null;
   }
 
-  preload() {
-    this.load.image("countpick-3", "/assets/count_3.png");
-    this.load.image("countpick-4", "/assets/count_4.png");
-    this.load.image("countpick-5", "/assets/count_5.png");
-    this.load.image("countpick-6", "/assets/count_6.png");
-    this.load.image("countpick-7", "/assets/count_7.png");
-    this.load.image("countpick-8", "/assets/count_8.png");
-    this.load.image("countpick-9", "/assets/count_9.png");
-    this.load.image("countpick-10", "/assets/count_10.png");
-  }
+preload() {
+  this.load.on("loaderror", (file) => {
+    console.error("No se pudo cargar:", file.key, file.src);
+  });
+
+  this.load.image("countpick-3", "/assets/count_3.png");
+  this.load.image("countpick-4", "/assets/count_4.png");
+  this.load.image("countpick-5", "/assets/count_5.png");
+  this.load.image("countpick-6", "/assets/count_6.png");
+  this.load.image("countpick-7", "/assets/count_7.png");
+  this.load.image("countpick-8", "/assets/count_8.png");
+  this.load.image("countpick-9", "/assets/count_9.png");
+  this.load.image("countpick-10", "/assets/count_10.png");
+}
 
   init(data) {
     const config = resolveCountPickConfig(data);
