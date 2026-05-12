@@ -6,7 +6,8 @@ import {
   fitFont,
   getButtonPalette,
 } from "../../shared/common";
-import { makeTopLeftButton, makeBall, recolorBall } from "../ui/buttons";
+import { makeTopLeftButton } from "../ui/buttons";
+import { createCountVisual } from "../ui/countVisual";
 import { createRoundData } from "./state";
 import { showCorrectFeedback, showWrongFeedback } from "./feedback";
 
