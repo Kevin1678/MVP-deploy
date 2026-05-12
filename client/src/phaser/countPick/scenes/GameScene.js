@@ -42,26 +42,7 @@ export class CountPickGameScene extends Phaser.Scene {
   }
 
 preload() {
-  console.log("[CountPick] PRELOAD sí está corriendo");
-
-  this.load.image("countpick-3", "/assets/countPick/count_3.png");
-  this.load.image("countpick-4", "/assets/countPick/count_4.png");
-  this.load.image("countpick-5", "/assets/countPick/count_5.png");
-  this.load.image("countpick-6", "/assets/countPick/count_6.png");
-  this.load.image("countpick-7", "/assets/countPick/count_7.png");
-  this.load.image("countpick-8", "/assets/countPick/count_8.png");
-  this.load.image("countpick-9", "/assets/countPick/count_9.png");
-  this.load.image("countpick-10", "/assets/countPick/count_10.png");
-
-  this.load.once("complete", () => {
-    console.log("[CountPick] COMPLETE");
-    console.log("countpick-3:", this.textures.exists("countpick-3"));
-    console.log("countpick-10:", this.textures.exists("countpick-10"));
-  });
-
-  this.load.on("loaderror", (file) => {
-    console.error("[CountPick] loaderror:", file.key, file.src);
-  });
+  this.load.image("test", "/assets/countPick/count_3.png");
 }
 
 
@@ -78,11 +59,7 @@ preload() {
   }
 
   create() {
-      console.log("[CountPick] CREATE");
-  console.log(
-    "[CountPick] existe countpick-3 en create:",
-    this.textures.exists("countpick-3")
-  );
+this.add.image(500, 300, "test").setScale(0.5);
     this.countVisual = null;
     this.resetGameState();
     this.choiceButtons = [];
