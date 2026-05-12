@@ -41,10 +41,7 @@ export class CountPickGameScene extends Phaser.Scene {
     this._resizeHandler = null;
   }
 
-preload() {
-  this.load.on("loaderror", (file) => {
-    console.error("No se pudo cargar:", file.key, file.src);
-  });
+  console.log("[CountPick] PRELOAD sí está corriendo");
 
   this.load.image("countpick-3", "/assets/countPick/count_3.png");
   this.load.image("countpick-4", "/assets/countPick/count_4.png");
@@ -54,6 +51,16 @@ preload() {
   this.load.image("countpick-8", "/assets/countPick/count_8.png");
   this.load.image("countpick-9", "/assets/countPick/count_9.png");
   this.load.image("countpick-10", "/assets/countPick/count_10.png");
+
+  this.load.once("complete", () => {
+    console.log("[CountPick] COMPLETE");
+    console.log("countpick-3:", this.textures.exists("countpick-3"));
+    console.log("countpick-10:", this.textures.exists("countpick-10"));
+  });
+
+  this.load.on("loaderror", (file) => {
+    console.error("[CountPick] loaderror:", file.key, file.src);
+  });
 }
 
   init(data) {
@@ -69,6 +76,11 @@ preload() {
   }
 
   create() {
+      console.log("[CountPick] CREATE");
+  console.log(
+    "[CountPick] existe countpick-3 en create:",
+    this.textures.exists("countpick-3")
+  );
     this.countVisual = null;
     this.resetGameState();
     this.choiceButtons = [];
