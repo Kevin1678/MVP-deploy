@@ -33,26 +33,6 @@ import {
   setupNextRound,
 } from "../systems/round";
 
-import count3 from "/assets/count_3.png";
-import count4 from "/assets/count_4.png";
-import count5 from "/assets/count_5.png";
-import count6 from "/assets/count_6.png";
-import count7 from "/assets/count_7.png";
-import count8 from "/assets/count_8.png";
-import count9 from "/assets/count_9.png";
-import count10 from "/assets/count_10.png";
-
-preload() {
-  this.load.image("countpick-3", count3);
-  this.load.image("countpick-4", count4);
-  this.load.image("countpick-5", count5);
-  this.load.image("countpick-6", count6);
-  this.load.image("countpick-7", count7);
-  this.load.image("countpick-8", count8);
-  this.load.image("countpick-9", count9);
-  this.load.image("countpick-10", count10);
-}
-
 export class CountPickGameScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
     super("CountPickGameScene");
@@ -61,13 +41,24 @@ export class CountPickGameScene extends Phaser.Scene {
     this._resizeHandler = null;
   }
 
-init(data) {
-  const config = resolveCountPickConfig(data);
-  this.roundsTotal = config.roundsTotal;
-  this.minTarget = config.minTarget;
-  this.maxTarget = config.maxTarget;
-  this.level = config.level;
-}
+  preload() {
+    this.load.image("countpick-3", "/assets/count_3.png");
+    this.load.image("countpick-4", "/assets/count_4.png");
+    this.load.image("countpick-5", "/assets/count_5.png");
+    this.load.image("countpick-6", "/assets/count_6.png");
+    this.load.image("countpick-7", "/assets/count_7.png");
+    this.load.image("countpick-8", "/assets/count_8.png");
+    this.load.image("countpick-9", "/assets/count_9.png");
+    this.load.image("countpick-10", "/assets/count_10.png");
+  }
+
+  init(data) {
+    const config = resolveCountPickConfig(data);
+    this.roundsTotal = config.roundsTotal;
+    this.minTarget = config.minTarget;
+    this.maxTarget = config.maxTarget;
+    this.level = config.level;
+  }
 
   resetGameState() {
     this.state = createCountPickState();
@@ -111,7 +102,7 @@ init(data) {
     this.stopSpeechNow();
     speakIfEnabled(
       this,
-      "INSTRUCCIONES: Cuenta las bolitas y elige el número correcto."
+      "INSTRUCCIONES: Cuenta las piezas y elige el número correcto."
     );
 
     this._resizeHandler = (gameSize) => this.handleResize(gameSize);
@@ -299,7 +290,13 @@ init(data) {
     this.clearRound();
     this.finalResult = null;
     this.gameEnded = false;
-    this.scene.restart({ roundsTotal: this.roundsTotal });
+
+    this.scene.restart({
+      roundsTotal: this.roundsTotal,
+      minTarget: this.minTarget,
+      maxTarget: this.maxTarget,
+      difficulty: this.level,
+    });
   }
 
   layoutEndModal() {
