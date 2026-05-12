@@ -74,6 +74,7 @@ init(data) {
   }
 
   create() {
+    this.countVisual = null;
     this.resetGameState();
 
     this.ballParts = [];
