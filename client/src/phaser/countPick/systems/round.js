@@ -110,14 +110,8 @@ scene.state.target = target;
 scene.state.lastTarget = target;
 scene.state.lastChoicesKey = choicesKey;
 
-  const { ui } = getScales(scene);
-  const r = Math.round(28 * ui);
-
-  for (let i = 0; i < scene.state.target; i++) {
-    const parts = makeBall(scene, 0, 0, r, !!scene.a11y.highContrast, i);
-    scene.ballParts.push(parts);
-  }
-
+scene.countVisual = createCountVisual(scene, scene.state.target);
+  
   choices.forEach((n) => {
     const btn = makeTopLeftButton(
       scene,
