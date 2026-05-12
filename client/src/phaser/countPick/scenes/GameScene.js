@@ -76,8 +76,6 @@ init(data) {
   create() {
     this.countVisual = null;
     this.resetGameState();
-
-    this.ballParts = [];
     this.choiceButtons = [];
     this.endModal = null;
     this.finalResult = null;
