@@ -76,11 +76,6 @@ export class CountPickGameScene extends Phaser.Scene {
   }
 
   create() {
-      console.log("[CountPick] CREATE");
-  console.log(
-    "[CountPick] existe countpick-3 en create:",
-    this.textures.exists("countpick-3")
-  );
     this.countVisual = null;
     this.resetGameState();
     this.choiceButtons = [];
