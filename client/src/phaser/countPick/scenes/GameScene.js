@@ -33,6 +33,16 @@ import {
   setupNextRound,
 } from "../systems/round";
 
+import count3 from "../../assets/count_3.png";
+import count4 from "../../assets/count_4.png";
+import count5 from "../../assets/count_5.png";
+import count6 from "../../assets/count_6.png";
+import count7 from "../../assets/count_7.png";
+import count8 from "../../assets/count_8.png";
+import count9 from "../../assets/count_9.png";
+import count10 from "../../assets/count_10.png";
+
+
 export class CountPickGameScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
     super("CountPickGameScene");
