@@ -12,8 +12,10 @@ import { createRoundData } from "./state";
 import { showCorrectFeedback, showWrongFeedback } from "./feedback";
 
 export function clearRound(scene) {
-  scene.ballParts.forEach((p) => p.container.destroy(true));
-  scene.ballParts = [];
+  if (scene.countVisual) {
+    scene.countVisual.destroy();
+    scene.countVisual = null;
+  }
 
   scene.choiceButtons.forEach((b) => b.destroy());
   scene.choiceButtons = [];
