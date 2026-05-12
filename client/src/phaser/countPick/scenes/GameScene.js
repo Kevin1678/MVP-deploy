@@ -33,15 +33,6 @@ import {
   setupNextRound,
 } from "../systems/round";
 
-import count3 from "../../assets/count_3.png";
-import count4 from "../../assets/count_4.png";
-import count5 from "../../assets/count_5.png";
-import count6 from "../../assets/count_6.png";
-import count7 from "../../assets/count_7.png";
-import count8 from "../../assets/count_8.png";
-import count9 from "../../assets/count_9.png";
-import count10 from "../../assets/count_10.png";
-
 export class CountPickGameScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
     super("CountPickGameScene");
@@ -50,20 +41,20 @@ export class CountPickGameScene extends Phaser.Scene {
     this._resizeHandler = null;
   }
 
-  preload() {
-    this.load.on("loaderror", (file) => {
-      console.error("No se pudo cargar:", file.key, file.src);
-    });
+preload() {
+  this.load.on("loaderror", (file) => {
+    console.error("No se pudo cargar:", file.key, file.src);
+  });
 
-    this.load.image("countpick-3", count3);
-    this.load.image("countpick-4", count4);
-    this.load.image("countpick-5", count5);
-    this.load.image("countpick-6", count6);
-    this.load.image("countpick-7", count7);
-    this.load.image("countpick-8", count8);
-    this.load.image("countpick-9", count9);
-    this.load.image("countpick-10", count10);
-  }
+  this.load.image("countpick-3", "/assets/countPick/count_3.png");
+  this.load.image("countpick-4", "/assets/countPick/count_4.png");
+  this.load.image("countpick-5", "/assets/countPick/count_5.png");
+  this.load.image("countpick-6", "/assets/countPick/count_6.png");
+  this.load.image("countpick-7", "/assets/countPick/count_7.png");
+  this.load.image("countpick-8", "/assets/countPick/count_8.png");
+  this.load.image("countpick-9", "/assets/countPick/count_9.png");
+  this.load.image("countpick-10", "/assets/countPick/count_10.png");
+}
 
   init(data) {
     const config = resolveCountPickConfig(data);
