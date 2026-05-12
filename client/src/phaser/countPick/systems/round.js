@@ -26,21 +26,6 @@ export function setChoicesEnabled(scene, enabled) {
 }
 
 export function setBallsEnabled(scene, enabled) {
-  scene.ballParts.forEach((p) => {
-    if (!p.ball) return;
-
-    if (enabled) {
-      if (!p.ball.input) {
-        const r = p.ball.radius || p.r || 28;
-        p.ball.setInteractive(
-          new Phaser.Geom.Circle(r, r, r * 1.05),
-          Phaser.Geom.Circle.Contains
-        );
-      }
-    } else {
-      p.ball.disableInteractive();
-    }
-  });
 }
 
 export function applyRoundTheme(scene) {
