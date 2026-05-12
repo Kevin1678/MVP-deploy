@@ -7,7 +7,6 @@ export function createCountVisual(scene, count) {
 
   const image = scene.add.image(0, 0, key).setOrigin(0.5);
   image.setDepth(50);
-
   image.setInteractive({ useHandCursor: true });
 
   const announce = () => {
