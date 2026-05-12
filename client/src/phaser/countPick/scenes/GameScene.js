@@ -42,7 +42,6 @@ import count8 from "../../assets/count_8.png";
 import count9 from "../../assets/count_9.png";
 import count10 from "../../assets/count_10.png";
 
-
 export class CountPickGameScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
     super("CountPickGameScene");
@@ -51,21 +50,21 @@ export class CountPickGameScene extends Phaser.Scene {
     this._resizeHandler = null;
   }
 
-preload() {
-  this.load.on("loaderror", (file) => {
-    console.error("No se pudo cargar:", file.key, file.src);
-  });
+  preload() {
+    this.load.on("loaderror", (file) => {
+      console.error("No se pudo cargar:", file.key, file.src);
+    });
 
-  this.load.image("countpick-3", count3);
-  this.load.image("countpick-4", count4);
-  this.load.image("countpick-5", count5);
-  this.load.image("countpick-6", count6);
-  this.load.image("countpick-7", count7);
-  this.load.image("countpick-8", count8);
-  this.load.image("countpick-9", count9);
-  this.load.image("countpick-10", count10);
-}
-  
+    this.load.image("countpick-3", count3);
+    this.load.image("countpick-4", count4);
+    this.load.image("countpick-5", count5);
+    this.load.image("countpick-6", count6);
+    this.load.image("countpick-7", count7);
+    this.load.image("countpick-8", count8);
+    this.load.image("countpick-9", count9);
+    this.load.image("countpick-10", count10);
+  }
+
   init(data) {
     const config = resolveCountPickConfig(data);
     this.roundsTotal = config.roundsTotal;
