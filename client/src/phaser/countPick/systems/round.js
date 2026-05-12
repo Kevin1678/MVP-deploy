@@ -29,7 +29,7 @@ export function setBallsEnabled(scene, enabled) {
 }
 
 export function applyRoundTheme(scene) {
-  const { ui, ts } = getScales(scene);
+  const { ts } = getScales(scene);
   const choiceFont = fitFont(28, ts);
   const palette = getButtonPalette(scene, "default");
 
@@ -42,11 +42,6 @@ export function applyRoundTheme(scene) {
       fontSize: choiceFont,
     });
   });
-
-  const r = Math.round(28 * ui);
-  scene.ballParts.forEach((p) =>
-    recolorBall(p, scene, r, !!scene.a11y.highContrast)
-  );
 }
 
 export function layoutBalls(scene) {
