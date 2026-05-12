@@ -3,11 +3,10 @@ import { speakIfEnabled } from "../../a11yPanel";
 export function createCountVisual(scene, count) {
   const key = `countpick-${count}`;
 
-  if (!scene.textures.exists(key)) {
-    console.error(`[CountPick] No existe la textura: ${key}`);
-  }
+  console.log("Buscando textura:", key, scene.textures.exists(key));
 
   const image = scene.add.image(0, 0, key).setOrigin(0.5);
+  image.setDepth(50);
 
   image.setInteractive({ useHandCursor: true });
 
@@ -19,6 +18,7 @@ export function createCountVisual(scene, count) {
   image.on("pointerdown", announce);
 
   const container = scene.add.container(0, 0, [image]);
+  container.setDepth(50);
 
   return {
     container,
