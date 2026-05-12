@@ -46,16 +46,16 @@ preload() {
     console.error("No se pudo cargar:", file.key, file.src);
   });
 
-  this.load.image("countpick-3", "client/public/assets/count_3.png");
-  this.load.image("countpick-4", "client/public/assets/count_4.png");
-  this.load.image("countpick-5", "client/public/assets/count_5.png");
-  this.load.image("countpick-6", "client/public/assets/count_6.png");
-  this.load.image("countpick-7", "/assets/count_7.png");
-  this.load.image("countpick-8", "/assets/count_8.png");
-  this.load.image("countpick-9", "/assets/count_9.png");
-  this.load.image("countpick-10", "/assets/count_10.png");
+  this.load.image("countpick-3", count3);
+  this.load.image("countpick-4", count4);
+  this.load.image("countpick-5", count5);
+  this.load.image("countpick-6", count6);
+  this.load.image("countpick-7", count7);
+  this.load.image("countpick-8", count8);
+  this.load.image("countpick-9", count9);
+  this.load.image("countpick-10", count10);
 }
-
+  
   init(data) {
     const config = resolveCountPickConfig(data);
     this.roundsTotal = config.roundsTotal;
