@@ -45,31 +45,21 @@ export function applyRoundTheme(scene) {
 }
 
 export function layoutBalls(scene) {
+  if (!scene.countVisual) return;
+
   const left = contentLeft(scene);
   const W = scene.scale.width;
+  const H = scene.scale.height;
   const { ui } = getScales(scene);
-  const r = Math.round(28 * ui);
 
-  const topY = 180 * ui;
-  const cols = 3;
-  const gapX = 28 * ui;
-  const gapY = 36 * ui;
-  const cellW = 110 * ui;
-  const cellH = 110 * ui;
+  const x = left + (W - left - 16) / 2;
+  const y = H * 0.38;
 
-  const contentW = cols * cellW + (cols - 1) * gapX;
-  const startX = left + Math.max(0, (W - left - 16 - contentW) / 2);
+  const maxWidth = 420 * ui;
+  const maxHeight = 300 * ui;
 
-  scene.ballParts.forEach((p, i) => {
-    const row = Math.floor(i / cols);
-    const col = i % cols;
-
-    const x = startX + col * (cellW + gapX) + cellW / 2;
-    const y = topY + row * (cellH + gapY) + cellH / 2;
-
-    recolorBall(p, scene, r, !!scene.a11y.highContrast);
-    p.container.setPosition(x, y);
-  });
+  scene.countVisual.setMaxSize(maxWidth, maxHeight);
+  scene.countVisual.container.setPosition(x, y);
 }
 
 export function layoutChoices(scene) {
