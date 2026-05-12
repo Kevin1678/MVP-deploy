@@ -41,6 +41,7 @@ export class CountPickGameScene extends Phaser.Scene {
     this._resizeHandler = null;
   }
 
+preload() {
   console.log("[CountPick] PRELOAD sí está corriendo");
 
   this.load.image("countpick-3", "/assets/countPick/count_3.png");
@@ -62,6 +63,7 @@ export class CountPickGameScene extends Phaser.Scene {
     console.error("[CountPick] loaderror:", file.key, file.src);
   });
 }
+
 
   init(data) {
     const config = resolveCountPickConfig(data);
