@@ -1,10 +1,7 @@
 import Phaser from "phaser";
 import { createTextButton } from "../../shared/ui/button";
 import { TILE_DEFS } from "../constants";
-import {
-  TRITANOPIA_GAME_COLORS,
-  isTritanopiaMode,
-} from "../../a11y/colorPalettes";
+import { getGameColorsByColorMode } from "../../a11y/colorPalettes";
 
 function hexToNumber(hex) {
   return parseInt(String(hex).replace("#", ""), 16);
@@ -27,8 +24,10 @@ function mixColors(colorA, colorB, amount = 0.25) {
 }
 
 function getCurrentTileDefs(scene) {
-  if (isTritanopiaMode(scene?.a11y)) {
-    return TRITANOPIA_GAME_COLORS;
+  const adaptiveColors = getGameColorsByColorMode(scene?.a11y?.colorMode);
+
+  if (Array.isArray(adaptiveColors) && adaptiveColors.length >= 9) {
+    return adaptiveColors;
   }
 
   return TILE_DEFS;
@@ -60,6 +59,7 @@ function getTileName(r, c) {
   if (r === 1 && c === 1) return "centro";
   if (r === 1) return `centro ${cols[c]}`;
   if (c === 1) return `${rows[r]} centro`;
+
   return `${rows[r]} ${cols[c]}`;
 }
 
@@ -109,6 +109,7 @@ export function makeGridTile(scene, r, c) {
     c,
     index,
     positionName,
+
     colorName: def.colorName,
     voiceName: `${def.colorName}, ${positionName}`,
 
