@@ -1,9 +1,10 @@
-import { hexToNumber, isTritanopiaMode } from "./colorPalettes";
+import { hexToNumber, isProtanopiaMode, isTritanopiaMode } from "./colorPalettes";
 
 export function getA11yTheme(a11y = {}) {
   const hc = !!a11y.highContrast;
   const isLight = a11y.themeMode === "light";
   const isTritanopia = isTritanopiaMode(a11y);
+  const isProtanopia = isProtanopiaMode(a11y);
 
   /*
     El modo alto contraste debe tener prioridad.
@@ -96,6 +97,32 @@ export function getA11yTheme(a11y = {}) {
       overlay: 0x000000,
     };
   }
+
+  if (isProtanopia) {
+  return {
+    panelBg: isLight ? 0xf3f6fb : 0x0b1020,
+    panelStroke: hexToNumber("#60CAF8"),
+    panelShadow: true,
+
+    sceneBg: isLight ? 0xeaf1ff : 0x0b1020,
+    surface: isLight ? 0xffffff : 0x111827,
+    surfaceAlt: isLight ? 0xf8fafc : 0x1f2937,
+    card: isLight ? 0xffffff : 0x111827,
+
+    primary: hexToNumber("#60CAF8"),
+    accent: hexToNumber("#FBF90A"),
+
+    text: isLight ? "#111827" : "#ffffff",
+    textMuted: isLight ? "#374151" : "#cbd5e1",
+
+    buttonFill: isLight ? 0xe5e7eb : 0x111827,
+    buttonText: isLight ? "#111827" : "#ffffff",
+    buttonStrokeAlpha: 0.35,
+
+    tileStroke: hexToNumber("#FBF90A"),
+    overlay: 0x000000,
+  };
+}
 
   return {
     panelBg: 0x0a1222,
