@@ -1,9 +1,13 @@
 import Phaser from "phaser";
 import { createTextButton } from "../../shared/ui/button";
 import { TILE_DEFS } from "../constants";
+import {
+  TRITANOPIA_GAME_COLORS,
+  isTritanopiaMode,
+} from "../../a11y/colorPalettes";
 
 function hexToNumber(hex) {
-  return parseInt(hex.replace("#", ""), 16);
+  return parseInt(String(hex).replace("#", ""), 16);
 }
 
 function mixColors(colorA, colorB, amount = 0.25) {
@@ -20,6 +24,14 @@ function mixColors(colorA, colorB, amount = 0.25) {
   const b = Math.round(ab + (bb - ab) * amount);
 
   return (r << 16) | (g << 8) | b;
+}
+
+function getCurrentTileDefs(scene) {
+  if (isTritanopiaMode(scene?.a11y)) {
+    return TRITANOPIA_GAME_COLORS;
+  }
+
+  return TILE_DEFS;
 }
 
 export function makeTopLeftButton(scene, label, onClick, depth = 10, opts = {}) {
@@ -53,7 +65,16 @@ function getTileName(r, c) {
 
 export function makeGridTile(scene, r, c) {
   const index = r * 3 + c;
-  const def = TILE_DEFS[index];
+
+  const tileDefs = getCurrentTileDefs(scene);
+  const def = tileDefs[index] ?? TILE_DEFS[index];
+
+  if (!def) {
+    throw new Error(
+      `No existe definición de color para el cuadro ${index} en secuencia de luces.`
+    );
+  }
+
   const positionName = getTileName(r, c);
 
   const baseColor = hexToNumber(def.hex);
@@ -75,10 +96,12 @@ export function makeGridTile(scene, r, c) {
     .setStrokeStyle(4, 0x22c55e, 0);
 
   const hit = scene.add.zone(0, 0, 120, 110).setOrigin(0, 0);
+
   hit.setInteractive(
     new Phaser.Geom.Rectangle(0, 0, 120, 110),
     Phaser.Geom.Rectangle.Contains
   );
+
   hit.input.cursor = "pointer";
 
   return {
@@ -88,13 +111,16 @@ export function makeGridTile(scene, r, c) {
     positionName,
     colorName: def.colorName,
     voiceName: `${def.colorName}, ${positionName}`,
+
     baseColor,
     activeColor,
     pressColor,
+
     bg,
     shine,
     focus,
     hit,
+
     x0: 0,
     y0: 0,
     w: 120,
