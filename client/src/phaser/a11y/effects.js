@@ -42,7 +42,7 @@ export function applyA11yToScene(scene, prefs) {
   const cam = scene.cameras?.main;
   const mode = scene.a11y?.colorMode || "normal";
   const needsFx =
-    mode === "grayscale" || mode === "protanopia" || mode === "tritanopia";
+    mode === "grayscale";
 
   if (!cam?.postFX?.addColorMatrix) {
     destroyA11yFx(scene);
@@ -80,12 +80,6 @@ export function applyA11yToScene(scene, prefs) {
     case "grayscale":
       try {
         fx.grayscale();
-      } catch {}
-      break;
-
-    case "protanopia":
-      try {
-        fx.set(CVD.protanopia);
       } catch {}
       break;
 
