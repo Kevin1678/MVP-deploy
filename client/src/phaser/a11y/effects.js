@@ -89,12 +89,6 @@ export function applyA11yToScene(scene, prefs) {
       } catch {}
       break;
 
-    case "tritanopia":
-      try {
-        fx.set(CVD.tritanopia);
-      } catch {}
-      break;
-
     default:
       destroyA11yFx(scene);
       break;
