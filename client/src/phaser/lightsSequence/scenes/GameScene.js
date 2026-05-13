@@ -7,11 +7,7 @@ import {
   stopSpeech,
 } from "../../a11y/speech";
 import { getA11yTheme } from "../../a11y/theme";
-import {
-  contentLeft,
-  getScales,
-  fitFont,
-} from "../../shared/common";
+import { contentLeft, getScales, fitFont } from "../../shared/common";
 import {
   createEndModal,
   applyEndModalTheme,
@@ -51,20 +47,25 @@ function formatColorLabel(text) {
 export class LightsGameScene extends Phaser.Scene {
   constructor(onFinish, onExit) {
     super("LightsGameScene");
+
     this._onFinish = onFinish;
     this._onExit = onExit;
+
     this._resizeHandler = null;
     this._keyHandler = null;
+
     this.colorPreviewTimer = null;
     this.colorPreview = null;
   }
 
   init(data) {
     const config = resolveLightsConfig(data);
+
     this.steps = config.steps;
     this.speedMs = config.speedMs;
     this.roundsTotal = config.roundsTotal;
     this.difficulty = config.difficulty;
+
     this.state = createLightsState();
   }
 
@@ -74,6 +75,7 @@ export class LightsGameScene extends Phaser.Scene {
     this.gameEnded = false;
     this.pendingTimers = [];
     this.sequenceRunId = 0;
+    this.tiles = [];
 
     this.bg = this.add
       .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
@@ -81,9 +83,16 @@ export class LightsGameScene extends Phaser.Scene {
 
     createTopUi(this);
     bindTopUiActions(this);
-    buildGrid(this);
-    this.createColorPreview();
 
+    /*
+      IMPORTANTE:
+      El panel de accesibilidad se crea ANTES del tablero.
+
+      Así, si el alumno tiene visualCondition = TRITANOPIA,
+      Game.jsx guarda colorMode = "tritanopia" en localStorage,
+      createA11yPanel lo carga en this.a11y,
+      y después buildGrid(this) puede construir los cuadros con la paleta correcta.
+    */
     this.a11yPanel = createA11yPanel(this, {
       anchor: "left",
       onChange: () => {
@@ -92,12 +101,18 @@ export class LightsGameScene extends Phaser.Scene {
         this.layoutColorPreview();
         this.layoutGrid();
         this.layoutEndModal();
-        this.applyFocus(this.state.focusIndex, true);
+
+        if (Array.isArray(this.tiles) && this.tiles.length > 0) {
+          this.applyFocus(this.state.focusIndex, true);
+        }
       },
     });
 
     createCaptionsOverlay(this);
     initKeyboard(this);
+
+    buildGrid(this);
+    this.createColorPreview();
 
     this.applyTheme();
     this.layoutTopUI();
@@ -106,8 +121,13 @@ export class LightsGameScene extends Phaser.Scene {
     this.applyFocus(0, true);
     this.updateStats();
     this.updateRepeatButtonState();
+
     this.nextRound(true);
-    this.handleResize({ width: this.scale.width, height: this.scale.height });
+
+    this.handleResize({
+      width: this.scale.width,
+      height: this.scale.height,
+    });
 
     this._resizeHandler = (gameSize) => this.handleResize(gameSize);
     this.scale.on("resize", this._resizeHandler);
@@ -205,11 +225,13 @@ export class LightsGameScene extends Phaser.Scene {
       );
 
     this.colorPreview.label.setColor(theme.text);
+
     this.colorPreview.swatch.setStrokeStyle(
       2,
       theme.tileStroke,
       this.a11y?.highContrast ? 1 : 0.35
     );
+
     this.colorPreview.swatch.setFillStyle(
       this.colorPreview.fillColor ?? theme.primary,
       1
@@ -240,6 +262,7 @@ export class LightsGameScene extends Phaser.Scene {
 
     const textBounds = this.colorPreview.label.getBounds();
     const textW = Math.max(70, Math.ceil(textBounds.width || 0));
+
     const boxW = Math.max(
       Math.round(190 * ui),
       textW + swatchSize + gap + padX * 2
@@ -248,6 +271,7 @@ export class LightsGameScene extends Phaser.Scene {
     const leftX = cx - boxW / 2 + padX;
 
     this.colorPreview.bg.setPosition(cx, cy).setSize(boxW, boxH);
+
     this.colorPreview.swatch
       .setPosition(leftX + swatchSize / 2, cy)
       .setSize(swatchSize, swatchSize);
@@ -283,6 +307,7 @@ export class LightsGameScene extends Phaser.Scene {
       this.pendingTimers = this.pendingTimers.filter((t) => t !== timer);
       callback?.();
     });
+
     this.pendingTimers.push(timer);
     return timer;
   }
@@ -347,19 +372,40 @@ export class LightsGameScene extends Phaser.Scene {
     this.layoutColorPreview();
     this.layoutGrid();
     this.layoutEndModal();
-    this.applyFocus(this.state.focusIndex, true);
+
+    if (Array.isArray(this.tiles) && this.tiles.length > 0) {
+      this.applyFocus(this.state.focusIndex, true);
+    }
   }
 
   applyTheme() {
     applyA11yToScene(this, this.a11y);
 
-    const theme = getA11yTheme(this.a11y);
+    const theme = getA11yTheme(this.a11y || {});
 
-    this.cameras.main.setBackgroundColor(theme.sceneBg);
-    this.bg.setFillStyle(theme.sceneBg, 1);
+    if (this.cameras?.main) {
+      this.cameras.main.setBackgroundColor(theme.sceneBg);
+    }
 
-    applyTopUiTheme(this, theme);
-    applyGridTheme(this, theme);
+    if (this.bg) {
+      this.bg.setFillStyle(theme.sceneBg, 1);
+    }
+
+    if (
+      this.title &&
+      this.sub &&
+      this.stats &&
+      this.menuBtn &&
+      this.exitBtn &&
+      this.repeatBtn
+    ) {
+      applyTopUiTheme(this, theme);
+    }
+
+    if (Array.isArray(this.tiles) && this.tiles.length > 0) {
+      applyGridTheme(this, theme);
+    }
+
     this.applyColorPreviewTheme();
 
     if (this.endModal) {
@@ -370,10 +416,17 @@ export class LightsGameScene extends Phaser.Scene {
   }
 
   layoutTopUI() {
+    if (!this.title || !this.sub || !this.stats || !this.menuBtn || !this.exitBtn) {
+      return;
+    }
+
     layoutTopUi(this);
   }
 
   layoutGrid() {
+    if (!Array.isArray(this.tiles) || this.tiles.length === 0) return;
+    if (!this.stats || !this.repeatBtn) return;
+
     layoutGrid(this);
   }
 
@@ -386,10 +439,19 @@ export class LightsGameScene extends Phaser.Scene {
   }
 
   applyFocus(index, silent = false) {
-    applyFocus(this, index, silent);
+    if (!Array.isArray(this.tiles) || this.tiles.length === 0) return;
+
+    const safeIndex = Math.max(
+      0,
+      Math.min(Number(index) || 0, this.tiles.length - 1)
+    );
+
+    applyFocus(this, safeIndex, silent);
   }
 
   setTilesEnabled(enabled) {
+    if (!Array.isArray(this.tiles) || this.tiles.length === 0) return;
+
     setTilesEnabled(this, enabled);
   }
 
@@ -501,6 +563,7 @@ export class LightsGameScene extends Phaser.Scene {
   restartGame() {
     this.cleanupTransientState();
     this.stopSpeechNow();
+
     this.finalResult = null;
     this.gameEnded = false;
 
