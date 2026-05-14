@@ -14,12 +14,22 @@ const resultSchema = z.object({
   level: z.string().max(50).optional(),
   accuracy: z.number().min(0).optional(),
   attempts: z.number().int().min(0).optional(),
+  errorsCommitted: z.number().int().min(0).optional(),
+  reactionTimeMs: z.number().min(0).optional(),
+  progressPercent: z.number().min(0).max(100).optional(),
+  successRate: z.number().min(0).max(100).optional(),
+  abandoned: z.boolean().optional(),
   metadata: z.any().optional(),
 });
 
 function round(value, digits = 1) {
   if (typeof value !== "number" || Number.isNaN(value)) return null;
   return Number(value.toFixed(digits));
+}
+
+function normalizePercent(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) return null;
+  return value <= 1 ? round(value * 100) : round(value);
 }
 
 function normalizeAccuracy(data) {
@@ -54,9 +64,7 @@ function normalizeAccuracy(data) {
   }
 
   if (typeof data.accuracy === "number") {
-    return data.accuracy <= 1
-      ? round(data.accuracy * 100)
-      : round(data.accuracy);
+    return normalizePercent(data.accuracy);
   }
 
   return null;
@@ -114,6 +122,14 @@ router.post("/", requireAuth, async (req, res) => {
         level: data.level ?? null,
         accuracy: normalizeAccuracy(data),
         attempts: data.attempts ?? null,
+        errorsCommitted: data.errorsCommitted ?? null,
+        reactionTimeMs:
+          typeof data.reactionTimeMs === "number"
+            ? round(data.reactionTimeMs)
+            : null,
+        progressPercent: normalizePercent(data.progressPercent),
+        successRate: normalizePercent(data.successRate),
+        abandoned: Boolean(data.abandoned),
         metadata: data.metadata ?? null,
       },
     });
