@@ -1,10 +1,16 @@
-import { buildFinalResult } from "./state";
+import {
+  buildFinalResult,
+  recordMemoryReaction,
+  resetMemoryReactionTimer,
+} from "./state";
 import { setCardVisual } from "./cards";
 
 export function handleCardClick(scene, card) {
   if (scene.state.locked || card.matched || card.flipped || scene.gameEnded) {
     return;
   }
+
+  recordMemoryReaction(scene);
 
   scene.state.flips += 1;
   setCardVisual(scene, card, true);
@@ -38,6 +44,7 @@ export function handleCardClick(scene, card) {
 
       scene.state.matchedPairs += 1;
       scene.state.first = null;
+      resetMemoryReactionTimer(scene);
       scene.state.locked = false;
 
       if (scene.state.matchedPairs === scene.pairs) {
@@ -50,6 +57,7 @@ export function handleCardClick(scene, card) {
   scene.schedule(revealDelay, () => {
     if (!scene.scene.isActive()) return;
 
+    scene.state.errorsCommitted += 1;
     scene.say(`Incorrecto. Era ${a.label} y ${b.label}`);
 
     scene.schedule(hideDelay, () => {
@@ -58,6 +66,7 @@ export function handleCardClick(scene, card) {
       setCardVisual(scene, a, false);
       setCardVisual(scene, b, false);
       scene.state.first = null;
+      resetMemoryReactionTimer(scene);
       scene.state.locked = false;
       scene.applyFocus(scene.focusIndex, true);
     });
