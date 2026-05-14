@@ -109,6 +109,11 @@ export default function Game() {
       accuracy,
       attempts,
       metadata,
+      errorsCommitted,
+      reactionTimeMs,
+      progressPercent,
+      successRate,
+      abandoned,
     }) => {
       if (savingRef.current) return false;
 
@@ -127,6 +132,11 @@ export default function Game() {
             level,
             accuracy,
             attempts,
+            errorsCommitted,
+            reactionTimeMs,
+            progressPercent,
+            successRate,
+            abandoned,
             metadata,
           }),
         });
