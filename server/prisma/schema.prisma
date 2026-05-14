@@ -133,6 +133,12 @@ model GameResult {
   attempts   Int?
   level      String?
 
+  errorsCommitted Int?     @default(0)
+  reactionTimeMs   Int?
+  progressPercent  Float?
+  successRate      Float?
+  abandoned        Boolean  @default(false)
+
   metadata Json?
 
   playedAt DateTime @default(now())
