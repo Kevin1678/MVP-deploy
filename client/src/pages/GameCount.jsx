@@ -20,6 +20,11 @@ export default function GameCount() {
         accuracy,
         attempts,
         metadata,
+        errorsCommitted,
+        reactionTimeMs,
+        progressPercent,
+        successRate,
+        abandoned,
       }) => {
         if (doneRef.current) return;
         doneRef.current = true;
@@ -28,6 +33,7 @@ export default function GameCount() {
           const res = await fetch("/api/results", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({
               game,
               score,
@@ -36,6 +42,11 @@ export default function GameCount() {
               level,
               accuracy,
               attempts,
+              errorsCommitted,
+              reactionTimeMs,
+              progressPercent,
+              successRate,
+              abandoned,
               metadata,
             }),
           });
