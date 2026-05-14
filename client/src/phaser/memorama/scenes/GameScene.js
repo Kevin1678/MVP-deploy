@@ -13,7 +13,11 @@ import {
   layoutEndModal as layoutSharedEndModal,
   destroyEndModal,
 } from "../../shared/ui/endModal";
-import { resolvePairs, createMemoryState } from "../systems/state";
+import {
+  resolvePairs,
+  createMemoryState,
+  buildFinalResult,
+} from "../systems/state";
 import {
   createTopUi,
   bindTopUiActions,
@@ -44,6 +48,7 @@ export class MemoryScene extends Phaser.Scene {
     this.endModal = null;
     this.finalResult = null;
     this.gameEnded = false;
+    this.abandonSaving = false;
 
     this.bg = this.add
       .rectangle(0, 0, this.scale.width, this.scale.height, 0x9eb7e5)
@@ -211,6 +216,34 @@ export class MemoryScene extends Phaser.Scene {
     handleCardClick(this, card);
   }
 
+  async requestAbandon(afterSave) {
+    if (this.gameEnded && this.endModal) return;
+
+    if (this.abandonSaving) return;
+    this.abandonSaving = true;
+
+    this.gameEnded = true;
+    this.state.locked = true;
+
+    try {
+      this.menuBtn?.disableInteractive?.();
+      this.exitBtn?.disableInteractive?.();
+      this.cards?.forEach((card) => card.hit?.disableInteractive?.());
+    } catch {}
+
+    this.finalResult = buildFinalResult(this, { abandoned: true });
+
+    try {
+      await this._onFinish?.(this.finalResult);
+    } catch (err) {
+      console.error("Error guardando abandono:", err);
+    }
+
+    this.cleanupTransientState();
+    this.stopSpeechNow();
+    afterSave?.();
+  }
+
   showEndModal({ durationMs, moves }) {
     if (this.endModal) return;
 
@@ -219,7 +252,7 @@ export class MemoryScene extends Phaser.Scene {
     this.endModal = createEndModal(this, {
       depth: 2000,
       title: "¡Excelente!",
-      bodyText: `Tiempo: ${sec}s   •   Intentos: ${moves}`,
+      bodyText: `Tiempo: ${sec}s   •   Intentos: ${moves}   •   Errores: ${this.finalResult?.errorsCommitted ?? 0}`,
       preferredBoxWidth: 560,
       minBoxWidth: 360,
       maxBoxWidthPct: 0.92,
