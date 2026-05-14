@@ -12,6 +12,12 @@ const { requireAuth, requireRole } = require("../middleware/auth");
 const prisma = new PrismaClient();
 const router = express.Router();
 
+const GAME_LABELS = {
+  MEMORAMA: "Memorama",
+  COUNT_PICK: "Contar y elegir",
+  LIGHTS_SEQUENCE: "Secuencia de luces"
+};
+
 function normalizeEmail(email) {
   return email.trim().toLowerCase();
 }
@@ -67,6 +73,113 @@ function resultPerformance(result) {
   return null;
 }
 
+function numberValues(results, key) {
+  return results
+    .map((item) => item[key])
+    .filter((value) => typeof value === "number" && !Number.isNaN(value));
+}
+
+function mapResult(result) {
+  return {
+    id: result.id,
+    gameType: result.gameType,
+    gameLabel: GAME_LABELS[result.gameType] || result.gameType,
+    score: result.score,
+    accuracy: resultPerformance(result),
+    attempts: result.attempts,
+    moves: result.moves,
+    durationMs: result.durationMs,
+    level: result.level,
+    playedAt: result.playedAt
+  };
+}
+
+function buildStudentDetail(student) {
+  const results = [...student.results].sort(
+    (a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()
+  );
+
+  const scores = numberValues(results, "score");
+  const durations = numberValues(results, "durationMs");
+
+  const performances = results
+    .map(resultPerformance)
+    .filter((value) => typeof value === "number");
+
+  const byGameMap = new Map();
+
+  for (const result of results) {
+    const key = result.gameType;
+
+    if (!byGameMap.has(key)) {
+      byGameMap.set(key, {
+        gameType: key,
+        gameLabel: GAME_LABELS[key] || key,
+        plays: 0,
+        scoreValues: [],
+        performanceValues: [],
+        bestScore: null,
+        lastPlayedAt: null
+      });
+    }
+
+    const entry = byGameMap.get(key);
+    entry.plays += 1;
+
+    if (typeof result.score === "number" && !Number.isNaN(result.score)) {
+      entry.scoreValues.push(result.score);
+      entry.bestScore =
+        entry.bestScore === null
+          ? result.score
+          : Math.max(entry.bestScore, result.score);
+    }
+
+    const performance = resultPerformance(result);
+
+    if (typeof performance === "number") {
+      entry.performanceValues.push(performance);
+    }
+
+    if (
+      !entry.lastPlayedAt ||
+      new Date(result.playedAt) > new Date(entry.lastPlayedAt)
+    ) {
+      entry.lastPlayedAt = result.playedAt;
+    }
+  }
+
+  const byGame = Array.from(byGameMap.values()).map((entry) => ({
+    gameType: entry.gameType,
+    gameLabel: entry.gameLabel,
+    plays: entry.plays,
+    avgScore: round(average(entry.scoreValues)),
+    avgAccuracy: round(average(entry.performanceValues)),
+    bestScore: entry.bestScore,
+    lastPlayedAt: entry.lastPlayedAt
+  }));
+
+  byGame.sort(
+    (a, b) => b.plays - a.plays || a.gameLabel.localeCompare(b.gameLabel, "es")
+  );
+
+  return {
+    id: student.id,
+    name: fullName(student),
+    email: student.email,
+    group: student.group?.name || "Sin grupo",
+    summary: {
+      totalResults: results.length,
+      gamesPlayed: byGame.length,
+      avgScore: round(average(scores)),
+      avgAccuracy: round(average(performances)),
+      totalDurationMs: durations.reduce((sum, value) => sum + value, 0),
+      lastPlayedAt: results[0]?.playedAt || null
+    },
+    byGame,
+    recentResults: results.slice(0, 10).map(mapResult)
+  };
+}
+
 const createStudentSchema = z.object({
   firstName: z.string().min(2),
   lastNameP: z.string().min(2),
@@ -115,14 +228,17 @@ const linkParentsSchema = z
   .refine((data) => data.father || data.mother, {
     message: "Debes agregar al menos un padre o madre."
   })
-  .refine((data) => {
-    if (!data.father || !data.mother) return true;
-    return (
-      normalizeEmail(data.father.email) !== normalizeEmail(data.mother.email)
-    );
-  }, {
-    message: "Padre y madre no pueden usar el mismo correo."
-  });
+  .refine(
+    (data) => {
+      if (!data.father || !data.mother) return true;
+      return (
+        normalizeEmail(data.father.email) !== normalizeEmail(data.mother.email)
+      );
+    },
+    {
+      message: "Padre y madre no pueden usar el mismo correo."
+    }
+  );
 
 async function resolveParent(tx, parentData) {
   const email = normalizeEmail(parentData.email);
@@ -359,7 +475,78 @@ router.get(
   }
 );
 
-// AQUÍ VA LA RUTA NUEVA
+router.get(
+  "/student-results",
+  requireAuth,
+  requireRole("TEACHER"),
+  async (req, res) => {
+    try {
+      const teacher = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastNameP: true,
+          lastNameM: true,
+          studentsCreated: {
+            where: { role: Role.STUDENT },
+            orderBy: [
+              { firstName: "asc" },
+              { lastNameP: "asc" },
+              { lastNameM: "asc" }
+            ],
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastNameP: true,
+              lastNameM: true,
+              group: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              },
+              results: {
+                orderBy: { playedAt: "desc" },
+                select: {
+                  id: true,
+                  gameType: true,
+                  score: true,
+                  accuracy: true,
+                  attempts: true,
+                  moves: true,
+                  durationMs: true,
+                  level: true,
+                  metadata: true,
+                  playedAt: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!teacher) {
+        return res.status(404).json({ message: "Docente no encontrado." });
+      }
+
+      res.json({
+        teacher: {
+          id: teacher.id,
+          name: fullName(teacher),
+          email: teacher.email
+        },
+        students: teacher.studentsCreated.map(buildStudentDetail)
+      });
+    } catch (error) {
+      console.error("GET /teacher/student-results error:", error);
+      res.status(500).json({ message: "Error interno" });
+    }
+  }
+);
+
 router.get(
   "/parents/search",
   requireAuth,
@@ -390,10 +577,7 @@ router.get(
           email: true
         },
         take: 8,
-        orderBy: [
-          { firstName: "asc" },
-          { lastNameP: "asc" }
-        ]
+        orderBy: [{ firstName: "asc" }, { lastNameP: "asc" }]
       });
 
       const mapped = parents.map((parent) => ({
