@@ -77,6 +77,7 @@ preload() {
     this.finalResult = null;
     this.roundTimer = null;
     this.gameEnded = false;
+    this.abandonSaving = false;
 
     this.bg = this.add
       .rectangle(0, 0, this.scale.width, this.scale.height, 0x0b1020)
@@ -226,6 +227,37 @@ preload() {
     this.layoutEndModal();
   }
 
+  async requestAbandon(afterSave) {
+    if (this.gameEnded && this.endModal) return;
+
+    if (this.abandonSaving) return;
+    this.abandonSaving = true;
+
+    this.gameEnded = true;
+    this.state.locked = true;
+
+    this.cancelRoundTimer();
+    this.setChoicesEnabled(false);
+    this.setBallsEnabled(false);
+
+    try {
+      this.menuBtn?.disableInteractive?.();
+      this.exitBtn?.disableInteractive?.();
+    } catch {}
+
+    this.finalResult = buildFinalResult(this, { abandoned: true });
+
+    try {
+      await this._onFinish?.(this.finalResult);
+    } catch (err) {
+      console.error("Error guardando abandono:", err);
+    }
+
+    this.cleanupTransientState();
+    this.stopSpeechNow();
+    afterSave?.();
+  }
+
   async finishGame() {
     if (this.gameEnded) return;
 
@@ -257,7 +289,7 @@ preload() {
     this.endModal = createEndModal(this, {
       depth: 4000,
       title: "¡Terminaste!",
-      bodyText: `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}`,
+      bodyText: `Puntos: ${this.state.score}  •  Intentos: ${this.state.attempts}  •  Errores: ${this.state.wrongAnswers}`,
       preferredBoxWidth: 560,
       minBoxWidth: 340,
       maxBoxWidthPct: 0.92,
