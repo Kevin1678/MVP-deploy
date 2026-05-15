@@ -37,6 +37,8 @@ export function resolveRoundsTotal(data) {
 export function createCountPickState() {
   return {
     startTime: Date.now(),
+    roundStartedAt: null,
+    reactionTimes: [],
     round: 0,
     score: 0,
     attempts: 0,
@@ -46,6 +48,34 @@ export function createCountPickState() {
     lastTarget: null,
     lastChoicesKey: null,
   };
+}
+
+function roundNumber(value, digits = 1) {
+  if (typeof value !== "number" || Number.isNaN(value)) return null;
+  return Number(value.toFixed(digits));
+}
+
+function average(values) {
+  const clean = values.filter(
+    (value) => typeof value === "number" && Number.isFinite(value) && value >= 0
+  );
+
+  if (!clean.length) return null;
+
+  return clean.reduce((sum, value) => sum + value, 0) / clean.length;
+}
+
+function percent(part, total) {
+  if (!total || total <= 0) return 0;
+  return roundNumber(Math.max(0, Math.min(100, (part / total) * 100)));
+}
+
+export function recordCountPickReaction(scene) {
+  const startedAt = scene.state.roundStartedAt;
+
+  if (!startedAt) return;
+
+  scene.state.reactionTimes.push(Math.max(0, Date.now() - startedAt));
 }
 
 function buildChoicesKey(choices) {
@@ -108,11 +138,10 @@ export function createRoundData(
   return best || buildRoundOnce(minTarget, maxTarget, lastTarget);
 }
 
-export function buildFinalResult(scene) {
-  const accuracy =
-    scene.state.attempts > 0
-      ? Math.round((scene.state.score / scene.state.attempts) * 100)
-      : 0;
+export function buildFinalResult(scene, options = {}) {
+  const progressPercent = percent(scene.state.attempts, scene.roundsTotal);
+  const successRate = percent(scene.state.score, scene.state.attempts);
+  const reactionTimeMs = roundNumber(average(scene.state.reactionTimes));
 
   return {
     game: "countPick",
@@ -120,14 +149,24 @@ export function buildFinalResult(scene) {
     moves: scene.state.attempts,
     durationMs: Date.now() - scene.state.startTime,
     level: scene.level || "MEDIUM",
-    accuracy,
+    accuracy: percent(scene.state.score, scene.roundsTotal),
     attempts: scene.state.attempts,
+    errorsCommitted: scene.state.wrongAnswers,
+    reactionTimeMs,
+    progressPercent,
+    successRate,
+    abandoned: Boolean(options.abandoned),
     metadata: {
       roundsTotal: scene.roundsTotal,
       minTarget: scene.minTarget,
       maxTarget: scene.maxTarget,
       correctAnswers: scene.state.score,
       wrongAnswers: scene.state.wrongAnswers,
+      errorsCommitted: scene.state.wrongAnswers,
+      reactionTimeMs,
+      progressPercent,
+      successRate,
+      abandoned: Boolean(options.abandoned),
     },
   };
 }
