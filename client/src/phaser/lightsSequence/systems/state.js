@@ -1,4 +1,4 @@
-xport function resolveLightsConfig(data) {
+export function resolveLightsConfig(data) {
   const steps = Number.isFinite(data?.steps) ? data.steps : 3;
   const speedMs = Number.isFinite(data?.speedMs) ? data.speedMs : 650;
   const roundsTotal = Number.isFinite(data?.roundsTotal) ? data.roundsTotal : 5;
