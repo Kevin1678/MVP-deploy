@@ -73,6 +73,7 @@ export class LightsGameScene extends Phaser.Scene {
     this.endModal = null;
     this.finalResult = null;
     this.gameEnded = false;
+    this.abandonSaving = false;
     this.pendingTimers = [];
     this.sequenceRunId = 0;
     this.tiles = [];
@@ -467,6 +468,40 @@ export class LightsGameScene extends Phaser.Scene {
     onTilePress(this, r, c);
   }
 
+  async requestAbandon(afterSave) {
+    if (this.gameEnded && this.endModal) return;
+
+    if (this.abandonSaving) return;
+    this.abandonSaving = true;
+
+    this.gameEnded = true;
+    this.state.locked = true;
+
+    this.cancelPendingTimers();
+    this.sequenceRunId += 1;
+    this.setTilesEnabled(false);
+    this.updateRepeatButtonState();
+    this.hideColorPreview();
+
+    try {
+      this.menuBtn?.disableInteractive?.();
+      this.exitBtn?.disableInteractive?.();
+      this.repeatBtn?.setEnabled?.(false);
+    } catch {}
+
+    this.finalResult = buildFinalResult(this, { abandoned: true });
+
+    try {
+      await this._onFinish?.(this.finalResult);
+    } catch (err) {
+      console.error("Error guardando abandono:", err);
+    }
+
+    this.cleanupTransientState();
+    this.stopSpeechNow();
+    afterSave?.();
+  }
+
   async finishGame() {
     if (this.gameEnded) return;
 
@@ -566,6 +601,7 @@ export class LightsGameScene extends Phaser.Scene {
 
     this.finalResult = null;
     this.gameEnded = false;
+    this.abandonSaving = false;
 
     this.scene.restart({
       steps: this.steps,
