@@ -8,7 +8,7 @@ import {
 } from "../../shared/common";
 import { makeTopLeftButton } from "../ui/buttons";
 import { createCountVisual } from "../ui/countVisual";
-import { createRoundData } from "./state";
+import { createRoundData, recordCountPickReaction } from "./state";
 import { showCorrectFeedback, showWrongFeedback } from "./feedback";
 
 export function clearRound(scene) {
@@ -111,6 +111,7 @@ scene.state.lastTarget = target;
 scene.state.lastChoicesKey = choicesKey;
 
 scene.countVisual = createCountVisual(scene, scene.state.target);
+scene.state.roundStartedAt = Date.now();
   
   choices.forEach((n) => {
     const btn = makeTopLeftButton(
@@ -130,6 +131,8 @@ scene.countVisual = createCountVisual(scene, scene.state.target);
 
 export function handleAnswerPick(scene, value) {
   if (scene.state.locked || scene.gameEnded) return;
+
+  recordCountPickReaction(scene);
 
   scene.state.locked = true;
   scene.state.attempts += 1;
