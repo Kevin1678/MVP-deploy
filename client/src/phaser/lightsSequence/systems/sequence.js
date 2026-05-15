@@ -4,6 +4,7 @@ import { randInt } from "../../shared/common";
 import { getTile } from "./grid";
 import { showOverlayIcon } from "./feedback";
 import { updateStats, updateRepeatButtonState } from "../ui/topBar";
+import { markLightsTurnStart, recordLightsReaction } from "./state";
 
 export function nextRound(scene, isFirst = false) {
   if (scene.gameEnded) return;
@@ -161,6 +162,7 @@ export async function playSequence(scene, runId) {
   }
 
   scene.state.locked = false;
+  markLightsTurnStart(scene);
   updateRepeatButtonState(scene);
   scene.hideColorPreview?.();
 
@@ -176,6 +178,8 @@ export function onTilePress(scene, r, c) {
 
   const tile = getTile(scene, r, c);
   if (!tile) return;
+
+  recordLightsReaction(scene);
 
   const hc = !!scene.a11y.highContrast;
   const theme = getA11yTheme(scene.a11y);
