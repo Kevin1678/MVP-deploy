@@ -60,6 +60,12 @@ export function createTopUi(scene) {
 export function bindTopUiActions(scene) {
   scene.menuBtn.on("pointerdown", () => {
     if (scene.gameEnded && scene.endModal) return;
+
+    if (scene.requestAbandon) {
+      scene.requestAbandon(() => scene.scene.start("LightsMenuScene"));
+      return;
+    }
+
     scene.cleanupTransientState();
     scene.stopSpeechNow();
     scene.scene.start("LightsMenuScene");
@@ -67,6 +73,12 @@ export function bindTopUiActions(scene) {
 
   scene.exitBtn.on("pointerdown", () => {
     if (scene.gameEnded && scene.endModal) return;
+
+    if (scene.requestAbandon) {
+      scene.requestAbandon(() => scene._onExit?.());
+      return;
+    }
+
     scene.cleanupTransientState();
     scene.stopSpeechNow();
     scene._onExit?.();
