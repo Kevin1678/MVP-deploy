@@ -6,6 +6,12 @@ export function initKeyboard(scene) {
   scene._keyHandler = (e) => {
     if (e.code === "Escape") {
       if (scene.gameEnded && scene.endModal) return;
+
+      if (scene.requestAbandon) {
+        scene.requestAbandon(() => scene._onExit?.());
+        return;
+      }
+
       scene.cleanupTransientState();
       scene.stopSpeechNow();
       scene._onExit?.();
