@@ -1,7 +1,7 @@
 export const LS_KEY = "a11y_prefs_v1";
 
 export const PANEL_OPEN_W = 290;
-export const PANEL_CLOSED_W = 78;
+export const PANEL_CLOSED_W = 126;
 export const PANEL_GAP = 16;
 
 // Compat
