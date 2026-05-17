@@ -8,17 +8,23 @@ const router = express.Router();
 
 const resultSchema = z.object({
   game: z.enum(["memorama", "countPick", "lights-sequence"]),
+
   score: z.number().int().min(0),
   moves: z.number().int().min(0),
   durationMs: z.number().int().min(0),
-  level: z.string().max(50).optional(),
-  accuracy: z.number().min(0).optional(),
-  attempts: z.number().int().min(0).optional(),
-  errorsCommitted: z.number().int().min(0).optional(),
-  reactionTimeMs: z.number().min(0).optional(),
-  progressPercent: z.number().min(0).max(100).optional(),
-  successRate: z.number().min(0).max(100).optional(),
+
+  level: z.string().max(50).nullable().optional(),
+
+  accuracy: z.number().min(0).max(100).nullable().optional(),
+  attempts: z.number().int().min(0).nullable().optional(),
+
+  errorsCommitted: z.number().int().min(0).nullable().optional(),
+  reactionTimeMs: z.number().min(0).nullable().optional(),
+  progressPercent: z.number().min(0).max(100).nullable().optional(),
+  successRate: z.number().min(0).max(100).nullable().optional(),
+
   abandoned: z.boolean().optional(),
+
   metadata: z.any().optional(),
 });
 
