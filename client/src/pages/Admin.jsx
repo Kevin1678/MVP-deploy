@@ -640,19 +640,6 @@ function AdminCreateView({
               </div>
             </div>
           </section>
-
-          <section className="admin-panel-card">
-            <div className="admin-panel-card__top">
-              <h3>Nota</h3>
-              <span>Recomendación</span>
-            </div>
-
-            <p className="admin-helper-text">
-              No metas aquí alumnos. Este panel funciona mejor si se enfoca en
-              administración general: docentes, padres y consulta global de
-              usuarios.
-            </p>
-          </section>
         </aside>
       </div>
     </section>
