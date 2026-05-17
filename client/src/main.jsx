@@ -16,6 +16,7 @@ import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherStudents from "./pages/TeacherStudents";
 import TeacherParents from "./pages/TeacherParents";
 import TeacherStudentResults from "./pages/TeacherStudentResults";
+import TeacherReports from "./pages/TeacherReports";
 
 import Parent from "./pages/Parent";
 import ParentDashboard from "./pages/ParentDashboard";
@@ -46,6 +47,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         >
           <Route index element={<TeacherDashboard />} />
           <Route path="student-results" element={<TeacherStudentResults />} />
+          <Route path="reports" element={<TeacherReports />} />
           <Route path="students" element={<TeacherStudents />} />
           <Route path="parents" element={<TeacherParents />} />
         </Route>
