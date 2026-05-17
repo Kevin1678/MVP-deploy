@@ -9,14 +9,25 @@ const GAME_OPTIONS = [
 ];
 
 function formatMetric(value, suffix = "") {
-  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "—";
+  }
+
   return `${value}${suffix}`;
 }
 
 function formatMs(value) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  if (value >= 1000) return `${(value / 1000).toFixed(1)} s`;
-  return `${Math.round(value)} ms`;
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "—";
+  }
+
+  const n = Number(value);
+
+  if (n >= 1000) {
+    return `${(n / 1000).toFixed(1)} s`;
+  }
+
+  return `${Math.round(n)} ms`;
 }
 
 function formatDate(value) {
@@ -87,24 +98,36 @@ function BarList({ title, subtitle, items, valueKey, suffix = "%", emptyText }) 
             const width = Math.max(4, Math.min(100, (value / max) * 100));
 
             return (
-              <div className="teacher-report-bars__row" key={`${title}-${item.gameType || item.student || item.date}`}>
+              <div
+                className="teacher-report-bars__row"
+                key={`${title}-${item.gameType || item.studentName || item.date}`}
+              >
                 <div className="teacher-report-bars__top">
-                  <span>{item.gameLabel || item.student || item.date}</span>
+                  <span>{item.gameLabel || item.studentName || item.date}</span>
                   <strong>{formatMetric(value, suffix)}</strong>
                 </div>
+
                 <div className="teacher-report-bars__track">
-                  <div className="teacher-report-bars__fill" style={{ width: `${width}%` }} />
+                  <div
+                    className="teacher-report-bars__fill"
+                    style={{ width: `${width}%` }}
+                  />
                 </div>
+
                 <small>
-                  {item.games ?? 0} partidas
-                  {typeof item.abandonedGames === "number" ? ` · ${item.abandonedGames} abandonos` : ""}
+                  {item.totalResults ?? item.games ?? 0} partidas
+                  {typeof item.abandoned === "number"
+                    ? ` · ${item.abandoned} abandonos`
+                    : ""}
                 </small>
               </div>
             );
           })}
         </div>
       ) : (
-        <div className="teacher-report-empty">{emptyText || "No hay datos suficientes."}</div>
+        <div className="teacher-report-empty">
+          {emptyText || "No hay datos suficientes."}
+        </div>
       )}
     </article>
   );
@@ -124,7 +147,11 @@ function LineChart({ title, subtitle, data }) {
     return points
       .map((item, index) => {
         const x = pad + (index / maxIndex) * (width - pad * 2);
-        const y = height - pad - ((item.avgSuccessRate || 0) / 100) * (height - pad * 2);
+        const y =
+          height -
+          pad -
+          ((item.avgSuccessRate || 0) / 100) * (height - pad * 2);
+
         return `${x},${y}`;
       })
       .join(" ");
@@ -141,14 +168,24 @@ function LineChart({ title, subtitle, data }) {
 
       {points.length ? (
         <div className="teacher-report-line-wrap">
-          <svg className="teacher-report-line" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+          <svg
+            className="teacher-report-line"
+            viewBox={`0 0 ${width} ${height}`}
+            role="img"
+            aria-label={title}
+          >
             <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} />
             <line x1={pad} y1={pad} x2={pad} y2={height - pad} />
             <polyline points={polyline} />
+
             {points.map((item, index) => {
               const maxIndex = Math.max(1, points.length - 1);
               const x = pad + (index / maxIndex) * (width - pad * 2);
-              const y = height - pad - ((item.avgSuccessRate || 0) / 100) * (height - pad * 2);
+              const y =
+                height -
+                pad -
+                ((item.avgSuccessRate || 0) / 100) * (height - pad * 2);
+
               return <circle key={item.date} cx={x} cy={y} r="4" />;
             })}
           </svg>
@@ -159,7 +196,9 @@ function LineChart({ title, subtitle, data }) {
           </div>
         </div>
       ) : (
-        <div className="teacher-report-empty">No hay suficientes partidas para mostrar progreso.</div>
+        <div className="teacher-report-empty">
+          No hay suficientes partidas para mostrar progreso.
+        </div>
       )}
     </article>
   );
@@ -169,6 +208,7 @@ export default function TeacherReports() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [filters, setFilters] = useState({
     from: "",
     to: "",
@@ -186,6 +226,15 @@ export default function TeacherReports() {
 
       try {
         const res = await fetch(`/api/teacher/report${buildQuery(filters)}`);
+
+        const contentType = res.headers.get("content-type") || "";
+
+        if (!contentType.includes("application/json")) {
+          throw new Error(
+            "La ruta del reporte no devolvió JSON. Revisa que exista /api/teacher/report."
+          );
+        }
+
         const json = await res.json();
 
         if (!res.ok) {
@@ -208,7 +257,15 @@ export default function TeacherReports() {
   }, [filters]);
 
   function updateFilter(name, value) {
-    setFilters((prev) => ({ ...prev, [name]: value }));
+    setFilters((prev) => {
+      const next = { ...prev, [name]: value };
+
+      if (name === "group") {
+        next.studentId = "ALL";
+      }
+
+      return next;
+    });
   }
 
   function clearFilters() {
@@ -221,9 +278,23 @@ export default function TeacherReports() {
     });
   }
 
+  const groupOptions = useMemo(() => {
+    const groups = new Set();
+
+    for (const student of report?.byStudent || []) {
+      if (student.group) groups.add(student.group);
+    }
+
+    return Array.from(groups).sort((a, b) => a.localeCompare(b, "es"));
+  }, [report]);
+
   const studentsBySelectedGroup = useMemo(() => {
-    const students = report?.filters?.students || [];
-    if (filters.group === "ALL") return students;
+    const students = report?.byStudent || [];
+
+    if (filters.group === "ALL") {
+      return students;
+    }
+
     return students.filter((student) => student.group === filters.group);
   }, [report, filters.group]);
 
@@ -238,7 +309,9 @@ export default function TeacherReports() {
   if (error && !report) {
     return (
       <div className="teacher-report-page">
-        <div className="teacher-report-empty teacher-report-empty--error">{error}</div>
+        <div className="teacher-report-empty teacher-report-empty--error">
+          {error}
+        </div>
       </div>
     );
   }
@@ -251,64 +324,126 @@ export default function TeacherReports() {
         <div>
           <h2>Reporte docente</h2>
           <p>
-            Seguimiento de desempeño por alumno, juego, fecha, errores, progreso y abandono.
+            Seguimiento de desempeño por alumno, juego, fecha, errores, progreso y
+            abandono.
           </p>
         </div>
-        <div className="teacher-report-header__teacher">{report.teacher.name}</div>
+
+        <div className="teacher-report-header__teacher">
+          {report.teacher?.name || "Docente"}
+        </div>
       </header>
 
       <section className="teacher-report-filters">
         <label>
           Desde
-          <input type="date" value={filters.from} onChange={(e) => updateFilter("from", e.target.value)} />
+          <input
+            type="date"
+            value={filters.from}
+            onChange={(e) => updateFilter("from", e.target.value)}
+          />
         </label>
 
         <label>
           Hasta
-          <input type="date" value={filters.to} onChange={(e) => updateFilter("to", e.target.value)} />
+          <input
+            type="date"
+            value={filters.to}
+            onChange={(e) => updateFilter("to", e.target.value)}
+          />
         </label>
 
         <label>
           Grupo
-          <select value={filters.group} onChange={(e) => updateFilter("group", e.target.value)}>
+          <select
+            value={filters.group}
+            onChange={(e) => updateFilter("group", e.target.value)}
+          >
             <option value="ALL">Todos los grupos</option>
-            {(report.filters.groups || []).map((group) => (
-              <option key={group.id} value={group.name}>Grupo {group.name}</option>
+            {groupOptions.map((group) => (
+              <option key={group} value={group}>
+                Grupo {group}
+              </option>
             ))}
           </select>
         </label>
 
         <label>
           Alumno
-          <select value={filters.studentId} onChange={(e) => updateFilter("studentId", e.target.value)}>
+          <select
+            value={filters.studentId}
+            onChange={(e) => updateFilter("studentId", e.target.value)}
+          >
             <option value="ALL">Todos los alumnos</option>
             {studentsBySelectedGroup.map((student) => (
-              <option key={student.id} value={student.id}>{student.name}</option>
+              <option key={student.studentId} value={student.studentId}>
+                {student.studentName}
+              </option>
             ))}
           </select>
         </label>
 
         <label>
           Juego
-          <select value={filters.gameType} onChange={(e) => updateFilter("gameType", e.target.value)}>
+          <select
+            value={filters.gameType}
+            onChange={(e) => updateFilter("gameType", e.target.value)}
+          >
             {GAME_OPTIONS.map((game) => (
-              <option key={game.value} value={game.value}>{game.label}</option>
+              <option key={game.value} value={game.value}>
+                {game.label}
+              </option>
             ))}
           </select>
         </label>
 
-        <button type="button" onClick={clearFilters}>Limpiar filtros</button>
+        <button type="button" onClick={clearFilters}>
+          Limpiar filtros
+        </button>
       </section>
 
-      {error && <div className="teacher-report-empty teacher-report-empty--error">{error}</div>}
+      {error && (
+        <div className="teacher-report-empty teacher-report-empty--error">
+          {error}
+        </div>
+      )}
 
       <section className="teacher-report-cards">
-        <SummaryCard label="Alumnos" value={report.summary.totalStudents} hint="según filtros" />
-        <SummaryCard label="Partidas" value={report.summary.totalGames} hint={`${report.summary.completedGames} completadas`} />
-        <SummaryCard label="Tasa de éxito" value={formatMetric(report.summary.avgSuccessRate, "%")} hint="promedio general" />
-        <SummaryCard label="Errores" value={formatMetric(report.summary.avgErrorsCommitted)} hint="promedio por partida" />
-        <SummaryCard label="Reacción" value={formatMs(report.summary.avgReactionTimeMs)} hint="promedio" />
-        <SummaryCard label="Abandono" value={formatMetric(report.summary.abandonmentRate, "%")} hint={`${report.summary.abandonedGames} partidas`} />
+        <SummaryCard
+          label="Alumnos"
+          value={formatMetric(report.summary.totalStudents)}
+          hint="según filtros"
+        />
+
+        <SummaryCard
+          label="Partidas"
+          value={formatMetric(report.summary.totalResults)}
+          hint={`${formatMetric(report.summary.completedResults)} completadas`}
+        />
+
+        <SummaryCard
+          label="Tasa de éxito"
+          value={formatMetric(report.summary.avgSuccessRate, "%")}
+          hint="promedio general"
+        />
+
+        <SummaryCard
+          label="Errores"
+          value={formatMetric(report.summary.avgErrorsCommitted)}
+          hint="promedio por partida"
+        />
+
+        <SummaryCard
+          label="Reacción"
+          value={formatMs(report.summary.avgReactionTimeMs)}
+          hint="promedio"
+        />
+
+        <SummaryCard
+          label="Abandono"
+          value={formatMetric(report.summary.abandonmentRate, "%")}
+          hint={`${formatMetric(report.summary.abandonedResults)} partidas`}
+        />
       </section>
 
       <section className="teacher-report-insights">
@@ -320,6 +455,7 @@ export default function TeacherReports() {
               : "—"}
           </strong>
         </article>
+
         <article>
           <span>Mayor dificultad</span>
           <strong>
@@ -334,14 +470,14 @@ export default function TeacherReports() {
         <BarList
           title="Tasa de éxito por juego"
           subtitle="Compara el desempeño promedio de los tres juegos."
-          items={report.byGame}
+          items={report.byGame || []}
           valueKey="avgSuccessRate"
         />
 
         <BarList
           title="Errores promedio por juego"
           subtitle="Ayuda a ubicar qué actividad genera más dificultad."
-          items={report.byGame}
+          items={report.byGame || []}
           valueKey="avgErrorsCommitted"
           suffix=""
         />
@@ -350,28 +486,39 @@ export default function TeacherReports() {
       <LineChart
         title="Progreso por fecha"
         subtitle="Muestra si el desempeño mejora, baja o se mantiene."
-        data={report.timeline}
+        data={report.timeline || []}
       />
 
-      {report.attentionStudents.length > 0 && (
+      {(report.studentsToReview || []).length > 0 && (
         <section className="teacher-report-panel">
           <div className="teacher-report-panel__header">
             <div>
               <h3>Alumnos que requieren revisión</h3>
-              <p>Baja tasa de éxito o abandono alto. No es diagnóstico, solo una señal para revisar.</p>
+              <p>
+                Baja tasa de éxito o abandono alto. No es diagnóstico, solo una
+                señal para revisar.
+              </p>
             </div>
           </div>
 
           <div className="teacher-report-attention">
-            {report.attentionStudents.map((student) => (
-              <article key={student.id}>
-                <strong>{student.student}</strong>
-                <span>{student.group}</span>
-                <small>
-                  Éxito: {formatMetric(student.avgSuccessRate, "%")} · Abandono: {formatMetric(student.abandonmentRate, "%")}
-                </small>
-              </article>
-            ))}
+            {report.studentsToReview.map((student) => {
+              const abandonmentRate =
+                student.totalResults > 0
+                  ? Number(((student.abandoned / student.totalResults) * 100).toFixed(1))
+                  : null;
+
+              return (
+                <article key={student.studentId}>
+                  <strong>{student.studentName}</strong>
+                  <span>{student.group}</span>
+                  <small>
+                    Éxito: {formatMetric(student.avgSuccessRate, "%")} · Abandono:{" "}
+                    {formatMetric(abandonmentRate, "%")}
+                  </small>
+                </article>
+              );
+            })}
           </div>
         </section>
       )}
@@ -380,11 +527,11 @@ export default function TeacherReports() {
         <div className="teacher-report-panel__header">
           <div>
             <h3>Resumen por alumno</h3>
-            <p>Ordenado por cantidad de partidas.</p>
+            <p>Vista general de desempeño individual.</p>
           </div>
         </div>
 
-        {report.byStudent.length ? (
+        {(report.byStudent || []).length ? (
           <div className="teacher-report-table-wrap">
             <table className="teacher-report-table">
               <thead>
@@ -396,29 +543,32 @@ export default function TeacherReports() {
                   <th>Progreso</th>
                   <th>Errores</th>
                   <th>Reacción</th>
-                  <th>Abandono</th>
+                  <th>Abandonos</th>
                   <th>Última actividad</th>
                 </tr>
               </thead>
+
               <tbody>
                 {report.byStudent.map((student) => (
-                  <tr key={student.id}>
-                    <td>{student.student}</td>
+                  <tr key={student.studentId}>
+                    <td>{student.studentName}</td>
                     <td>{student.group}</td>
-                    <td>{student.games}</td>
+                    <td>{formatMetric(student.totalResults)}</td>
                     <td>{formatMetric(student.avgSuccessRate, "%")}</td>
                     <td>{formatMetric(student.avgProgressPercent, "%")}</td>
                     <td>{formatMetric(student.avgErrorsCommitted)}</td>
                     <td>{formatMs(student.avgReactionTimeMs)}</td>
-                    <td>{formatMetric(student.abandonmentRate, "%")}</td>
-                    <td>{formatDate(student.lastActivity)}</td>
+                    <td>{formatMetric(student.abandoned)}</td>
+                    <td>{formatDate(student.lastPlayedAt)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="teacher-report-empty">No hay alumnos con resultados para estos filtros.</div>
+          <div className="teacher-report-empty">
+            No hay alumnos con resultados para estos filtros.
+          </div>
         )}
       </section>
 
@@ -430,13 +580,14 @@ export default function TeacherReports() {
           </div>
         </div>
 
-        {report.recentResults.length ? (
+        {(report.recentResults || []).length ? (
           <div className="teacher-report-table-wrap">
             <table className="teacher-report-table">
               <thead>
                 <tr>
                   <th>Fecha</th>
                   <th>Alumno</th>
+                  <th>Grupo</th>
                   <th>Juego</th>
                   <th>Nivel</th>
                   <th>Éxito</th>
@@ -445,11 +596,13 @@ export default function TeacherReports() {
                   <th>Estado</th>
                 </tr>
               </thead>
+
               <tbody>
                 {report.recentResults.map((result) => (
                   <tr key={result.id}>
                     <td>{formatDateTime(result.playedAt)}</td>
-                    <td>{result.student}</td>
+                    <td>{result.studentName}</td>
+                    <td>{result.group}</td>
                     <td>{result.gameLabel}</td>
                     <td>{result.level || "—"}</td>
                     <td>{formatMetric(result.successRate, "%")}</td>
@@ -462,7 +615,9 @@ export default function TeacherReports() {
             </table>
           </div>
         ) : (
-          <div className="teacher-report-empty">No hay partidas recientes para estos filtros.</div>
+          <div className="teacher-report-empty">
+            No hay partidas recientes para estos filtros.
+          </div>
         )}
       </section>
     </div>
