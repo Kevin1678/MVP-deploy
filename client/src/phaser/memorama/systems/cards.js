@@ -92,10 +92,10 @@ export function layoutCards(scene) {
   */
   const maxWByTotal =
     total <= 8
-      ? Math.round(220 * cardUi)
+      ? Math.round(200 * cardUi)
       : total <= 12
-      ? Math.round(205 * cardUi)
-      : Math.round(185 * cardUi);
+      ? Math.round(190 * cardUi)
+      : Math.round(175 * cardUi);
 
   let w = Math.min(maxCellW, maxWByTotal);
   let h = Math.floor(w / CARD_RATIO);
