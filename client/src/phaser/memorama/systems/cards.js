@@ -59,10 +59,6 @@ export function layoutCards(scene) {
   const rows = Math.ceil(total / cols);
   scene.gridCols = cols;
 
-  /*
-    NIVEL DE 4 PARES:
-    Se conserva tu layout anterior porque visualmente funcionaba mejor.
-  */
   if (total <= 8) {
     const gap = Math.max(10, Math.round(18 * Math.min(ui, 1.15)));
 
@@ -124,18 +120,8 @@ export function layoutCards(scene) {
 
     return;
   }
-
-  /*
-    NIVEL DE 6 Y 8 PARES:
-    Aquí sí se controla la proporción para evitar cartas aplastadas.
-  */
+  
 const cardUi = Math.min(ui, 1.08);
-
-/*
-  Para 6 pares damos un poco más de tamaño y una proporción
-  ligeramente más ancha. Para 8 pares dejamos casi igual porque
-  dijiste que ya quedó bien.
-*/
 const gapX =
   total <= 12
     ? Math.max(14, Math.round(20 * cardUi))
@@ -156,7 +142,7 @@ let w = Math.floor(h * CARD_RATIO);
 
 const maxWByTotal =
   total <= 12
-    ? Math.round(295 * cardUi)
+    ? Math.round(309 * cardUi)
     : Math.round(225 * cardUi);
 
 w = Math.min(w, maxWByTotal, maxCellW);
