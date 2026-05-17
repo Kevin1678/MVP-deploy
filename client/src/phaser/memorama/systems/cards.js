@@ -49,7 +49,7 @@ export function layoutCards(scene) {
   const leftPad = contentLeft(scene);
   const rightPad = 16;
   const topPad = Math.round(120 * ui);
-  const bottomPad = 16;
+  const bottomPad = 24;
 
   const areaW = Math.max(220, W - leftPad - rightPad);
   const areaH = Math.max(220, H - topPad - bottomPad);
@@ -59,29 +59,42 @@ export function layoutCards(scene) {
   const rows = Math.ceil(total / cols);
   scene.gridCols = cols;
 
-  const gap = Math.max(10, Math.round(18 * Math.min(ui, 1.15)));
+  const gapX = Math.max(16, Math.round(28 * Math.min(ui, 1.15)));
+  const gapY = Math.max(14, Math.round(24 * Math.min(ui, 1.15)));
 
-  const rawCellW = Math.floor((areaW - gap * (cols - 1)) / cols);
-  const rawCellH = Math.floor((areaH - gap * (rows - 1)) / rows);
+  const maxCellW = Math.floor((areaW - gapX * (cols - 1)) / cols);
+  const maxCellH = Math.floor((areaH - gapY * (rows - 1)) / rows);
 
-  const cellW = Math.max(50, rawCellW);
-  const cellH = Math.max(60, rawCellH);
+  /*
+    Relación de aspecto fija para evitar cartas aplastadas.
+    1.45 significa que la carta es un poco más ancha que alta,
+    pero no exageradamente horizontal.
+  */
+  const CARD_RATIO = 1.45;
 
-  let w = Math.floor(cellW * 0.92 * ui);
-  let h = Math.floor(cellH * 0.92 * ui);
+  let h = Math.floor(Math.min(maxCellH * 0.92, maxCellW / CARD_RATIO));
+  let w = Math.floor(h * CARD_RATIO);
 
-  w = Math.min(w, cellW);
-  h = Math.min(h, cellH);
+  // Límites para que no se hagan gigantes en pantallas grandes.
+  w = Math.min(w, Math.round(250 * ui));
+  h = Math.floor(w / CARD_RATIO);
 
-  w = Math.max(w, 50);
-  h = Math.max(h, 60);
+  // Límites mínimos para que sigan siendo jugables en pantallas pequeñas.
+  w = Math.max(w, 80);
+  h = Math.max(h, 70);
+
+  const boardW = cols * w + gapX * (cols - 1);
+  const boardH = rows * h + gapY * (rows - 1);
+
+  const startX = leftPad + areaW / 2 - boardW / 2 + w / 2;
+  const startY = topPad + areaH / 2 - boardH / 2 + h / 2;
 
   scene.cards.forEach((card, i) => {
     const r = Math.floor(i / cols);
     const c = i % cols;
 
-    const cx = leftPad + c * (cellW + gap) + cellW / 2;
-    const cy = topPad + r * (cellH + gap) + cellH / 2;
+    const cx = startX + c * (w + gapX);
+    const cy = startY + r * (h + gapY);
 
     const x0 = cx - w / 2;
     const y0 = cy - h / 2;
