@@ -786,4 +786,380 @@ router.post(
   }
 );
 
+function safeNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function avgFromResults(results, getter) {
+  const values = results
+    .map(getter)
+    .map(safeNumber)
+    .filter((value) => value !== null);
+
+  return round(average(values));
+}
+
+function normalizeMetricPercent(value) {
+  const n = safeNumber(value);
+  if (n === null) return null;
+  return n <= 1 ? round(n * 100) : round(n);
+}
+
+function getResultSuccessRate(result) {
+  if (typeof result.successRate === "number") {
+    return normalizeMetricPercent(result.successRate);
+  }
+
+  return resultPerformance(result);
+}
+
+function getResultProgress(result) {
+  if (typeof result.progressPercent === "number") {
+    return normalizeMetricPercent(result.progressPercent);
+  }
+
+  return resultPerformance(result);
+}
+
+function getResultErrors(result) {
+  if (typeof result.errorsCommitted === "number") {
+    return result.errorsCommitted;
+  }
+
+  return null;
+}
+
+function getResultReaction(result) {
+  if (typeof result.reactionTimeMs === "number") {
+    return result.reactionTimeMs;
+  }
+
+  return null;
+}
+
+function formatDateKey(dateValue) {
+  if (!dateValue) return "Sin fecha";
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Sin fecha";
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+router.get(
+  "/report",
+  requireAuth,
+  requireRole("TEACHER"),
+  async (req, res) => {
+    try {
+      const {
+        from,
+        to,
+        group,
+        studentId,
+        gameType
+      } = req.query;
+
+      const parsedStudentId = studentId ? Number(studentId) : null;
+
+      const resultWhere = {};
+
+      if (gameType && gameType !== "ALL") {
+        resultWhere.gameType = String(gameType);
+      }
+
+      if (from || to) {
+        resultWhere.playedAt = {};
+
+        if (from) {
+          resultWhere.playedAt.gte = new Date(`${from}T00:00:00.000Z`);
+        }
+
+        if (to) {
+          resultWhere.playedAt.lte = new Date(`${to}T23:59:59.999Z`);
+        }
+      }
+
+      const studentWhere = {
+        role: Role.STUDENT,
+        createdById: req.user.id
+      };
+
+      if (parsedStudentId && Number.isInteger(parsedStudentId)) {
+        studentWhere.id = parsedStudentId;
+      }
+
+      if (group && group !== "ALL") {
+        studentWhere.group = {
+          name: String(group)
+        };
+      }
+
+      const teacher = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastNameP: true,
+          lastNameM: true,
+          studentsCreated: {
+            where: studentWhere,
+            orderBy: [
+              { firstName: "asc" },
+              { lastNameP: "asc" },
+              { lastNameM: "asc" }
+            ],
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastNameP: true,
+              lastNameM: true,
+              group: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              },
+              results: {
+                where: resultWhere,
+                orderBy: { playedAt: "desc" },
+                select: {
+                  id: true,
+                  gameType: true,
+                  score: true,
+                  accuracy: true,
+                  attempts: true,
+                  moves: true,
+                  durationMs: true,
+                  level: true,
+                  metadata: true,
+                  playedAt: true,
+
+                  errorsCommitted: true,
+                  reactionTimeMs: true,
+                  progressPercent: true,
+                  successRate: true,
+                  abandoned: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!teacher) {
+        return res.status(404).json({ message: "Docente no encontrado." });
+      }
+
+      const students = teacher.studentsCreated;
+      const allResults = students.flatMap((student) =>
+        student.results.map((result) => ({
+          ...result,
+          studentId: student.id,
+          studentName: fullName(student),
+          groupName: student.group?.name || "Sin grupo"
+        }))
+      );
+
+      const completedResults = allResults.filter((result) => !result.abandoned);
+      const abandonedResults = allResults.filter((result) => result.abandoned);
+
+      const successRates = allResults
+        .map(getResultSuccessRate)
+        .filter((value) => typeof value === "number");
+
+      const progressValues = allResults
+        .map(getResultProgress)
+        .filter((value) => typeof value === "number");
+
+      const errorValues = allResults
+        .map(getResultErrors)
+        .filter((value) => typeof value === "number");
+
+      const reactionValues = allResults
+        .map(getResultReaction)
+        .filter((value) => typeof value === "number");
+
+      const durations = allResults
+        .map((result) => result.durationMs)
+        .filter((value) => typeof value === "number");
+
+      const byGameMap = new Map();
+
+      for (const result of allResults) {
+        const key = result.gameType;
+
+        if (!byGameMap.has(key)) {
+          byGameMap.set(key, {
+            gameType: key,
+            gameLabel: GAME_LABELS[key] || key,
+            results: []
+          });
+        }
+
+        byGameMap.get(key).results.push(result);
+      }
+
+      const byGame = Array.from(byGameMap.values()).map((entry) => {
+        const results = entry.results;
+
+        return {
+          gameType: entry.gameType,
+          gameLabel: entry.gameLabel,
+          totalResults: results.length,
+          completed: results.filter((result) => !result.abandoned).length,
+          abandoned: results.filter((result) => result.abandoned).length,
+          avgSuccessRate: avgFromResults(results, getResultSuccessRate),
+          avgProgressPercent: avgFromResults(results, getResultProgress),
+          avgErrorsCommitted: avgFromResults(results, getResultErrors),
+          avgReactionTimeMs: avgFromResults(results, getResultReaction),
+          avgDurationMs: avgFromResults(results, (result) => result.durationMs)
+        };
+      });
+
+      byGame.sort((a, b) =>
+        a.gameLabel.localeCompare(b.gameLabel, "es")
+      );
+
+      const byStudent = students.map((student) => {
+        const results = student.results;
+
+        return {
+          studentId: student.id,
+          studentName: fullName(student),
+          email: student.email,
+          group: student.group?.name || "Sin grupo",
+          totalResults: results.length,
+          completed: results.filter((result) => !result.abandoned).length,
+          abandoned: results.filter((result) => result.abandoned).length,
+          avgSuccessRate: avgFromResults(results, getResultSuccessRate),
+          avgProgressPercent: avgFromResults(results, getResultProgress),
+          avgErrorsCommitted: avgFromResults(results, getResultErrors),
+          avgReactionTimeMs: avgFromResults(results, getResultReaction),
+          avgDurationMs: avgFromResults(results, (result) => result.durationMs),
+          lastPlayedAt: results[0]?.playedAt || null
+        };
+      });
+
+      const timelineMap = new Map();
+
+      for (const result of allResults) {
+        const key = formatDateKey(result.playedAt);
+
+        if (!timelineMap.has(key)) {
+          timelineMap.set(key, []);
+        }
+
+        timelineMap.get(key).push(result);
+      }
+
+      const timeline = Array.from(timelineMap.entries())
+        .map(([date, results]) => ({
+          date,
+          totalResults: results.length,
+          avgSuccessRate: avgFromResults(results, getResultSuccessRate),
+          avgProgressPercent: avgFromResults(results, getResultProgress),
+          avgErrorsCommitted: avgFromResults(results, getResultErrors),
+          abandoned: results.filter((result) => result.abandoned).length
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      const recentResults = allResults.slice(0, 15).map((result) => ({
+        id: result.id,
+        studentId: result.studentId,
+        studentName: result.studentName,
+        group: result.groupName,
+        gameType: result.gameType,
+        gameLabel: GAME_LABELS[result.gameType] || result.gameType,
+        level: result.level,
+        score: result.score,
+        successRate: getResultSuccessRate(result),
+        progressPercent: getResultProgress(result),
+        errorsCommitted: getResultErrors(result),
+        reactionTimeMs: getResultReaction(result),
+        durationMs: result.durationMs,
+        abandoned: Boolean(result.abandoned),
+        playedAt: result.playedAt
+      }));
+
+      const studentsToReview = byStudent
+        .filter((student) => {
+          const lowSuccess =
+            typeof student.avgSuccessRate === "number" &&
+            student.avgSuccessRate < 60;
+
+          const hasAbandonment =
+            student.totalResults > 0 &&
+            student.abandoned / student.totalResults >= 0.3;
+
+          return lowSuccess || hasAbandonment;
+        })
+        .sort((a, b) => {
+          const aSuccess =
+            typeof a.avgSuccessRate === "number" ? a.avgSuccessRate : 999;
+          const bSuccess =
+            typeof b.avgSuccessRate === "number" ? b.avgSuccessRate : 999;
+
+          return aSuccess - bSuccess;
+        });
+
+      const bestGame = byGame
+        .filter((game) => typeof game.avgSuccessRate === "number")
+        .sort((a, b) => b.avgSuccessRate - a.avgSuccessRate)[0] || null;
+
+      const hardestGame = byGame
+        .filter((game) => typeof game.avgSuccessRate === "number")
+        .sort((a, b) => a.avgSuccessRate - b.avgSuccessRate)[0] || null;
+
+      res.json({
+        teacher: {
+          id: teacher.id,
+          name: fullName(teacher),
+          email: teacher.email
+        },
+        filters: {
+          from: from || null,
+          to: to || null,
+          group: group || "ALL",
+          studentId: parsedStudentId || null,
+          gameType: gameType || "ALL"
+        },
+        summary: {
+          totalStudents: students.length,
+          totalResults: allResults.length,
+          completedResults: completedResults.length,
+          abandonedResults: abandonedResults.length,
+          abandonmentRate:
+            allResults.length > 0
+              ? round((abandonedResults.length / allResults.length) * 100)
+              : null,
+          avgSuccessRate: round(average(successRates)),
+          avgProgressPercent: round(average(progressValues)),
+          avgErrorsCommitted: round(average(errorValues)),
+          avgReactionTimeMs: round(average(reactionValues)),
+          avgDurationMs: round(average(durations)),
+          bestGame,
+          hardestGame
+        },
+        byGame,
+        byStudent,
+        timeline,
+        recentResults,
+        studentsToReview
+      });
+    } catch (error) {
+      console.error("GET /teacher/report error:", error);
+      res.status(500).json({
+        message: "Error interno al generar el reporte docente."
+      });
+    }
+  }
+);
+
 module.exports = router;
