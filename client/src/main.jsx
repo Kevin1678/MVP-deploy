@@ -10,13 +10,11 @@ import Admin from "./pages/Admin";
 import Game from "./pages/Game";
 import GamesMenu from "./pages/GamesMenu";
 import Protected from "./components/Protected";
-
 import Teacher from "./pages/Teacher";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherStudents from "./pages/TeacherStudents";
 import TeacherParents from "./pages/TeacherParents";
-import TeacherStudentResults from "./pages/TeacherStudentResults";
-
+import TeacherReports from "./pages/TeacherReports";
 import Parent from "./pages/Parent";
 import ParentDashboard from "./pages/ParentDashboard";
 import ParentChildren from "./pages/ParentChildren";
@@ -45,9 +43,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         >
           <Route index element={<TeacherDashboard />} />
-          <Route path="student-results" element={<TeacherStudentResults />} />
           <Route path="students" element={<TeacherStudents />} />
           <Route path="parents" element={<TeacherParents />} />
+          <Route path="reports" element={<TeacherReports />} />
         </Route>
 
         <Route
