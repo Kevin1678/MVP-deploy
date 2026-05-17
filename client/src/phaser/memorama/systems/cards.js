@@ -129,24 +129,43 @@ export function layoutCards(scene) {
     NIVEL DE 6 Y 8 PARES:
     Aquí sí se controla la proporción para evitar cartas aplastadas.
   */
-  const gapX = Math.max(16, Math.round(24 * Math.min(ui, 1.15)));
-  const gapY = Math.max(14, Math.round(22 * Math.min(ui, 1.15)));
+const cardUi = Math.min(ui, 1.08);
 
-  const maxCellW = Math.floor((areaW - gapX * (cols - 1)) / cols);
-  const maxCellH = Math.floor((areaH - gapY * (rows - 1)) / rows);
+/*
+  Para 6 pares damos un poco más de tamaño y una proporción
+  ligeramente más ancha. Para 8 pares dejamos casi igual porque
+  dijiste que ya quedó bien.
+*/
+const gapX =
+  total <= 12
+    ? Math.max(14, Math.round(20 * cardUi))
+    : Math.max(16, Math.round(24 * cardUi));
 
-  const CARD_RATIO = 1.45;
+const gapY =
+  total <= 12
+    ? Math.max(14, Math.round(18 * cardUi))
+    : Math.max(14, Math.round(22 * cardUi));
 
-  let h = Math.floor(Math.min(maxCellH * 0.92, maxCellW / CARD_RATIO));
-  let w = Math.floor(h * CARD_RATIO);
+const maxCellW = Math.floor((areaW - gapX * (cols - 1)) / cols);
+const maxCellH = Math.floor((areaH - gapY * (rows - 1)) / rows);
 
-  const maxWByTotal =
-    total <= 12
-      ? Math.round(245 * Math.min(ui, 1.08))
-      : Math.round(225 * Math.min(ui, 1.08));
+const CARD_RATIO = total <= 12 ? 1.58 : 1.45;
 
-  w = Math.min(w, maxWByTotal);
-  h = Math.floor(w / CARD_RATIO);
+let h = Math.floor(Math.min(maxCellH * 0.94, maxCellW / CARD_RATIO));
+let w = Math.floor(h * CARD_RATIO);
+
+const maxWByTotal =
+  total <= 12
+    ? Math.round(295 * cardUi)
+    : Math.round(225 * cardUi);
+
+w = Math.min(w, maxWByTotal, maxCellW);
+h = Math.floor(w / CARD_RATIO);
+
+if (h > maxCellH) {
+  h = maxCellH;
+  w = Math.floor(h * CARD_RATIO);
+}
 
   w = Math.max(w, 90);
   h = Math.max(h, 64);
