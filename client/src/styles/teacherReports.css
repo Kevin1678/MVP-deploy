@@ -1,0 +1,352 @@
+.teacher-report-page {
+  color: var(--text);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.teacher-report-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.teacher-report-header h2 {
+  margin: 0;
+  font-size: calc(var(--font-xl) * 0.92);
+  line-height: 1.1;
+}
+
+.teacher-report-header p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: calc(var(--font-sm) * 0.96);
+}
+
+.teacher-report-header__teacher {
+  border: 1px solid var(--border);
+  background: var(--primary-soft);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-weight: 700;
+  font-size: calc(var(--font-sm) * 0.94);
+}
+
+.teacher-report-filters {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+  padding: 13px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.teacher-report-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+  font-size: calc(var(--font-sm) * 0.88);
+  font-weight: 700;
+}
+
+.teacher-report-filters input,
+.teacher-report-filters select {
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  outline: none;
+}
+
+.teacher-report-filters button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--primary);
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 8px 12px;
+}
+
+.teacher-report-cards {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.teacher-report-card,
+.teacher-report-panel,
+.teacher-report-insights article {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.teacher-report-card {
+  padding: 13px;
+}
+
+.teacher-report-card__label {
+  display: block;
+  color: var(--muted);
+  font-size: calc(var(--font-sm) * 0.88);
+  margin-bottom: 6px;
+}
+
+.teacher-report-card__value {
+  display: block;
+  font-size: calc(var(--font-xl) * 0.86);
+  line-height: 1;
+}
+
+.teacher-report-card small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: calc(var(--font-xs) * 0.96);
+}
+
+.teacher-report-insights {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.teacher-report-insights article {
+  padding: 13px 14px;
+}
+
+.teacher-report-insights span {
+  display: block;
+  color: var(--muted);
+  font-size: calc(var(--font-sm) * 0.9);
+  margin-bottom: 5px;
+}
+
+.teacher-report-insights strong {
+  font-size: calc(var(--font-md) * 0.95);
+}
+
+.teacher-report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.teacher-report-panel {
+  padding: 15px;
+  margin-bottom: 14px;
+}
+
+.teacher-report-panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 13px;
+}
+
+.teacher-report-panel__header h3 {
+  margin: 0;
+  font-size: calc(var(--font-md) * 0.96);
+}
+
+.teacher-report-panel__header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: calc(var(--font-sm) * 0.91);
+}
+
+.teacher-report-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.teacher-report-bars__row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.teacher-report-bars__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: calc(var(--font-sm) * 0.94);
+}
+
+.teacher-report-bars__track {
+  height: 10px;
+  background: rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.teacher-report-bars__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  border-radius: 999px;
+}
+
+.teacher-report-bars small {
+  color: var(--muted);
+  font-size: calc(var(--font-xs) * 0.96);
+}
+
+.teacher-report-line-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.teacher-report-line {
+  width: 100%;
+  min-width: 560px;
+  height: 220px;
+}
+
+.teacher-report-line line {
+  stroke: rgba(148, 163, 184, 0.35);
+  stroke-width: 1;
+}
+
+.teacher-report-line polyline {
+  fill: none;
+  stroke: #38bdf8;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.teacher-report-line circle {
+  fill: #818cf8;
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+
+.teacher-report-line__legend {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: calc(var(--font-xs) * 0.98);
+  margin-top: 4px;
+}
+
+.teacher-report-attention {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.teacher-report-attention article {
+  padding: 10px 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 12px;
+}
+
+.teacher-report-attention strong,
+.teacher-report-attention span,
+.teacher-report-attention small {
+  display: block;
+}
+
+.teacher-report-attention span,
+.teacher-report-attention small {
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.teacher-report-panel--table {
+  overflow: hidden;
+}
+
+.teacher-report-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.teacher-report-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+}
+
+.teacher-report-table th,
+.teacher-report-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: calc(var(--font-sm) * 0.92);
+  white-space: nowrap;
+}
+
+.teacher-report-table th {
+  color: var(--muted);
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+
+.teacher-report-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.teacher-shell--light .teacher-report-table tbody tr:hover {
+  background: rgba(15, 23, 42, 0.035);
+}
+
+.teacher-report-empty {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.teacher-report-empty--error {
+  color: #fecaca;
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.08);
+  margin-bottom: 12px;
+}
+
+@media (max-width: 1200px) {
+  .teacher-report-cards {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+
+  .teacher-report-filters {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 850px) {
+  .teacher-report-grid,
+  .teacher-report-insights {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-report-cards,
+  .teacher-report-filters {
+    grid-template-columns: 1fr;
+  }
+}
