@@ -92,6 +92,11 @@ export default function Teacher() {
             {sidebarOpen && <span>Resultados por alumno</span>}
           </NavLink>
 
+          <NavLink to="/teacher/reports" className="teacher-nav__item">
+            <span className="teacher-nav__icon">📄</span>
+            {sidebarOpen && <span>Reporte docente</span>}
+          </NavLink>
+
           <NavLink to="/teacher/students" className="teacher-nav__item">
             <span className="teacher-nav__icon">🧒</span>
             {sidebarOpen && <span>Agregar alumno</span>}
@@ -167,7 +172,7 @@ export default function Teacher() {
           <div>
             <h2 className="teacher-mobilebar__title">Panel Docente</h2>
             <p className="teacher-mobilebar__subtitle">
-              Gestión general, resultados, alumnos y padres.
+              Gestión general, resultados, alumnos, padres y reportes.
             </p>
           </div>
         </header>
