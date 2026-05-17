@@ -48,7 +48,12 @@ export function layoutCards(scene) {
 
   const leftPad = contentLeft(scene);
   const rightPad = 16;
-  const topPad = Math.round(120 * ui);
+
+  /*
+    Antes estaba bien separar del título, pero no conviene centrar
+    todo el tablero verticalmente porque genera mucho espacio vacío.
+  */
+  const topPad = Math.round(105 * ui);
   const bottomPad = 24;
 
   const areaW = Math.max(220, W - leftPad - rightPad);
@@ -59,35 +64,71 @@ export function layoutCards(scene) {
   const rows = Math.ceil(total / cols);
   scene.gridCols = cols;
 
-  const gapX = Math.max(16, Math.round(28 * Math.min(ui, 1.15)));
-  const gapY = Math.max(14, Math.round(24 * Math.min(ui, 1.15)));
+  const gapX = Math.max(16, Math.round(26 * Math.min(ui, 1.15)));
+  const gapY = Math.max(16, Math.round(24 * Math.min(ui, 1.15)));
 
   const maxCellW = Math.floor((areaW - gapX * (cols - 1)) / cols);
   const maxCellH = Math.floor((areaH - gapY * (rows - 1)) / rows);
 
   /*
-    Relación de aspecto fija para evitar cartas aplastadas.
-    1.45 significa que la carta es un poco más ancha que alta,
-    pero no exageradamente horizontal.
+    Mantiene proporción fija.
+    Esto evita que las cartas se estiren horizontalmente.
   */
   const CARD_RATIO = 1.45;
 
   let h = Math.floor(Math.min(maxCellH * 0.92, maxCellW / CARD_RATIO));
   let w = Math.floor(h * CARD_RATIO);
 
-  // Límites para que no se hagan gigantes en pantallas grandes.
-  w = Math.min(w, Math.round(250 * ui));
+  /*
+    Tamaño máximo por dificultad.
+    Si dejamos un solo máximo para todos, el nivel de 4 pares queda
+    con demasiadas cartas pequeñas y mucho espacio libre.
+  */
+  const maxWByTotal =
+    total <= 8
+      ? Math.round(285 * ui)
+      : total <= 12
+      ? Math.round(260 * ui)
+      : Math.round(235 * ui);
+
+  w = Math.min(w, maxWByTotal);
   h = Math.floor(w / CARD_RATIO);
 
-  // Límites mínimos para que sigan siendo jugables en pantallas pequeñas.
-  w = Math.max(w, 80);
-  h = Math.max(h, 70);
+  /*
+    Tamaños mínimos razonables.
+    No conviene subirlos demasiado porque en pantallas pequeñas
+    puede provocar que el tablero se salga.
+  */
+  w = Math.max(w, 86);
+  h = Math.max(h, 68);
 
   const boardW = cols * w + gapX * (cols - 1);
   const boardH = rows * h + gapY * (rows - 1);
 
+  /*
+    Se centra horizontalmente, pero NO verticalmente.
+    El tablero queda más cerca del encabezado.
+  */
   const startX = leftPad + areaW / 2 - boardW / 2 + w / 2;
-  const startY = topPad + areaH / 2 - boardH / 2 + h / 2;
+
+  const extraTopGap =
+    total <= 8
+      ? Math.round(28 * ui)
+      : total <= 12
+      ? Math.round(22 * ui)
+      : Math.round(16 * ui);
+
+  let startY = topPad + extraTopGap + h / 2;
+
+  /*
+    Si la pantalla es muy bajita, ajusta para que no se corte abajo.
+  */
+  const boardBottom = startY - h / 2 + boardH;
+  const maxBottom = H - bottomPad;
+
+  if (boardBottom > maxBottom) {
+    startY -= boardBottom - maxBottom;
+  }
 
   scene.cards.forEach((card, i) => {
     const r = Math.floor(i / cols);
