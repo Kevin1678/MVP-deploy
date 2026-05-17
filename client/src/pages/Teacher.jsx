@@ -55,11 +55,7 @@ export default function Teacher() {
       className={`teacher-shell teacher-shell--${theme}`}
       style={{ "--teacher-scale": fontScale }}
     >
-      <aside
-        className={`teacher-sidebar ${
-          sidebarOpen ? "" : "teacher-sidebar--collapsed"
-        }`}
-      >
+      <aside className={`teacher-sidebar ${sidebarOpen ? "" : "teacher-sidebar--collapsed"}`}>
         <div className="teacher-sidebar__top">
           <div>
             <p className="teacher-sidebar__eyebrow">Panel docente</p>
@@ -84,14 +80,6 @@ export default function Teacher() {
             {sidebarOpen && <span>Panel general</span>}
           </NavLink>
 
-          <NavLink
-            to="/teacher/student-results"
-            className="teacher-nav__item"
-          >
-            <span className="teacher-nav__icon">📊</span>
-            {sidebarOpen && <span>Resultados por alumno</span>}
-          </NavLink>
-
           <NavLink to="/teacher/students" className="teacher-nav__item">
             <span className="teacher-nav__icon">🧒</span>
             {sidebarOpen && <span>Agregar alumno</span>}
@@ -101,6 +89,11 @@ export default function Teacher() {
             <span className="teacher-nav__icon">👨‍👩‍👧</span>
             {sidebarOpen && <span>Agregar / vincular padres</span>}
           </NavLink>
+
+          <NavLink to="/teacher/reports" className="teacher-nav__item">
+            <span className="teacher-nav__icon">📊</span>
+            {sidebarOpen && <span>Reportes</span>}
+          </NavLink>
         </nav>
 
         <div className="teacher-sidebar__tools">
@@ -109,11 +102,11 @@ export default function Teacher() {
             className="teacher-tool-btn"
             onClick={toggleTheme}
           >
-            <span className="teacher-nav__icon">
-              {theme === "dark" ? "☀️" : "🌙"}
-            </span>
+            <span className="teacher-nav__icon">{theme === "dark" ? "☀️" : "🌙"}</span>
             {sidebarOpen && (
-              <span>{theme === "dark" ? "Modo claro" : "Modo oscuro"}</span>
+              <span>
+                {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+              </span>
             )}
           </button>
 
@@ -167,7 +160,7 @@ export default function Teacher() {
           <div>
             <h2 className="teacher-mobilebar__title">Panel Docente</h2>
             <p className="teacher-mobilebar__subtitle">
-              Gestión general, resultados, alumnos y padres.
+              Gestión general, alumnos y padres.
             </p>
           </div>
         </header>
