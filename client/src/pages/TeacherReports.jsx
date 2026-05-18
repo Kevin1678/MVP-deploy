@@ -69,6 +69,221 @@ function buildQuery(filters) {
   return query ? `?${query}` : "";
 }
 
+function cleanExcelValue(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "";
+  }
+
+  return value;
+}
+
+function formatExcelDate(value) {
+  if (!value) return "";
+
+  try {
+    return new Intl.DateTimeFormat("es-MX", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+function setColumnWidths(sheet, widths) {
+  sheet["!cols"] = widths.map((width) => ({ wch: width }));
+}
+
+function addSheet(workbook, sheetName, rows, widths = []) {
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+
+  if (widths.length) {
+    setColumnWidths(worksheet, widths);
+  }
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
+}
+
+function exportTeacherReportToExcel(report, filters) {
+  if (!report) return;
+
+  const workbook = XLSX.utils.book_new();
+
+  addSheet(
+    workbook,
+    "Resumen general",
+    [
+      { Indicador: "Docente", Valor: report.teacher?.name || "" },
+      { Indicador: "Fecha de exportación", Valor: formatExcelDate(new Date()) },
+      { Indicador: "Filtro desde", Valor: filters.from || "Todos" },
+      { Indicador: "Filtro hasta", Valor: filters.to || "Todos" },
+      {
+        Indicador: "Filtro grupo",
+        Valor: filters.group === "ALL" ? "Todos" : filters.group,
+      },
+      {
+        Indicador: "Filtro alumno",
+        Valor: filters.studentId === "ALL" ? "Todos" : filters.studentId,
+      },
+      {
+        Indicador: "Filtro juego",
+        Valor: filters.gameType === "ALL" ? "Todos" : filters.gameType,
+      },
+      {
+        Indicador: "Total de alumnos",
+        Valor: cleanExcelValue(report.summary?.totalStudents),
+      },
+      {
+        Indicador: "Total de partidas",
+        Valor: cleanExcelValue(report.summary?.totalResults),
+      },
+      {
+        Indicador: "Partidas completadas",
+        Valor: cleanExcelValue(report.summary?.completedResults),
+      },
+      {
+        Indicador: "Partidas abandonadas",
+        Valor: cleanExcelValue(report.summary?.abandonedResults),
+      },
+      {
+        Indicador: "Porcentaje de abandono",
+        Valor: cleanExcelValue(report.summary?.abandonmentRate),
+      },
+      {
+        Indicador: "Tasa de éxito promedio",
+        Valor: cleanExcelValue(report.summary?.avgSuccessRate),
+      },
+      {
+        Indicador: "Progreso promedio",
+        Valor: cleanExcelValue(report.summary?.avgProgressPercent),
+      },
+      {
+        Indicador: "Errores promedio",
+        Valor: cleanExcelValue(report.summary?.avgErrorsCommitted),
+      },
+      {
+        Indicador: "Tiempo de reacción promedio ms",
+        Valor: cleanExcelValue(report.summary?.avgReactionTimeMs),
+      },
+      {
+        Indicador: "Duración promedio ms",
+        Valor: cleanExcelValue(report.summary?.avgDurationMs),
+      },
+      {
+        Indicador: "Mejor desempeño",
+        Valor: report.summary?.bestGame
+          ? `${report.summary.bestGame.gameLabel} (${report.summary.bestGame.avgSuccessRate}%)`
+          : "",
+      },
+      {
+        Indicador: "Mayor dificultad",
+        Valor: report.summary?.hardestGame
+          ? `${report.summary.hardestGame.gameLabel} (${report.summary.hardestGame.avgSuccessRate}%)`
+          : "",
+      },
+    ],
+    [34, 38]
+  );
+
+  addSheet(
+    workbook,
+    "Resultados por juego",
+    (report.byGame || []).map((game) => ({
+      Juego: game.gameLabel,
+      "Total de partidas": cleanExcelValue(game.totalResults),
+      Completadas: cleanExcelValue(game.completed),
+      Abandonadas: cleanExcelValue(game.abandoned),
+      "Éxito promedio (%)": cleanExcelValue(game.avgSuccessRate),
+      "Progreso promedio (%)": cleanExcelValue(game.avgProgressPercent),
+      "Errores promedio": cleanExcelValue(game.avgErrorsCommitted),
+      "Reacción promedio (ms)": cleanExcelValue(game.avgReactionTimeMs),
+      "Duración promedio (ms)": cleanExcelValue(game.avgDurationMs),
+    })),
+    [24, 18, 16, 16, 20, 22, 18, 22, 22]
+  );
+
+  addSheet(
+    workbook,
+    "Resultados por alumno",
+    (report.byStudent || []).map((student) => ({
+      Alumno: student.studentName,
+      Correo: student.email,
+      Grupo: student.group,
+      "Total de partidas": cleanExcelValue(student.totalResults),
+      Completadas: cleanExcelValue(student.completed),
+      Abandonadas: cleanExcelValue(student.abandoned),
+      "Éxito promedio (%)": cleanExcelValue(student.avgSuccessRate),
+      "Progreso promedio (%)": cleanExcelValue(student.avgProgressPercent),
+      "Errores promedio": cleanExcelValue(student.avgErrorsCommitted),
+      "Reacción promedio (ms)": cleanExcelValue(student.avgReactionTimeMs),
+      "Duración promedio (ms)": cleanExcelValue(student.avgDurationMs),
+      "Última actividad": formatExcelDate(student.lastPlayedAt),
+    })),
+    [28, 30, 12, 18, 14, 14, 20, 22, 18, 22, 22, 22]
+  );
+
+  addSheet(
+    workbook,
+    "Progreso por fecha",
+    (report.timeline || []).map((item) => ({
+      Fecha: item.date,
+      "Total de partidas": cleanExcelValue(item.totalResults),
+      "Éxito promedio (%)": cleanExcelValue(item.avgSuccessRate),
+      "Progreso promedio (%)": cleanExcelValue(item.avgProgressPercent),
+      "Errores promedio": cleanExcelValue(item.avgErrorsCommitted),
+      Abandonadas: cleanExcelValue(item.abandoned),
+    })),
+    [16, 18, 20, 22, 18, 16]
+  );
+
+  addSheet(
+    workbook,
+    "Partidas recientes",
+    (report.recentResults || []).map((result) => ({
+      Fecha: formatExcelDate(result.playedAt),
+      Alumno: result.studentName,
+      Grupo: result.group,
+      Juego: result.gameLabel,
+      Nivel: result.level || "",
+      Puntaje: cleanExcelValue(result.score),
+      "Éxito (%)": cleanExcelValue(result.successRate),
+      "Progreso (%)": cleanExcelValue(result.progressPercent),
+      Errores: cleanExcelValue(result.errorsCommitted),
+      "Reacción (ms)": cleanExcelValue(result.reactionTimeMs),
+      "Duración (ms)": cleanExcelValue(result.durationMs),
+      Estado: result.abandoned ? "Abandonada" : "Completada",
+    })),
+    [22, 28, 12, 22, 14, 12, 14, 16, 12, 16, 16, 16]
+  );
+
+  addSheet(
+    workbook,
+    "Alumnos a revisar",
+    (report.studentsToReview || []).map((student) => {
+      const abandonmentRate =
+        student.totalResults > 0
+          ? Number(((student.abandoned / student.totalResults) * 100).toFixed(1))
+          : "";
+
+      return {
+        Alumno: student.studentName,
+        Correo: student.email,
+        Grupo: student.group,
+        "Total de partidas": cleanExcelValue(student.totalResults),
+        Abandonadas: cleanExcelValue(student.abandoned),
+        "Abandono (%)": abandonmentRate,
+        "Éxito promedio (%)": cleanExcelValue(student.avgSuccessRate),
+        "Errores promedio": cleanExcelValue(student.avgErrorsCommitted),
+        "Última actividad": formatExcelDate(student.lastPlayedAt),
+      };
+    }),
+    [28, 30, 12, 18, 14, 16, 20, 18, 22]
+  );
+
+  const today = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(workbook, `reporte-docente-${today}.xlsx`);
+}
+
 function SummaryCard({ label, value, hint }) {
   return (
     <article className="teacher-report-card">
@@ -175,7 +390,12 @@ function LineChart({ title, subtitle, data }) {
             role="img"
             aria-label={title}
           >
-            <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} />
+            <line
+              x1={pad}
+              y1={height - pad}
+              x2={width - pad}
+              y2={height - pad}
+            />
             <line x1={pad} y1={pad} x2={pad} y2={height - pad} />
             <polyline points={polyline} />
 
@@ -227,7 +447,6 @@ export default function TeacherReports() {
 
       try {
         const res = await fetch(`/api/teacher/report${buildQuery(filters)}`);
-
         const contentType = res.headers.get("content-type") || "";
 
         if (!contentType.includes("application/json")) {
@@ -244,7 +463,9 @@ export default function TeacherReports() {
 
         if (active) setReport(json);
       } catch (err) {
-        if (active) setError(err.message || "No se pudo cargar el reporte docente.");
+        if (active) {
+          setError(err.message || "No se pudo cargar el reporte docente.");
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -320,33 +541,28 @@ export default function TeacherReports() {
   if (!report) return null;
 
   return (
-
-    <div className="teacher-report-header__actions">
-  <div className="teacher-report-header__teacher">
-    {report.teacher?.name || "Docente"}
-  </div>
-
-  <button
-    type="button"
-    className="teacher-report-export-btn"
-    onClick={() => exportTeacherReportToExcel(report, filters)}
-  >
-    Exportar Excel
-  </button>
-</div>
-    
     <div className="teacher-report-page">
       <header className="teacher-report-header">
         <div>
           <h2>Reporte docente</h2>
           <p>
-            Seguimiento de desempeño por alumno, juego, fecha, errores, progreso y
-            abandono.
+            Seguimiento de desempeño por alumno, juego, fecha, errores, progreso
+            y abandono.
           </p>
         </div>
 
-        <div className="teacher-report-header__teacher">
-          {report.teacher?.name || "Docente"}
+        <div className="teacher-report-header__actions">
+          <div className="teacher-report-header__teacher">
+            {report.teacher?.name || "Docente"}
+          </div>
+
+          <button
+            type="button"
+            className="teacher-report-export-btn"
+            onClick={() => exportTeacherReportToExcel(report, filters)}
+          >
+            Exportar Excel
+          </button>
         </div>
       </header>
 
@@ -521,7 +737,11 @@ export default function TeacherReports() {
             {report.studentsToReview.map((student) => {
               const abandonmentRate =
                 student.totalResults > 0
-                  ? Number(((student.abandoned / student.totalResults) * 100).toFixed(1))
+                  ? Number(
+                      ((student.abandoned / student.totalResults) * 100).toFixed(
+                        1
+                      )
+                    )
                   : null;
 
               return (
@@ -529,8 +749,8 @@ export default function TeacherReports() {
                   <strong>{student.studentName}</strong>
                   <span>{student.group}</span>
                   <small>
-                    Éxito: {formatMetric(student.avgSuccessRate, "%")} · Abandono:{" "}
-                    {formatMetric(abandonmentRate, "%")}
+                    Éxito: {formatMetric(student.avgSuccessRate, "%")} ·
+                    Abandono: {formatMetric(abandonmentRate, "%")}
                   </small>
                 </article>
               );
