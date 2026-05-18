@@ -41,6 +41,66 @@ function numberValues(results, key) {
     .filter((value) => typeof value === "number" && !Number.isNaN(value));
 }
 
+function getResultSuccessValue(result) {
+  if (typeof result.successRate === "number" && !Number.isNaN(result.successRate)) {
+    return result.successRate;
+  }
+
+  if (typeof result.accuracy === "number" && !Number.isNaN(result.accuracy)) {
+    return result.accuracy;
+  }
+
+  if (
+    typeof result.progressPercent === "number" &&
+    !Number.isNaN(result.progressPercent)
+  ) {
+    return result.progressPercent;
+  }
+
+  return null;
+}
+
+function dateKey(value) {
+  if (!value) return null;
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toISOString().slice(0, 10);
+}
+
+function buildTimeline(results) {
+  const map = new Map();
+
+  for (const result of results) {
+    const key = dateKey(result.playedAt);
+    const successValue = getResultSuccessValue(result);
+
+    if (!key || typeof successValue !== "number") continue;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        date: key,
+        successValues: [],
+        totalResults: 0
+      });
+    }
+
+    const entry = map.get(key);
+    entry.successValues.push(successValue);
+    entry.totalResults += 1;
+  }
+
+  return Array.from(map.values())
+    .map((entry) => ({
+      date: entry.date,
+      avgSuccessRate: round(average(entry.successValues)),
+      totalResults: entry.totalResults
+    }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
 function mapResult(result, childName) {
   return {
     id: result.id,
@@ -94,12 +154,14 @@ function buildChildSummary(link) {
         reactionValues: [],
         abandonedCount: 0,
         bestScore: null,
-        lastPlayedAt: null
+        lastPlayedAt: null,
+        results: []
       });
     }
 
     const entry = byGameMap.get(key);
     entry.plays += 1;
+    entry.results.push(result);
 
     if (typeof result.score === "number") {
       entry.scoreValues.push(result.score);
@@ -153,7 +215,8 @@ function buildChildSummary(link) {
     avgReactionTimeMs: round(average(entry.reactionValues)),
     abandonedCount: entry.abandonedCount,
     bestScore: entry.bestScore,
-    lastPlayedAt: entry.lastPlayedAt
+    lastPlayedAt: entry.lastPlayedAt,
+    timeline: buildTimeline(entry.results)
   }));
 
   byGame.sort((a, b) => b.plays - a.plays || a.gameLabel.localeCompare(b.gameLabel));
@@ -179,6 +242,7 @@ function buildChildSummary(link) {
       lastPlayedAt: results[0]?.playedAt || null
     },
     byGame,
+    timeline: buildTimeline(results),
     recentResults: results
       .slice(0, 5)
       .map((result) => mapResult(result, fullName(student))),
