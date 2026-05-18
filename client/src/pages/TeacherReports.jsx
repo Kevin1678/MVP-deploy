@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import "../styles/teacherReports.css";
 
 const GAME_OPTIONS = [
@@ -319,6 +320,21 @@ export default function TeacherReports() {
   if (!report) return null;
 
   return (
+
+    <div className="teacher-report-header__actions">
+  <div className="teacher-report-header__teacher">
+    {report.teacher?.name || "Docente"}
+  </div>
+
+  <button
+    type="button"
+    className="teacher-report-export-btn"
+    onClick={() => exportTeacherReportToExcel(report, filters)}
+  >
+    Exportar Excel
+  </button>
+</div>
+    
     <div className="teacher-report-page">
       <header className="teacher-report-header">
         <div>
