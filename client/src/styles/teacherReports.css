@@ -350,3 +350,31 @@
     grid-template-columns: 1fr;
   }
 }
+
+.teacher-report-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.teacher-report-export-btn {
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 9px 14px;
+  font-size: calc(var(--font-sm) * 0.94);
+  box-shadow: var(--shadow);
+}
+
+.teacher-report-export-btn:hover {
+  filter: brightness(1.08);
+}
+
+.teacher-report-export-btn:active {
+  transform: translateY(1px);
+}
