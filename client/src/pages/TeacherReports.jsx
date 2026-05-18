@@ -336,15 +336,7 @@ function drawBarChartImage({
     ctx.font = "bold 15px Arial";
     ctx.fillText(`${Number(item.value).toFixed(1)}${suffix}`, valueX, y + 18);
   });
-
-  ctx.fillStyle = "#64748b";
-  ctx.font = "14px Arial";
-  ctx.fillText(
-    "Nota: gráfica generada como imagen dentro del Excel.",
-    24,
-    chartHeight - 18
-  );
-
+  
   return canvas.toDataURL("image/png");
 }
 
