@@ -144,44 +144,6 @@ export default function ParentDashboard() {
         ))}
       </section>
 
-      <section className="parent-panel parent-panel--compact">
-        <div className="parent-panel__header">
-          <h2>Actividad reciente</h2>
-          <span>Último registro: {formatDate(data.summary.lastPlayedAt)}</span>
-        </div>
-
-        {data.recentActivity.length ? (
-          <div className="parent-table-wrap">
-            <table className="parent-table">
-              <thead>
-                <tr>
-                  <th>Alumno</th>
-                  <th>Juego</th>
-                  <th>Puntaje</th>
-                  <th>Precisión</th>
-                  <th>Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.recentActivity.map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.childName}</td>
-                    <td>{item.gameLabel}</td>
-                    <td>{item.score ?? "—"}</td>
-                    <td>{formatMetric(item.accuracy, "%")}</td>
-                    <td>{formatDate(item.playedAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="parent-empty">
-            <p>Todavía no hay partidas registradas.</p>
-          </div>
-        )}
-      </section>
-
       <section className="parent-children">
         {data.children.length ? (
           data.children.map((child) => (
