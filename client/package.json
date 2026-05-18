@@ -19,7 +19,8 @@
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.1",
     "xlsx": "^0.18.5",
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+     "jspdf": "^4.2.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.4",
