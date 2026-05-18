@@ -88,6 +88,13 @@ function formatExcelDate(value) {
   }
 }
 
+function getTimeValue(value) {
+  if (!value) return 0;
+
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
 function setColumns(sheet, columns) {
   sheet.columns = columns.map((column) => ({
     header: column.header,
@@ -171,7 +178,6 @@ function drawPieChartImage({ title, successRate }) {
   ctx.fillText("Tasa de éxito promedio del juego", 24, 62);
 
   let start = -Math.PI / 2;
-
   const successAngle = (success / 100) * Math.PI * 2;
 
   ctx.beginPath();
@@ -252,6 +258,129 @@ function addPieChartsByGame(workbook, sheet, byGame) {
       ext: { width: 410, height: 265 },
     });
   });
+}
+
+function drawBarChartImage({
+  title,
+  subtitle,
+  items,
+  labelKey,
+  valueKey,
+  suffix = "%",
+}) {
+  const safeItems = Array.isArray(items) ? items : [];
+
+  const rows = safeItems
+    .map((item) => ({
+      label: String(item[labelKey] || "Sin nombre"),
+      value: Number(item[valueKey]),
+    }))
+    .filter((item) => Number.isFinite(item.value));
+
+  const barHeight = 26;
+  const gap = 12;
+  const topArea = 88;
+  const bottomArea = 44;
+  const chartHeight = Math.max(
+    300,
+    topArea + rows.length * (barHeight + gap) + bottomArea
+  );
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 900;
+  canvas.height = chartHeight;
+
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#111827";
+  ctx.font = "bold 24px Arial";
+  ctx.fillText(title, 24, 36);
+
+  ctx.fillStyle = "#475569";
+  ctx.font = "16px Arial";
+  ctx.fillText(subtitle, 24, 62);
+
+  if (!rows.length) {
+    ctx.fillStyle = "#64748b";
+    ctx.font = "16px Arial";
+    ctx.fillText("No hay datos suficientes para generar la gráfica.", 24, 115);
+    return canvas.toDataURL("image/png");
+  }
+
+  const labelX = 24;
+  const barX = 265;
+  const barMaxW = 520;
+  const valueX = barX + barMaxW + 18;
+  const maxValue = Math.max(100, ...rows.map((item) => item.value));
+
+  rows.forEach((item, index) => {
+    const y = topArea + index * (barHeight + gap);
+    const width = Math.max(4, (item.value / maxValue) * barMaxW);
+
+    let label = item.label;
+
+    if (label.length > 28) {
+      label = `${label.slice(0, 25)}...`;
+    }
+
+    ctx.fillStyle = "#111827";
+    ctx.font = "15px Arial";
+    ctx.fillText(label, labelX, y + 18);
+
+    ctx.fillStyle = "#e5e7eb";
+    ctx.fillRect(barX, y, barMaxW, barHeight);
+
+    ctx.fillStyle = "#2563eb";
+    ctx.fillRect(barX, y, width, barHeight);
+
+    ctx.fillStyle = "#111827";
+    ctx.font = "bold 15px Arial";
+    ctx.fillText(`${Number(item.value).toFixed(1)}${suffix}`, valueX, y + 18);
+  });
+
+  ctx.fillStyle = "#64748b";
+  ctx.font = "14px Arial";
+  ctx.fillText(
+    "Nota: gráfica generada como imagen dentro del Excel.",
+    24,
+    chartHeight - 18
+  );
+
+  return canvas.toDataURL("image/png");
+}
+
+function addBarChartToSheet(workbook, sheet, options) {
+  const imageBase64 = drawBarChartImage(options);
+
+  const imageId = workbook.addImage({
+    base64: imageBase64,
+    extension: "png",
+  });
+
+  const itemCount = Array.isArray(options.items) ? options.items.length : 0;
+  const imageHeight = Math.max(300, 130 + itemCount * 38);
+
+  sheet.addImage(imageId, {
+    tl: { col: 13, row: 1 },
+    ext: { width: 680, height: imageHeight },
+  });
+}
+
+function getLast15StudentsForChart(students) {
+  return [...(students || [])]
+    .filter((student) => typeof student.avgSuccessRate === "number")
+    .sort((a, b) => getTimeValue(b.lastPlayedAt) - getTimeValue(a.lastPlayedAt))
+    .slice(0, 15);
+}
+
+function getLast15DatesForChart(timeline) {
+  return [...(timeline || [])]
+    .filter((item) => typeof item.avgSuccessRate === "number")
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .slice(-15);
 }
 
 async function exportTeacherReportToExcel(report, filters) {
@@ -390,25 +519,33 @@ async function exportTeacherReportToExcel(report, filters) {
     { header: "Última actividad", key: "ultima", width: 22 },
   ]);
 
-  studentSheet.addRows(
-    (report.byStudent || []).map((student) => ({
-      alumno: student.studentName,
-      correo: student.email,
-      grupo: student.group,
-      total: cleanExcelValue(student.totalResults),
-      completadas: cleanExcelValue(student.completed),
-      abandonadas: cleanExcelValue(student.abandoned),
-      exito: cleanExcelValue(student.avgSuccessRate),
-      progreso: cleanExcelValue(student.avgProgressPercent),
-      errores: cleanExcelValue(student.avgErrorsCommitted),
-      reaccion: cleanExcelValue(student.avgReactionTimeMs),
-      duracion: cleanExcelValue(student.avgDurationMs),
-      ultima: formatExcelDate(student.lastPlayedAt),
-    }))
-  );
+  const studentRows = (report.byStudent || []).map((student) => ({
+    alumno: student.studentName,
+    correo: student.email,
+    grupo: student.group,
+    total: cleanExcelValue(student.totalResults),
+    completadas: cleanExcelValue(student.completed),
+    abandonadas: cleanExcelValue(student.abandoned),
+    exito: cleanExcelValue(student.avgSuccessRate),
+    progreso: cleanExcelValue(student.avgProgressPercent),
+    errores: cleanExcelValue(student.avgErrorsCommitted),
+    reaccion: cleanExcelValue(student.avgReactionTimeMs),
+    duracion: cleanExcelValue(student.avgDurationMs),
+    ultima: formatExcelDate(student.lastPlayedAt),
+  }));
 
+  studentSheet.addRows(studentRows);
   autosizeRows(studentSheet);
   studentSheet.views = [{ state: "frozen", ySplit: 1 }];
+
+  addBarChartToSheet(workbook, studentSheet, {
+    title: "Tasa de éxito por alumno",
+    subtitle: "Últimos 15 alumnos con actividad registrada.",
+    items: getLast15StudentsForChart(report.byStudent || []),
+    labelKey: "studentName",
+    valueKey: "avgSuccessRate",
+    suffix: "%",
+  });
 
   const timelineSheet = workbook.addWorksheet("Progreso por fecha");
 
@@ -421,94 +558,27 @@ async function exportTeacherReportToExcel(report, filters) {
     { header: "Abandonadas", key: "abandonadas", width: 16 },
   ]);
 
-  timelineSheet.addRows(
-    (report.timeline || []).map((item) => ({
-      fecha: item.date,
-      total: cleanExcelValue(item.totalResults),
-      exito: cleanExcelValue(item.avgSuccessRate),
-      progreso: cleanExcelValue(item.avgProgressPercent),
-      errores: cleanExcelValue(item.avgErrorsCommitted),
-      abandonadas: cleanExcelValue(item.abandoned),
-    }))
-  );
+  const timelineRows = (report.timeline || []).map((item) => ({
+    fecha: item.date,
+    total: cleanExcelValue(item.totalResults),
+    exito: cleanExcelValue(item.avgSuccessRate),
+    progreso: cleanExcelValue(item.avgProgressPercent),
+    errores: cleanExcelValue(item.avgErrorsCommitted),
+    abandonadas: cleanExcelValue(item.abandoned),
+  }));
 
+  timelineSheet.addRows(timelineRows);
   autosizeRows(timelineSheet);
   timelineSheet.views = [{ state: "frozen", ySplit: 1 }];
 
-  const recentSheet = workbook.addWorksheet("Partidas recientes");
-
-  setColumns(recentSheet, [
-    { header: "Fecha", key: "fecha", width: 22 },
-    { header: "Alumno", key: "alumno", width: 28 },
-    { header: "Grupo", key: "grupo", width: 12 },
-    { header: "Juego", key: "juego", width: 22 },
-    { header: "Nivel", key: "nivel", width: 14 },
-    { header: "Puntaje", key: "puntaje", width: 12 },
-    { header: "Éxito (%)", key: "exito", width: 14 },
-    { header: "Progreso (%)", key: "progreso", width: 16 },
-    { header: "Errores", key: "errores", width: 12 },
-    { header: "Reacción (ms)", key: "reaccion", width: 16 },
-    { header: "Duración (ms)", key: "duracion", width: 16 },
-    { header: "Estado", key: "estado", width: 16 },
-  ]);
-
-  recentSheet.addRows(
-    (report.recentResults || []).map((result) => ({
-      fecha: formatExcelDate(result.playedAt),
-      alumno: result.studentName,
-      grupo: result.group,
-      juego: result.gameLabel,
-      nivel: result.level || "",
-      puntaje: cleanExcelValue(result.score),
-      exito: cleanExcelValue(result.successRate),
-      progreso: cleanExcelValue(result.progressPercent),
-      errores: cleanExcelValue(result.errorsCommitted),
-      reaccion: cleanExcelValue(result.reactionTimeMs),
-      duracion: cleanExcelValue(result.durationMs),
-      estado: result.abandoned ? "Abandonada" : "Completada",
-    }))
-  );
-
-  autosizeRows(recentSheet);
-  recentSheet.views = [{ state: "frozen", ySplit: 1 }];
-
-  const reviewSheet = workbook.addWorksheet("Alumnos a revisar");
-
-  setColumns(reviewSheet, [
-    { header: "Alumno", key: "alumno", width: 28 },
-    { header: "Correo", key: "correo", width: 30 },
-    { header: "Grupo", key: "grupo", width: 12 },
-    { header: "Total de partidas", key: "total", width: 18 },
-    { header: "Abandonadas", key: "abandonadas", width: 14 },
-    { header: "Abandono (%)", key: "abandono", width: 16 },
-    { header: "Éxito promedio (%)", key: "exito", width: 20 },
-    { header: "Errores promedio", key: "errores", width: 18 },
-    { header: "Última actividad", key: "ultima", width: 22 },
-  ]);
-
-  reviewSheet.addRows(
-    (report.studentsToReview || []).map((student) => {
-      const abandonmentRate =
-        student.totalResults > 0
-          ? Number(((student.abandoned / student.totalResults) * 100).toFixed(1))
-          : "";
-
-      return {
-        alumno: student.studentName,
-        correo: student.email,
-        grupo: student.group,
-        total: cleanExcelValue(student.totalResults),
-        abandonadas: cleanExcelValue(student.abandoned),
-        abandono: abandonmentRate,
-        exito: cleanExcelValue(student.avgSuccessRate),
-        errores: cleanExcelValue(student.avgErrorsCommitted),
-        ultima: formatExcelDate(student.lastPlayedAt),
-      };
-    })
-  );
-
-  autosizeRows(reviewSheet);
-  reviewSheet.views = [{ state: "frozen", ySplit: 1 }];
+  addBarChartToSheet(workbook, timelineSheet, {
+    title: "Progreso por fecha",
+    subtitle: "Últimas 15 fechas con partidas registradas.",
+    items: getLast15DatesForChart(report.timeline || []),
+    labelKey: "date",
+    valueKey: "avgSuccessRate",
+    suffix: "%",
+  });
 
   const today = new Date().toISOString().slice(0, 10);
   const buffer = await workbook.xlsx.writeBuffer();
