@@ -221,10 +221,6 @@ function drawPieChartImage({ title, successRate }) {
   ctx.fillStyle = "#111827";
   ctx.fillText(`Falta / error: ${missing.toFixed(1)}%`, 343, 187);
 
-  ctx.fillStyle = "#64748b";
-  ctx.font = "14px Arial";
-  ctx.fillText("Nota: gráfica generada como imagen dentro del Excel.", 24, 322);
-
   return canvas.toDataURL("image/png");
 }
 
