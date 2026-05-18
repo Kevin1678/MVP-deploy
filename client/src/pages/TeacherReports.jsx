@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import "../styles/teacherReports.css";
 
 const GAME_OPTIONS = [
@@ -70,10 +70,8 @@ function buildQuery(filters) {
 }
 
 function cleanExcelValue(value) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return "";
-  }
-
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number" && Number.isNaN(value)) return "";
   return value;
 }
 
@@ -90,175 +88,405 @@ function formatExcelDate(value) {
   }
 }
 
-function setColumnWidths(sheet, widths) {
-  sheet["!cols"] = widths.map((width) => ({ wch: width }));
+function setColumns(sheet, columns) {
+  sheet.columns = columns.map((column) => ({
+    header: column.header,
+    key: column.key,
+    width: column.width || 18,
+  }));
+
+  const headerRow = sheet.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.alignment = { vertical: "middle", horizontal: "center" };
+
+  headerRow.eachCell((cell) => {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFE5E7EB" },
+    };
+
+    cell.border = {
+      bottom: {
+        style: "thin",
+        color: { argb: "FFCBD5E1" },
+      },
+    };
+  });
 }
 
-function addSheet(workbook, sheetName, rows, widths = []) {
-  const worksheet = XLSX.utils.json_to_sheet(rows);
+function autosizeRows(sheet) {
+  sheet.eachRow((row) => {
+    row.height = 22;
 
-  if (widths.length) {
-    setColumnWidths(worksheet, widths);
+    row.eachCell((cell) => {
+      cell.alignment = {
+        vertical: "middle",
+        wrapText: true,
+      };
+    });
+  });
+}
+
+function downloadExcelBuffer(buffer, filename) {
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+function drawPieChartImage({ title, successRate }) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 540;
+  canvas.height = 350;
+
+  const ctx = canvas.getContext("2d");
+
+  const success = Math.max(0, Math.min(100, Number(successRate) || 0));
+  const missing = 100 - success;
+
+  const cx = 165;
+  const cy = 180;
+  const radius = 98;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#111827";
+  ctx.font = "bold 24px Arial";
+  ctx.fillText(title, 24, 36);
+
+  ctx.fillStyle = "#475569";
+  ctx.font = "16px Arial";
+  ctx.fillText("Tasa de éxito promedio del juego", 24, 62);
+
+  let start = -Math.PI / 2;
+
+  const successAngle = (success / 100) * Math.PI * 2;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, radius, start, start + successAngle);
+  ctx.closePath();
+  ctx.fillStyle = "#2563eb";
+  ctx.fill();
+
+  start += successAngle;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, radius, start, start + (missing / 100) * Math.PI * 2);
+  ctx.closePath();
+  ctx.fillStyle = "#f97316";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  ctx.fillStyle = "#111827";
+  ctx.font = "bold 28px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(`${success.toFixed(1)}%`, cx, cy + 8);
+
+  ctx.textAlign = "left";
+
+  ctx.fillStyle = "#2563eb";
+  ctx.fillRect(315, 135, 18, 18);
+  ctx.fillStyle = "#111827";
+  ctx.font = "16px Arial";
+  ctx.fillText(`Éxito promedio: ${success.toFixed(1)}%`, 343, 150);
+
+  ctx.fillStyle = "#f97316";
+  ctx.fillRect(315, 172, 18, 18);
+  ctx.fillStyle = "#111827";
+  ctx.fillText(`Falta / error: ${missing.toFixed(1)}%`, 343, 187);
+
+  ctx.fillStyle = "#64748b";
+  ctx.font = "14px Arial";
+  ctx.fillText("Nota: gráfica generada como imagen dentro del Excel.", 24, 322);
+
+  return canvas.toDataURL("image/png");
+}
+
+function addPieChartsByGame(workbook, sheet, byGame) {
+  const games = byGame.filter(
+    (game) => typeof game.avgSuccessRate === "number"
+  );
+
+  sheet.getCell("K1").value = "Gráficas por juego";
+  sheet.getCell("K1").font = { bold: true, size: 14 };
+
+  if (!games.length) {
+    sheet.getCell("K2").value = "No hay datos suficientes para generar gráficas.";
+    return;
   }
 
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
+  games.forEach((game, index) => {
+    const imageBase64 = drawPieChartImage({
+      title: game.gameLabel,
+      successRate: game.avgSuccessRate,
+    });
+
+    const imageId = workbook.addImage({
+      base64: imageBase64,
+      extension: "png",
+    });
+
+    const row = 2 + index * 18;
+
+    sheet.addImage(imageId, {
+      tl: { col: 10, row },
+      ext: { width: 410, height: 265 },
+    });
+  });
 }
 
-function exportTeacherReportToExcel(report, filters) {
+async function exportTeacherReportToExcel(report, filters) {
   if (!report) return;
 
-  const workbook = XLSX.utils.book_new();
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Plataforma educativa";
+  workbook.created = new Date();
 
-  addSheet(
-    workbook,
-    "Resumen general",
-    [
-      { Indicador: "Docente", Valor: report.teacher?.name || "" },
-      { Indicador: "Fecha de exportación", Valor: formatExcelDate(new Date()) },
-      { Indicador: "Filtro desde", Valor: filters.from || "Todos" },
-      { Indicador: "Filtro hasta", Valor: filters.to || "Todos" },
-      {
-        Indicador: "Filtro grupo",
-        Valor: filters.group === "ALL" ? "Todos" : filters.group,
-      },
-      {
-        Indicador: "Filtro alumno",
-        Valor: filters.studentId === "ALL" ? "Todos" : filters.studentId,
-      },
-      {
-        Indicador: "Filtro juego",
-        Valor: filters.gameType === "ALL" ? "Todos" : filters.gameType,
-      },
-      {
-        Indicador: "Total de alumnos",
-        Valor: cleanExcelValue(report.summary?.totalStudents),
-      },
-      {
-        Indicador: "Total de partidas",
-        Valor: cleanExcelValue(report.summary?.totalResults),
-      },
-      {
-        Indicador: "Partidas completadas",
-        Valor: cleanExcelValue(report.summary?.completedResults),
-      },
-      {
-        Indicador: "Partidas abandonadas",
-        Valor: cleanExcelValue(report.summary?.abandonedResults),
-      },
-      {
-        Indicador: "Porcentaje de abandono",
-        Valor: cleanExcelValue(report.summary?.abandonmentRate),
-      },
-      {
-        Indicador: "Tasa de éxito promedio",
-        Valor: cleanExcelValue(report.summary?.avgSuccessRate),
-      },
-      {
-        Indicador: "Progreso promedio",
-        Valor: cleanExcelValue(report.summary?.avgProgressPercent),
-      },
-      {
-        Indicador: "Errores promedio",
-        Valor: cleanExcelValue(report.summary?.avgErrorsCommitted),
-      },
-      {
-        Indicador: "Tiempo de reacción promedio ms",
-        Valor: cleanExcelValue(report.summary?.avgReactionTimeMs),
-      },
-      {
-        Indicador: "Duración promedio ms",
-        Valor: cleanExcelValue(report.summary?.avgDurationMs),
-      },
-      {
-        Indicador: "Mejor desempeño",
-        Valor: report.summary?.bestGame
-          ? `${report.summary.bestGame.gameLabel} (${report.summary.bestGame.avgSuccessRate}%)`
-          : "",
-      },
-      {
-        Indicador: "Mayor dificultad",
-        Valor: report.summary?.hardestGame
-          ? `${report.summary.hardestGame.gameLabel} (${report.summary.hardestGame.avgSuccessRate}%)`
-          : "",
-      },
-    ],
-    [34, 38]
-  );
+  const summarySheet = workbook.addWorksheet("Resumen general");
 
-  addSheet(
-    workbook,
-    "Resultados por juego",
+  setColumns(summarySheet, [
+    { header: "Indicador", key: "indicador", width: 34 },
+    { header: "Valor", key: "valor", width: 42 },
+  ]);
+
+  summarySheet.addRows([
+    { indicador: "Docente", valor: report.teacher?.name || "" },
+    { indicador: "Fecha de exportación", valor: formatExcelDate(new Date()) },
+    { indicador: "Filtro desde", valor: filters.from || "Todos" },
+    { indicador: "Filtro hasta", valor: filters.to || "Todos" },
+    {
+      indicador: "Filtro grupo",
+      valor: filters.group === "ALL" ? "Todos" : filters.group,
+    },
+    {
+      indicador: "Filtro alumno",
+      valor: filters.studentId === "ALL" ? "Todos" : filters.studentId,
+    },
+    {
+      indicador: "Filtro juego",
+      valor: filters.gameType === "ALL" ? "Todos" : filters.gameType,
+    },
+    {
+      indicador: "Total de alumnos",
+      valor: cleanExcelValue(report.summary?.totalStudents),
+    },
+    {
+      indicador: "Total de partidas",
+      valor: cleanExcelValue(report.summary?.totalResults),
+    },
+    {
+      indicador: "Partidas completadas",
+      valor: cleanExcelValue(report.summary?.completedResults),
+    },
+    {
+      indicador: "Partidas abandonadas",
+      valor: cleanExcelValue(report.summary?.abandonedResults),
+    },
+    {
+      indicador: "Porcentaje de abandono",
+      valor: cleanExcelValue(report.summary?.abandonmentRate),
+    },
+    {
+      indicador: "Tasa de éxito promedio",
+      valor: cleanExcelValue(report.summary?.avgSuccessRate),
+    },
+    {
+      indicador: "Progreso promedio",
+      valor: cleanExcelValue(report.summary?.avgProgressPercent),
+    },
+    {
+      indicador: "Errores promedio",
+      valor: cleanExcelValue(report.summary?.avgErrorsCommitted),
+    },
+    {
+      indicador: "Tiempo de reacción promedio ms",
+      valor: cleanExcelValue(report.summary?.avgReactionTimeMs),
+    },
+    {
+      indicador: "Duración promedio ms",
+      valor: cleanExcelValue(report.summary?.avgDurationMs),
+    },
+    {
+      indicador: "Mejor desempeño",
+      valor: report.summary?.bestGame
+        ? `${report.summary.bestGame.gameLabel} (${report.summary.bestGame.avgSuccessRate}%)`
+        : "",
+    },
+    {
+      indicador: "Mayor dificultad",
+      valor: report.summary?.hardestGame
+        ? `${report.summary.hardestGame.gameLabel} (${report.summary.hardestGame.avgSuccessRate}%)`
+        : "",
+    },
+  ]);
+
+  autosizeRows(summarySheet);
+
+  const gameSheet = workbook.addWorksheet("Resultados por juego");
+
+  setColumns(gameSheet, [
+    { header: "Juego", key: "juego", width: 24 },
+    { header: "Total de partidas", key: "total", width: 18 },
+    { header: "Completadas", key: "completadas", width: 16 },
+    { header: "Abandonadas", key: "abandonadas", width: 16 },
+    { header: "Éxito promedio (%)", key: "exito", width: 20 },
+    { header: "Progreso promedio (%)", key: "progreso", width: 22 },
+    { header: "Errores promedio", key: "errores", width: 18 },
+    { header: "Reacción promedio (ms)", key: "reaccion", width: 22 },
+    { header: "Duración promedio (ms)", key: "duracion", width: 22 },
+  ]);
+
+  gameSheet.addRows(
     (report.byGame || []).map((game) => ({
-      Juego: game.gameLabel,
-      "Total de partidas": cleanExcelValue(game.totalResults),
-      Completadas: cleanExcelValue(game.completed),
-      Abandonadas: cleanExcelValue(game.abandoned),
-      "Éxito promedio (%)": cleanExcelValue(game.avgSuccessRate),
-      "Progreso promedio (%)": cleanExcelValue(game.avgProgressPercent),
-      "Errores promedio": cleanExcelValue(game.avgErrorsCommitted),
-      "Reacción promedio (ms)": cleanExcelValue(game.avgReactionTimeMs),
-      "Duración promedio (ms)": cleanExcelValue(game.avgDurationMs),
-    })),
-    [24, 18, 16, 16, 20, 22, 18, 22, 22]
+      juego: game.gameLabel,
+      total: cleanExcelValue(game.totalResults),
+      completadas: cleanExcelValue(game.completed),
+      abandonadas: cleanExcelValue(game.abandoned),
+      exito: cleanExcelValue(game.avgSuccessRate),
+      progreso: cleanExcelValue(game.avgProgressPercent),
+      errores: cleanExcelValue(game.avgErrorsCommitted),
+      reaccion: cleanExcelValue(game.avgReactionTimeMs),
+      duracion: cleanExcelValue(game.avgDurationMs),
+    }))
   );
 
-  addSheet(
-    workbook,
-    "Resultados por alumno",
+  autosizeRows(gameSheet);
+  gameSheet.views = [{ state: "frozen", ySplit: 1 }];
+  addPieChartsByGame(workbook, gameSheet, report.byGame || []);
+
+  const studentSheet = workbook.addWorksheet("Resultados por alumno");
+
+  setColumns(studentSheet, [
+    { header: "Alumno", key: "alumno", width: 28 },
+    { header: "Correo", key: "correo", width: 30 },
+    { header: "Grupo", key: "grupo", width: 12 },
+    { header: "Total de partidas", key: "total", width: 18 },
+    { header: "Completadas", key: "completadas", width: 14 },
+    { header: "Abandonadas", key: "abandonadas", width: 14 },
+    { header: "Éxito promedio (%)", key: "exito", width: 20 },
+    { header: "Progreso promedio (%)", key: "progreso", width: 22 },
+    { header: "Errores promedio", key: "errores", width: 18 },
+    { header: "Reacción promedio (ms)", key: "reaccion", width: 22 },
+    { header: "Duración promedio (ms)", key: "duracion", width: 22 },
+    { header: "Última actividad", key: "ultima", width: 22 },
+  ]);
+
+  studentSheet.addRows(
     (report.byStudent || []).map((student) => ({
-      Alumno: student.studentName,
-      Correo: student.email,
-      Grupo: student.group,
-      "Total de partidas": cleanExcelValue(student.totalResults),
-      Completadas: cleanExcelValue(student.completed),
-      Abandonadas: cleanExcelValue(student.abandoned),
-      "Éxito promedio (%)": cleanExcelValue(student.avgSuccessRate),
-      "Progreso promedio (%)": cleanExcelValue(student.avgProgressPercent),
-      "Errores promedio": cleanExcelValue(student.avgErrorsCommitted),
-      "Reacción promedio (ms)": cleanExcelValue(student.avgReactionTimeMs),
-      "Duración promedio (ms)": cleanExcelValue(student.avgDurationMs),
-      "Última actividad": formatExcelDate(student.lastPlayedAt),
-    })),
-    [28, 30, 12, 18, 14, 14, 20, 22, 18, 22, 22, 22]
+      alumno: student.studentName,
+      correo: student.email,
+      grupo: student.group,
+      total: cleanExcelValue(student.totalResults),
+      completadas: cleanExcelValue(student.completed),
+      abandonadas: cleanExcelValue(student.abandoned),
+      exito: cleanExcelValue(student.avgSuccessRate),
+      progreso: cleanExcelValue(student.avgProgressPercent),
+      errores: cleanExcelValue(student.avgErrorsCommitted),
+      reaccion: cleanExcelValue(student.avgReactionTimeMs),
+      duracion: cleanExcelValue(student.avgDurationMs),
+      ultima: formatExcelDate(student.lastPlayedAt),
+    }))
   );
 
-  addSheet(
-    workbook,
-    "Progreso por fecha",
+  autosizeRows(studentSheet);
+  studentSheet.views = [{ state: "frozen", ySplit: 1 }];
+
+  const timelineSheet = workbook.addWorksheet("Progreso por fecha");
+
+  setColumns(timelineSheet, [
+    { header: "Fecha", key: "fecha", width: 16 },
+    { header: "Total de partidas", key: "total", width: 18 },
+    { header: "Éxito promedio (%)", key: "exito", width: 20 },
+    { header: "Progreso promedio (%)", key: "progreso", width: 22 },
+    { header: "Errores promedio", key: "errores", width: 18 },
+    { header: "Abandonadas", key: "abandonadas", width: 16 },
+  ]);
+
+  timelineSheet.addRows(
     (report.timeline || []).map((item) => ({
-      Fecha: item.date,
-      "Total de partidas": cleanExcelValue(item.totalResults),
-      "Éxito promedio (%)": cleanExcelValue(item.avgSuccessRate),
-      "Progreso promedio (%)": cleanExcelValue(item.avgProgressPercent),
-      "Errores promedio": cleanExcelValue(item.avgErrorsCommitted),
-      Abandonadas: cleanExcelValue(item.abandoned),
-    })),
-    [16, 18, 20, 22, 18, 16]
+      fecha: item.date,
+      total: cleanExcelValue(item.totalResults),
+      exito: cleanExcelValue(item.avgSuccessRate),
+      progreso: cleanExcelValue(item.avgProgressPercent),
+      errores: cleanExcelValue(item.avgErrorsCommitted),
+      abandonadas: cleanExcelValue(item.abandoned),
+    }))
   );
 
-  addSheet(
-    workbook,
-    "Partidas recientes",
+  autosizeRows(timelineSheet);
+  timelineSheet.views = [{ state: "frozen", ySplit: 1 }];
+
+  const recentSheet = workbook.addWorksheet("Partidas recientes");
+
+  setColumns(recentSheet, [
+    { header: "Fecha", key: "fecha", width: 22 },
+    { header: "Alumno", key: "alumno", width: 28 },
+    { header: "Grupo", key: "grupo", width: 12 },
+    { header: "Juego", key: "juego", width: 22 },
+    { header: "Nivel", key: "nivel", width: 14 },
+    { header: "Puntaje", key: "puntaje", width: 12 },
+    { header: "Éxito (%)", key: "exito", width: 14 },
+    { header: "Progreso (%)", key: "progreso", width: 16 },
+    { header: "Errores", key: "errores", width: 12 },
+    { header: "Reacción (ms)", key: "reaccion", width: 16 },
+    { header: "Duración (ms)", key: "duracion", width: 16 },
+    { header: "Estado", key: "estado", width: 16 },
+  ]);
+
+  recentSheet.addRows(
     (report.recentResults || []).map((result) => ({
-      Fecha: formatExcelDate(result.playedAt),
-      Alumno: result.studentName,
-      Grupo: result.group,
-      Juego: result.gameLabel,
-      Nivel: result.level || "",
-      Puntaje: cleanExcelValue(result.score),
-      "Éxito (%)": cleanExcelValue(result.successRate),
-      "Progreso (%)": cleanExcelValue(result.progressPercent),
-      Errores: cleanExcelValue(result.errorsCommitted),
-      "Reacción (ms)": cleanExcelValue(result.reactionTimeMs),
-      "Duración (ms)": cleanExcelValue(result.durationMs),
-      Estado: result.abandoned ? "Abandonada" : "Completada",
-    })),
-    [22, 28, 12, 22, 14, 12, 14, 16, 12, 16, 16, 16]
+      fecha: formatExcelDate(result.playedAt),
+      alumno: result.studentName,
+      grupo: result.group,
+      juego: result.gameLabel,
+      nivel: result.level || "",
+      puntaje: cleanExcelValue(result.score),
+      exito: cleanExcelValue(result.successRate),
+      progreso: cleanExcelValue(result.progressPercent),
+      errores: cleanExcelValue(result.errorsCommitted),
+      reaccion: cleanExcelValue(result.reactionTimeMs),
+      duracion: cleanExcelValue(result.durationMs),
+      estado: result.abandoned ? "Abandonada" : "Completada",
+    }))
   );
 
-  addSheet(
-    workbook,
-    "Alumnos a revisar",
+  autosizeRows(recentSheet);
+  recentSheet.views = [{ state: "frozen", ySplit: 1 }];
+
+  const reviewSheet = workbook.addWorksheet("Alumnos a revisar");
+
+  setColumns(reviewSheet, [
+    { header: "Alumno", key: "alumno", width: 28 },
+    { header: "Correo", key: "correo", width: 30 },
+    { header: "Grupo", key: "grupo", width: 12 },
+    { header: "Total de partidas", key: "total", width: 18 },
+    { header: "Abandonadas", key: "abandonadas", width: 14 },
+    { header: "Abandono (%)", key: "abandono", width: 16 },
+    { header: "Éxito promedio (%)", key: "exito", width: 20 },
+    { header: "Errores promedio", key: "errores", width: 18 },
+    { header: "Última actividad", key: "ultima", width: 22 },
+  ]);
+
+  reviewSheet.addRows(
     (report.studentsToReview || []).map((student) => {
       const abandonmentRate =
         student.totalResults > 0
@@ -266,22 +494,26 @@ function exportTeacherReportToExcel(report, filters) {
           : "";
 
       return {
-        Alumno: student.studentName,
-        Correo: student.email,
-        Grupo: student.group,
-        "Total de partidas": cleanExcelValue(student.totalResults),
-        Abandonadas: cleanExcelValue(student.abandoned),
-        "Abandono (%)": abandonmentRate,
-        "Éxito promedio (%)": cleanExcelValue(student.avgSuccessRate),
-        "Errores promedio": cleanExcelValue(student.avgErrorsCommitted),
-        "Última actividad": formatExcelDate(student.lastPlayedAt),
+        alumno: student.studentName,
+        correo: student.email,
+        grupo: student.group,
+        total: cleanExcelValue(student.totalResults),
+        abandonadas: cleanExcelValue(student.abandoned),
+        abandono: abandonmentRate,
+        exito: cleanExcelValue(student.avgSuccessRate),
+        errores: cleanExcelValue(student.avgErrorsCommitted),
+        ultima: formatExcelDate(student.lastPlayedAt),
       };
-    }),
-    [28, 30, 12, 18, 14, 16, 20, 18, 22]
+    })
   );
 
+  autosizeRows(reviewSheet);
+  reviewSheet.views = [{ state: "frozen", ySplit: 1 }];
+
   const today = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(workbook, `reporte-docente-${today}.xlsx`);
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  downloadExcelBuffer(buffer, `reporte-docente-${today}.xlsx`);
 }
 
 function SummaryCard({ label, value, hint }) {
@@ -295,7 +527,10 @@ function SummaryCard({ label, value, hint }) {
 }
 
 function BarList({ title, subtitle, items, valueKey, suffix = "%", emptyText }) {
-  const cleanItems = items.filter((item) => typeof item[valueKey] === "number");
+  const safeItems = Array.isArray(items) ? items : [];
+  const cleanItems = safeItems.filter(
+    (item) => typeof item[valueKey] === "number"
+  );
   const max = Math.max(100, ...cleanItems.map((item) => item[valueKey] || 0));
 
   return (
@@ -350,7 +585,10 @@ function BarList({ title, subtitle, items, valueKey, suffix = "%", emptyText }) 
 }
 
 function LineChart({ title, subtitle, data }) {
-  const points = data.filter((item) => typeof item.avgSuccessRate === "number");
+  const safeData = Array.isArray(data) ? data : [];
+  const points = safeData.filter(
+    (item) => typeof item.avgSuccessRate === "number"
+  );
   const width = 640;
   const height = 220;
   const pad = 28;
@@ -428,6 +666,7 @@ function LineChart({ title, subtitle, data }) {
 export default function TeacherReports() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exportingExcel, setExportingExcel] = useState(false);
   const [error, setError] = useState("");
 
   const [filters, setFilters] = useState({
@@ -500,6 +739,20 @@ export default function TeacherReports() {
     });
   }
 
+  async function handleExportExcel() {
+    if (!report || exportingExcel) return;
+
+    setExportingExcel(true);
+
+    try {
+      await exportTeacherReportToExcel(report, filters);
+    } catch (err) {
+      setError(err.message || "No se pudo exportar el Excel.");
+    } finally {
+      setExportingExcel(false);
+    }
+  }
+
   const groupOptions = useMemo(() => {
     const groups = new Set();
 
@@ -559,9 +812,10 @@ export default function TeacherReports() {
           <button
             type="button"
             className="teacher-report-export-btn"
-            onClick={() => exportTeacherReportToExcel(report, filters)}
+            onClick={handleExportExcel}
+            disabled={exportingExcel}
           >
-            Exportar Excel
+            {exportingExcel ? "Generando..." : "Exportar Excel"}
           </button>
         </div>
       </header>
