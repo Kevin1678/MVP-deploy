@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import ExcelJS from "exceljs";
+import { jsPDF } from "jspdf";
 import "../styles/teacherReports.css";
 
 const GAME_OPTIONS = [
@@ -220,6 +221,10 @@ function drawPieChartImage({ title, successRate }) {
   ctx.fillStyle = "#111827";
   ctx.fillText(`Falta / error: ${missing.toFixed(1)}%`, 343, 187);
 
+  ctx.fillStyle = "#64748b";
+  ctx.font = "14px Arial";
+  ctx.fillText("Nota: gráfica generada como imagen dentro del Excel.", 24, 322);
+
   return canvas.toDataURL("image/png");
 }
 
@@ -336,7 +341,15 @@ function drawBarChartImage({
     ctx.font = "bold 15px Arial";
     ctx.fillText(`${Number(item.value).toFixed(1)}${suffix}`, valueX, y + 18);
   });
-  
+
+  ctx.fillStyle = "#64748b";
+  ctx.font = "14px Arial";
+  ctx.fillText(
+    "Nota: gráfica generada como imagen dentro del reporte.",
+    24,
+    chartHeight - 18
+  );
+
   return canvas.toDataURL("image/png");
 }
 
@@ -574,6 +587,439 @@ async function exportTeacherReportToExcel(report, filters) {
   downloadExcelBuffer(buffer, `reporte-docente-${today}.xlsx`);
 }
 
+function pdfValue(value, suffix = "") {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "—";
+  }
+
+  return `${value}${suffix}`;
+}
+
+function pdfDate(value) {
+  if (!value) return "Sin registros";
+
+  try {
+    return new Intl.DateTimeFormat("es-MX", {
+      dateStyle: "short",
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+function addPdfFooter(doc, pageNumber) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+
+  doc.text(`Página ${pageNumber}`, pageWidth - 18, pageHeight - 10, {
+    align: "right",
+  });
+
+  doc.text("Reporte generado por la plataforma educativa", 14, pageHeight - 10);
+}
+
+function addPdfSectionTitle(doc, title, y) {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.setTextColor(17, 24, 39);
+  doc.text(title, 14, y);
+
+  doc.setDrawColor(203, 213, 225);
+  doc.line(14, y + 3, 202, y + 3);
+
+  return y + 11;
+}
+
+function addPdfKeyValueTable(doc, rows, startY) {
+  let y = startY;
+
+  rows.forEach((row, index) => {
+    const bg = index % 2 === 0 ? [248, 250, 252] : [255, 255, 255];
+
+    doc.setFillColor(...bg);
+    doc.rect(14, y - 5, 188, 9, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    doc.text(row.label, 17, y);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(15, 23, 42);
+    doc.text(String(row.value), 88, y);
+
+    y += 9;
+  });
+
+  return y + 4;
+}
+
+function addPdfSimpleTable(doc, columns, rows, startY, options = {}) {
+  const { maxRows = 15, columnWidths = [] } = options;
+
+  let y = startY;
+  const selectedRows = rows.slice(0, maxRows);
+
+  doc.setFillColor(229, 231, 235);
+  doc.rect(14, y - 6, 188, 9, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+
+  let x = 16;
+
+  columns.forEach((column, index) => {
+    doc.text(column.label, x, y);
+    x += columnWidths[index] || 25;
+  });
+
+  y += 8;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+
+  selectedRows.forEach((row, rowIndex) => {
+    const bg = rowIndex % 2 === 0 ? [248, 250, 252] : [255, 255, 255];
+
+    doc.setFillColor(...bg);
+    doc.rect(14, y - 6, 188, 8, "F");
+
+    x = 16;
+
+    columns.forEach((column, index) => {
+      let value = row[column.key];
+
+      if (value === null || value === undefined || value === "") {
+        value = "—";
+      }
+
+      const text = String(value);
+      const maxChars = column.maxChars || 18;
+      const clipped =
+        text.length > maxChars ? `${text.slice(0, maxChars - 3)}...` : text;
+
+      doc.text(clipped, x, y);
+      x += columnWidths[index] || 25;
+    });
+
+    y += 8;
+  });
+
+  return y + 4;
+}
+
+function getImageHeightMm(imageData, targetWidthMm) {
+  const img = new Image();
+  img.src = imageData;
+
+  const ratio = img.height && img.width ? img.height / img.width : 0.55;
+  return targetWidthMm * ratio;
+}
+
+function addPdfImage(doc, imageData, x, y, width, maxHeight) {
+  const height = Math.min(getImageHeightMm(imageData, width), maxHeight);
+  doc.addImage(imageData, "PNG", x, y, width, height);
+  return y + height;
+}
+
+async function exportTeacherReportToPdf(report, filters) {
+  if (!report) return;
+
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "letter",
+  });
+
+  let page = 1;
+  let y = 48;
+
+  const today = new Date();
+  const studentChartItems = getLast15StudentsForChart(report.byStudent || []);
+  const timelineChartItems = getLast15DatesForChart(report.timeline || []);
+
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 216, 34, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Reporte docente", 14, 20);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text("Seguimiento de desempeño en videojuegos educativos", 14, 28);
+
+  doc.setTextColor(15, 23, 42);
+
+  y = addPdfSectionTitle(doc, "Datos del reporte", y);
+
+  y = addPdfKeyValueTable(
+    doc,
+    [
+      { label: "Docente", value: report.teacher?.name || "Docente" },
+      { label: "Fecha de generación", value: formatExcelDate(today) },
+      { label: "Filtro desde", value: filters.from || "Todos" },
+      { label: "Filtro hasta", value: filters.to || "Todos" },
+      {
+        label: "Filtro grupo",
+        value: filters.group === "ALL" ? "Todos" : filters.group,
+      },
+      {
+        label: "Filtro alumno",
+        value: filters.studentId === "ALL" ? "Todos" : filters.studentId,
+      },
+      {
+        label: "Filtro juego",
+        value: filters.gameType === "ALL" ? "Todos" : filters.gameType,
+      },
+    ],
+    y
+  );
+
+  y = addPdfSectionTitle(doc, "Resumen general", y);
+
+  y = addPdfKeyValueTable(
+    doc,
+    [
+      {
+        label: "Total de alumnos",
+        value: pdfValue(report.summary?.totalStudents),
+      },
+      {
+        label: "Total de partidas",
+        value: pdfValue(report.summary?.totalResults),
+      },
+      {
+        label: "Partidas completadas",
+        value: pdfValue(report.summary?.completedResults),
+      },
+      {
+        label: "Partidas abandonadas",
+        value: pdfValue(report.summary?.abandonedResults),
+      },
+      {
+        label: "Tasa de éxito promedio",
+        value: pdfValue(report.summary?.avgSuccessRate, "%"),
+      },
+      {
+        label: "Progreso promedio",
+        value: pdfValue(report.summary?.avgProgressPercent, "%"),
+      },
+      {
+        label: "Errores promedio",
+        value: pdfValue(report.summary?.avgErrorsCommitted),
+      },
+      {
+        label: "Tiempo de reacción promedio",
+        value: formatMs(report.summary?.avgReactionTimeMs),
+      },
+      {
+        label: "Mejor desempeño",
+        value: report.summary?.bestGame
+          ? `${report.summary.bestGame.gameLabel} (${report.summary.bestGame.avgSuccessRate}%)`
+          : "—",
+      },
+      {
+        label: "Mayor dificultad",
+        value: report.summary?.hardestGame
+          ? `${report.summary.hardestGame.gameLabel} (${report.summary.hardestGame.avgSuccessRate}%)`
+          : "—",
+      },
+    ],
+    y
+  );
+
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text(
+    "Nota: estos indicadores no representan un diagnóstico. Solo apoyan el seguimiento docente.",
+    14,
+    255
+  );
+
+  addPdfFooter(doc, page);
+
+  doc.addPage();
+  page += 1;
+  y = 20;
+  y = addPdfSectionTitle(doc, "Tasa de éxito por juego", y);
+
+  const byGameSuccessImage = drawBarChartImage({
+    title: "Tasa de éxito por juego",
+    subtitle: "Comparación del éxito promedio por videojuego.",
+    items: report.byGame || [],
+    labelKey: "gameLabel",
+    valueKey: "avgSuccessRate",
+    suffix: "%",
+  });
+
+  y = addPdfImage(doc, byGameSuccessImage, 14, y, 188, 95);
+
+  y += 10;
+  y = addPdfSectionTitle(doc, "Errores promedio por juego", y);
+
+  const byGameErrorsImage = drawBarChartImage({
+    title: "Errores promedio por juego",
+    subtitle: "Promedio de errores registrados por videojuego.",
+    items: report.byGame || [],
+    labelKey: "gameLabel",
+    valueKey: "avgErrorsCommitted",
+    suffix: "",
+  });
+
+  addPdfImage(doc, byGameErrorsImage, 14, y, 188, 95);
+
+  addPdfFooter(doc, page);
+
+  doc.addPage();
+  page += 1;
+  y = 20;
+  y = addPdfSectionTitle(doc, "Progreso por fecha", y);
+
+  const timelineImage = drawBarChartImage({
+    title: "Progreso por fecha",
+    subtitle: "Últimas 15 fechas con partidas registradas.",
+    items: timelineChartItems,
+    labelKey: "date",
+    valueKey: "avgSuccessRate",
+    suffix: "%",
+  });
+
+  addPdfImage(doc, timelineImage, 14, y, 188, 200);
+
+  addPdfFooter(doc, page);
+
+  doc.addPage();
+  page += 1;
+  y = 20;
+  y = addPdfSectionTitle(doc, "Tasa de éxito por alumno", y);
+
+  const studentImage = drawBarChartImage({
+    title: "Tasa de éxito por alumno",
+    subtitle: "Últimos 15 alumnos con actividad registrada.",
+    items: studentChartItems,
+    labelKey: "studentName",
+    valueKey: "avgSuccessRate",
+    suffix: "%",
+  });
+
+  addPdfImage(doc, studentImage, 14, y, 188, 200);
+
+  addPdfFooter(doc, page);
+
+  doc.addPage();
+  page += 1;
+  y = 20;
+
+  y = addPdfSectionTitle(doc, "Resumen por alumno", y);
+
+  const studentRows = [...(report.byStudent || [])]
+    .sort((a, b) => getTimeValue(b.lastPlayedAt) - getTimeValue(a.lastPlayedAt))
+    .slice(0, 15)
+    .map((student) => ({
+      alumno: student.studentName,
+      grupo: student.group,
+      partidas: student.totalResults,
+      exito: pdfValue(student.avgSuccessRate, "%"),
+      progreso: pdfValue(student.avgProgressPercent, "%"),
+      errores: pdfValue(student.avgErrorsCommitted),
+      abandonos: student.abandoned,
+      ultima: pdfDate(student.lastPlayedAt),
+    }));
+
+  y = addPdfSimpleTable(
+    doc,
+    [
+      { label: "Alumno", key: "alumno", maxChars: 22 },
+      { label: "Grupo", key: "grupo", maxChars: 8 },
+      { label: "Part.", key: "partidas", maxChars: 6 },
+      { label: "Éxito", key: "exito", maxChars: 8 },
+      { label: "Prog.", key: "progreso", maxChars: 8 },
+      { label: "Err.", key: "errores", maxChars: 6 },
+      { label: "Aband.", key: "abandonos", maxChars: 6 },
+      { label: "Última", key: "ultima", maxChars: 12 },
+    ],
+    studentRows,
+    y,
+    {
+      maxRows: 15,
+      columnWidths: [42, 17, 15, 20, 20, 14, 18, 32],
+    }
+  );
+
+  y += 8;
+  y = addPdfSectionTitle(doc, "Alumnos que requieren revisión", y);
+
+  const reviewRows = (report.studentsToReview || []).slice(0, 10).map((student) => {
+    const abandonmentRate =
+      student.totalResults > 0
+        ? Number(((student.abandoned / student.totalResults) * 100).toFixed(1))
+        : null;
+
+    const lowSuccess =
+      typeof student.avgSuccessRate === "number" && student.avgSuccessRate < 60;
+
+    const highAbandonment =
+      typeof abandonmentRate === "number" && abandonmentRate >= 30;
+
+    let reason = "Revisar desempeño";
+
+    if (lowSuccess && highAbandonment) {
+      reason = "Baja tasa y abandono";
+    } else if (lowSuccess) {
+      reason = "Baja tasa de éxito";
+    } else if (highAbandonment) {
+      reason = "Abandono frecuente";
+    }
+
+    return {
+      alumno: student.studentName,
+      grupo: student.group,
+      exito: pdfValue(student.avgSuccessRate, "%"),
+      abandono: pdfValue(abandonmentRate, "%"),
+      motivo: reason,
+    };
+  });
+
+  if (reviewRows.length) {
+    addPdfSimpleTable(
+      doc,
+      [
+        { label: "Alumno", key: "alumno", maxChars: 26 },
+        { label: "Grupo", key: "grupo", maxChars: 8 },
+        { label: "Éxito", key: "exito", maxChars: 8 },
+        { label: "Abandono", key: "abandono", maxChars: 10 },
+        { label: "Motivo", key: "motivo", maxChars: 28 },
+      ],
+      reviewRows,
+      y,
+      {
+        maxRows: 10,
+        columnWidths: [52, 18, 22, 26, 62],
+      }
+    );
+  } else {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      "No hay alumnos marcados para revisión con los filtros actuales.",
+      14,
+      y
+    );
+  }
+
+  addPdfFooter(doc, page);
+
+  const fileDate = new Date().toISOString().slice(0, 10);
+  doc.save(`reporte-docente-${fileDate}.pdf`);
+}
+
 function SummaryCard({ label, value, hint }) {
   return (
     <article className="teacher-report-card">
@@ -725,6 +1171,7 @@ export default function TeacherReports() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [error, setError] = useState("");
 
   const [filters, setFilters] = useState({
@@ -811,6 +1258,20 @@ export default function TeacherReports() {
     }
   }
 
+  async function handleExportPdf() {
+    if (!report || exportingPdf) return;
+
+    setExportingPdf(true);
+
+    try {
+      await exportTeacherReportToPdf(report, filters);
+    } catch (err) {
+      setError(err.message || "No se pudo exportar el PDF.");
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
   const groupOptions = useMemo(() => {
     const groups = new Set();
 
@@ -874,6 +1335,15 @@ export default function TeacherReports() {
             disabled={exportingExcel}
           >
             {exportingExcel ? "Generando..." : "Exportar Excel"}
+          </button>
+
+          <button
+            type="button"
+            className="teacher-report-export-btn teacher-report-export-btn--pdf"
+            onClick={handleExportPdf}
+            disabled={exportingPdf}
+          >
+            {exportingPdf ? "Generando..." : "Exportar PDF"}
           </button>
         </div>
       </header>
